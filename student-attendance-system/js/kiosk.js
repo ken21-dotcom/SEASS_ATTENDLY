@@ -61,6 +61,20 @@
   const fingerprintAutoStartAttempts = new Set();
   let fingerprintWakeLock = null;
   let fingerprintSessionActive = false; // true while an event is open and scanning is live
+  let fingerprintRestartTimer = null; // one deferred automatic restart at a time
+  let fingerprintRestartInFlight = false; // an awaited stop + start is running
+  let fingerprintLastStartAt = 0; // epoch ms of the last successful start
+  const FINGERPRINT_RESTART_GAP_MS = 2000; // minimum gap between automatic restarts
+
+  // ?debug=1 puts an operator diagnostics line on the kiosk. It never shows
+  // sample data — only SDK events, counters and error text.
+  const KIOSK_DEBUG = readKioskDebugFlag();
+  const FINGERPRINT_FORMAT_MODE = readKioskFormatMode(); // intermediate (default) | png | raw
+  let debugEl = null;
+  let debugLastEvent = null; // { name, at }
+  let debugStopTimes = []; // AcquisitionStopped timestamps within the last minute
+  let debugIgnoredReason = '';
+  let debugLastError = '';
   let scanMode = 'in'; // 'in' = check-in, 'out' = check-out
   let CHECKIN_EARLY_MS = 30 * 60 * 1000;
   let CHECKIN_WINDOW_MS = 6 * 60 * 60 * 1000;
@@ -854,6 +868,73 @@
     return error;
   }
 
+  function kioskSearchParams() {
+    try {
+      return new URLSearchParams(window.location.search || '');
+    } catch (error) {
+      return new URLSearchParams('');
+    }
+  }
+
+  function readKioskDebugFlag() {
+    const value = kioskSearchParams().get('debug');
+    return value === '1' || value === 'true';
+  }
+
+  function readKioskFormatMode() {
+    const value = String(kioskSearchParams().get('format') || '').toLowerCase();
+    return value === 'intermediate' || value === 'raw' || value === 'png' ? value : 'intermediate';
+  }
+
+  /**
+   * Map ?format= to a SampleFormat value, defaulting to Intermediate and
+   * falling back to PngImage when the installed agent exposes a different
+   * enum name.
+   */
+  function fingerprintSampleFormatValue() {
+    const formats = (window.dp && window.dp.devices && window.dp.devices.SampleFormat) || {};
+    const candidates = {
+      intermediate: ['Intermediate', 'IntermediateImage'],
+      raw: ['Raw', 'RawImage'],
+      png: ['PngImage'],
+    }[FINGERPRINT_FORMAT_MODE] || ['Intermediate', 'IntermediateImage'];
+    for (let i = 0; i < candidates.length; i += 1) {
+      if (formats[candidates[i]] != null) return formats[candidates[i]];
+    }
+    return formats.Intermediate != null ? formats.Intermediate : formats.PngImage;
+  }
+
+  /**
+   * Name, message and HRESULT-style code of a rejected SDK call. Never
+   * includes sample data.
+   */
+  function describeFingerprintError(error) {
+    if (!error) return 'unknown error (the SDK sent no details)';
+    const name = error.name || 'Error';
+    const message = String(error.message || error);
+    let code = error.code != null ? error.code : error.errorCode;
+    let suffix = '';
+    if (typeof code === 'number') {
+      suffix = ` [0x${code.toString(16).toUpperCase()}]`;
+    } else if (typeof code === 'string' && code) {
+      suffix = ` [${code}]`;
+    } else {
+      const match = message.match(/0x[0-9a-f]+/i);
+      if (match) suffix = ` [${match[0]}]`;
+    }
+    return `${name}: ${message}${suffix}`;
+  }
+
+  function reportFingerprintStartError(error) {
+    debugLastError = describeFingerprintError(error);
+    // The real rejection used to be swallowed behind a generic code; warn it
+    // so the operator can quote the HRESULT. Sample data is never logged.
+    if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+      console.warn('[kiosk] startAcquisition rejected —', debugLastError);
+    }
+    renderKioskDebug();
+  }
+
   function fingerprintSdkReady() {
     return Boolean(
       window.WebSdk &&
@@ -862,7 +943,8 @@
       window.dp.devices &&
       typeof window.dp.devices.FingerprintReader === 'function' &&
       window.dp.devices.SampleFormat &&
-      window.dp.devices.SampleFormat.PngImage != null
+      (window.dp.devices.SampleFormat.Intermediate != null ||
+        window.dp.devices.SampleFormat.PngImage != null)
     );
   }
 
@@ -871,6 +953,67 @@
     const options = new window.WebSdk.WebChannelOptions({ debug: false });
     fingerprintReader = new window.dp.devices.FingerprintReader(options);
     return fingerprintReader;
+  }
+
+  // ── ?debug=1 diagnostics ──
+
+  function ensureKioskDebugLine() {
+    if (debugEl || !KIOSK_DEBUG) return debugEl;
+    const line = document.createElement('div');
+    line.id = 'kioskDebug';
+    line.setAttribute('role', 'status');
+    line.style.cssText = [
+      'position:fixed',
+      'left:12px',
+      'bottom:12px',
+      'z-index:2600',
+      'max-width:min(680px,92vw)',
+      'padding:.5rem .7rem',
+      'border:1px solid rgba(16,185,129,.45)',
+      'border-radius:10px',
+      'background:rgba(8,20,15,.9)',
+      'color:#d1fae5',
+      'font:600 11px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace',
+      'white-space:pre-wrap',
+      'pointer-events:none',
+    ].join(';');
+    document.body.appendChild(line);
+    debugEl = line;
+    return line;
+  }
+
+  function renderKioskDebug() {
+    if (!KIOSK_DEBUG) return;
+    const line = ensureKioskDebugLine();
+    if (!line) return;
+    const now = Date.now();
+    debugStopTimes = debugStopTimes.filter((stamp) => now - stamp < 60000);
+    const clock = (date) => date.toLocaleTimeString([], { hour12: false });
+    const rows = [
+      `session ${fingerprintSessionActive ? 'active' : 'inactive'} · acquisition ${fingerprintAcquisitionActive ? 'active' : 'idle'} · format ${FINGERPRINT_FORMAT_MODE}`,
+      `last SDK event ${debugLastEvent ? `${debugLastEvent.name} @ ${clock(debugLastEvent.at)}` : '—'}`,
+      `AcquisitionStopped last 60s ${debugStopTimes.length}`,
+      `last sample ignored ${debugIgnoredReason || '—'}`,
+    ];
+    if (debugLastError) rows.push(`startAcquisition error ${debugLastError}`);
+    line.textContent = rows.join('\n');
+  }
+
+  function debugSdkEvent(name) {
+    if (!KIOSK_DEBUG) return;
+    debugLastEvent = { name: name, at: new Date() };
+    if (name === 'AcquisitionStopped') debugStopTimes.push(Date.now());
+    renderKioskDebug();
+  }
+
+  function noteSampleIgnored(reason) {
+    debugIgnoredReason = reason;
+    renderKioskDebug();
+  }
+
+  function noteAcquisitionStopped() {
+    fingerprintAcquisitionActive = false;
+    debugSdkEvent('AcquisitionStopped');
   }
 
   // The Web SDK pauses scanning when the page loses focus. Hold the page
@@ -920,15 +1063,18 @@
   }
 
   function stopFingerprintAcquisition(reader) {
+    const activeReader = reader || fingerprintReader;
     fingerprintAcquisitionActive = false;
+    if (!activeReader) return Promise.resolve();
     try {
-      const stopping = reader.stopAcquisition();
-      if (stopping && typeof stopping.catch === 'function') {
-        stopping.catch(() => {});
+      const stopping = activeReader.stopAcquisition();
+      if (stopping && typeof stopping.then === 'function') {
+        return stopping.then(() => {}).catch(() => {});
       }
     } catch (error) {
       // Acquisition may never have started; nothing else to do.
     }
+    return Promise.resolve();
   }
 
   // ── Persistent acquisition (one session per open event) ──────────
@@ -967,20 +1113,53 @@
 
   /**
    * Restart acquisition after the SDK pauses it (focus loss, tab switch,
-   * the AcquisitionStopped event, or a reconnected reader). The reader
-   * is the same one that fired the event, so the caller passes it in.
+   * the AcquisitionStopped event, or a reconnected reader). Restarts are
+   * idempotent: only one is ever in flight, an already-running acquisition
+   * is left alone, and automatic restarts keep a 2 s gap so a device that
+   * keeps stopping cannot spin the kiosk. The old run is always awaited to
+   * stop before the next start.
    */
-  function restartFingerprintAcquisition(reader) {
-    if (!unlocked || !fingerprintSessionActive) return;
-    if (!fingerprintSdkReady()) return;
+  function restartFingerprintAcquisition(reader, options) {
+    if (!unlocked || !fingerprintSessionActive) return Promise.resolve();
+    if (!fingerprintSdkReady()) return Promise.resolve();
+    if (fingerprintRestartInFlight || fingerprintSessionStarting) return Promise.resolve();
+    if (fingerprintAcquisitionActive) return Promise.resolve();
     const activeReader = reader || fingerprintReader;
-    if (!activeReader) return;
-    fingerprintAcquisitionActive = false;
+    if (!activeReader) return Promise.resolve();
+
+    const automatic = !options || options.automatic !== false;
+    if (automatic) {
+      const wait = FINGERPRINT_RESTART_GAP_MS - (Date.now() - fingerprintLastStartAt);
+      if (wait > 0) {
+        scheduleFingerprintRestart(activeReader, wait);
+        return Promise.resolve();
+      }
+    }
+
+    fingerprintRestartInFlight = true;
     stopFingerprintWatchdog();
     setStatus('scanning', 'Reading fingerprint', 'Place your finger on the sensor.');
-    startAcquisitionOnce(activeReader).catch(() => {
-      startFingerprintWatchdog(activeReader);
-    });
+    return stopFingerprintAcquisition(activeReader)
+      .then(() => {
+        if (!fingerprintSessionActive) return undefined;
+        return startAcquisitionOnce(activeReader);
+      })
+      .catch(() => {
+        if (fingerprintSessionActive) startFingerprintWatchdog(activeReader);
+      })
+      .then(() => {
+        fingerprintRestartInFlight = false;
+        renderKioskDebug();
+      });
+  }
+
+  /** Queue one deferred automatic restart; extra calls collapse into it. */
+  function scheduleFingerprintRestart(reader, delay) {
+    if (fingerprintRestartTimer) return;
+    fingerprintRestartTimer = setTimeout(() => {
+      fingerprintRestartTimer = null;
+      restartFingerprintAcquisition(reader);
+    }, Math.max(0, delay));
   }
 
   /**
@@ -995,23 +1174,32 @@
     fingerprintAcquisitionActive = true;
     fingerprintWatchdogAttempts = 0;
     stopFingerprintWatchdog();
+    renderKioskDebug();
 
-    const SampleFormat = window.dp.devices.SampleFormat;
+    // ?format= overrides the SampleFormat; the default is Intermediate.
+    const sampleFormat = fingerprintSampleFormatValue();
     try {
-      const starting = reader.startAcquisition(SampleFormat.PngImage);
+      const starting = reader.startAcquisition(sampleFormat);
       if (starting && typeof starting.then === 'function') {
         return starting.then(() => {
           fingerprintAcquisitionActive = true;
           fingerprintWatchdogAttempts = 0;
-        }).catch(() => {
+          fingerprintLastStartAt = Date.now();
+          debugSdkEvent('AcquisitionStarted');
+          renderKioskDebug();
+        }).catch((error) => {
           fingerprintAcquisitionActive = false;
+          reportFingerprintStartError(error);
           throw fingerprintError('scanner_unavailable');
         });
       }
       fingerprintAcquisitionActive = true;
+      fingerprintLastStartAt = Date.now();
+      debugSdkEvent('AcquisitionStarted');
       return Promise.resolve();
     } catch (error) {
       fingerprintAcquisitionActive = false;
+      reportFingerprintStartError(error);
       throw fingerprintError('scanner_unavailable');
     }
   }
@@ -1031,6 +1219,7 @@
         stopFingerprintWatchdog();
         return;
       }
+      if (fingerprintRestartInFlight || fingerprintSessionStarting) return;
       fingerprintWatchdogAttempts += 1;
       if (fingerprintWatchdogAttempts > FINGERPRINT_WATCHDOG_MAX_ATTEMPTS) {
         stopFingerprintWatchdog();
@@ -1076,18 +1265,22 @@
    */
   function bindFingerprintSessionHandlers(reader) {
     reader.on('SamplesAcquired', (event) => {
+      debugSdkEvent('SamplesAcquired');
       handleFingerprintSample(event).catch(() => {});
     });
     reader.on('AcquisitionStopped', () => {
+      noteAcquisitionStopped();
       if (!fingerprintSessionActive) return;
       restartFingerprintAcquisition(reader);
     });
     reader.on('DeviceConnected', () => {
+      debugSdkEvent('DeviceConnected');
       if (!fingerprintSessionActive) return;
       restartFingerprintAcquisition(reader);
     });
     reader.on('DeviceDisconnected', () => {
       fingerprintAcquisitionActive = false;
+      debugSdkEvent('DeviceDisconnected');
       if (!fingerprintSessionActive) return;
       stopFingerprintWatchdog();
       setStationState(false, 'Reader disconnected');
@@ -1098,6 +1291,25 @@
         'Reader disconnected, reconnect the scanner.',
         'Reconnect the U.are.U 4500; the kiosk resumes scanning automatically.'
       );
+    });
+
+    // Diagnostics-only events: record them for ?debug=1 and surface the real
+    // SDK error. They never trigger a restart on their own.
+    ['AcquisitionStarted', 'QualityReported', 'ErrorOccurred', 'CommunicationFailed'].forEach((name) => {
+      try {
+        reader.on(name, (event) => {
+          debugSdkEvent(name);
+          if (name === 'ErrorOccurred' || name === 'CommunicationFailed') {
+            debugLastError = describeFingerprintError(event);
+            if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+              console.warn(`[kiosk] SDK ${name} —`, debugLastError);
+            }
+            renderKioskDebug();
+          }
+        });
+      } catch (error) {
+        // Agents that do not know an event name must not break the session.
+      }
     });
   }
 
@@ -1132,6 +1344,7 @@
       }
 
       try {
+        await stopFingerprintAcquisition(reader);
         await startAcquisitionOnce(reader);
       } catch (error) {
         stopFingerprintSession();
@@ -1149,6 +1362,10 @@
    */
   function stopFingerprintSession() {
     fingerprintSessionActive = false;
+    if (fingerprintRestartTimer) {
+      clearTimeout(fingerprintRestartTimer);
+      fingerprintRestartTimer = null;
+    }
     if (fingerprintResultTimer) {
       clearTimeout(fingerprintResultTimer);
       fingerprintResultTimer = null;
@@ -1221,14 +1438,25 @@
    * the next finger. Acquisition is never stopped after a sample.
    */
   async function handleFingerprintSample(event) {
-    if (!fingerprintSessionActive) return;
+    if (!fingerprintSessionActive) {
+      noteSampleIgnored('session inactive');
+      return;
+    }
     // A cooldown ignores the second placement of one gesture, and busy
     // means a check-in is in flight (or its result is still showing).
-    if (!fingerprintCaptureAllowed()) return;
+    if (busy) {
+      noteSampleIgnored('busy');
+      return;
+    }
+    if (fingerprintCooldownTimer) {
+      noteSampleIgnored('cooldown');
+      return;
+    }
 
     const samples = event && Array.isArray(event.samples) ? event.samples : [];
     const template = api.extractFingerprintTemplate(samples[0]);
     if (!template) {
+      noteSampleIgnored('template extraction failed');
       setStatus('attention', 'Fingerprint not read', 'Place your finger flat on the sensor and try again.');
       return;
     }
@@ -1531,6 +1759,13 @@
 
     tickClock();
     setInterval(tickClock, 1000);
+
+    // ?debug=1 shows the live scanner diagnostics line; it never includes
+    // sample data.
+    if (KIOSK_DEBUG) {
+      renderKioskDebug();
+      setInterval(renderKioskDebug, 1000);
+    }
 
     if (!isApiEnabled()) {
       showApiRequired();

@@ -73,7 +73,9 @@ ok('kiosk privacy note explains the template boundary',
 
 ok('kiosk captures through the DigitalPersona Web SDK',
   /new window\.dp\.devices\.FingerprintReader\(/.test(kioskSrc) &&
-  /\.startAcquisition\(SampleFormat\.PngImage\)/.test(kioskSrc) &&
+  /const sampleFormat = fingerprintSampleFormatValue\(\)/.test(kioskSrc) &&
+  /\.startAcquisition\(sampleFormat\)/.test(kioskSrc) &&
+  /function readKioskFormatMode\(\)[\s\S]{0,220}\?\s*value\s*:\s*'intermediate'/.test(kioskSrc) &&
   /SamplesAcquired/.test(kioskSrc));
 ok('kiosk keeps acquisition running across scans',
   /'SamplesAcquired'/.test(kioskSrc) &&

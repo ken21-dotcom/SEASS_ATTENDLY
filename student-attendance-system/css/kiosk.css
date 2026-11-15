@@ -1993,24 +1993,25 @@
   padding: .7rem .9rem;
   border: 1px solid var(--color-border-input);
   border-radius: 12px;
-  background-color: #152019 !important;
-  color: #f3f7f5 !important;
-  color-scheme: dark;
+  /* Follow the theme tokens: the card is --color-bg-card, so hardcoded
+     dark fields used to sit on a white card in the light theme. */
+  background-color: var(--color-bg-input);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
   font-size: .9rem;
   transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
 .kiosk-lock-form input::placeholder {
-  color: #9aa9a1;
+  color: var(--color-text-muted);
 }
 
 .kiosk-lock-form input:-webkit-autofill,
 .kiosk-lock-form input:-webkit-autofill:hover,
 .kiosk-lock-form input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #f3f7f5 !important;
-  caret-color: #f3f7f5;
-  box-shadow: 0 0 0 1000px #152019 inset !important;
+  -webkit-text-fill-color: var(--color-text-primary);
+  caret-color: var(--color-text-primary);
+  box-shadow: 0 0 0 1000px var(--color-bg-input) inset;
   transition: background-color 9999s ease-out 0s;
 }
 

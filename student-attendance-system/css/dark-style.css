@@ -816,6 +816,20 @@
   color: var(--color-text-primary);
 }
 
+/* Lock-station fields are token-driven now, so they stay light on the light
+   card. The dark station keeps its deep green fill and dark native glyphs. */
+:root:not([data-theme="light"]) .kiosk-lock-form input,
+:root[data-theme="dark"] .kiosk-lock-form input {
+  background-color: #152019;
+  color: var(--color-text-heading);
+  color-scheme: dark;
+}
+
+:root:not([data-theme="light"]) .kiosk-lock-form input::placeholder,
+:root[data-theme="dark"] .kiosk-lock-form input::placeholder {
+  color: #9aa9a1;
+}
+
 :root:not([data-theme="light"]) .kiosk-result-overlay,
 :root[data-theme="dark"] .kiosk-result-overlay {
   background: rgba(3, 8, 6, .62);
