@@ -391,7 +391,7 @@ var api = {
   },
 
   /**
-   * Store the template produced by the WebUSB fingerprint bridge against a
+   * Store the template produced by the DigitalPersona Web SDK against a
    * student profile. Admin and SSC-officer sessions only.
    *
    * @param {number|string} studentId user id of the student

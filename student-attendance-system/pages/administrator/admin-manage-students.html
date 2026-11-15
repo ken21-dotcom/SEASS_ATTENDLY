@@ -87,7 +87,10 @@
   <script src="../../js/data.js"></script>
   <script src="../../js/auth.js"></script>
   <script src="../../js/ui.js"></script>
-  <script src="../../js/fingerprint-webusb.js"></script>
+  <!-- DigitalPersona Web SDK: WebSdk, then core, then devices (load order matters). -->
+  <script src="../../../node_modules/@digitalpersona/websdk/dist/websdk.client.ui.js"></script>
+  <script src="../../../node_modules/@digitalpersona/core/dist/es5.bundles/index.umd.js"></script>
+  <script src="../../../node_modules/@digitalpersona/devices/dist/es5.bundles/index.umd.js"></script>
   <script src="../../js/fingerprint-enrollment.js"></script>
   <script src="../../js/administrator-panel.js"></script>
 

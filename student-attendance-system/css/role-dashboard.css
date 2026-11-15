@@ -468,6 +468,26 @@
   text-overflow: ellipsis;
 }
 
+/* The roster's Actions column has to fit its buttons and stay in view.
+   The shared cell rule above caps every column at 200px and clips the
+   overflow, which hid the "Enroll Fingerprint" control behind Edit and
+   pushed the whole column off-screen once the table scrolled. Action
+   rows keep their own width and stick to the right edge instead. */
+.data-table-wrapper .table > thead > tr > th:last-child,
+.data-table-wrapper .table > tbody > tr[data-kind="student"] > td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  width: 1%;
+  max-width: none;
+  overflow: visible;
+  background-color: var(--color-bg-card);
+}
+
+.data-table-wrapper .table > tbody > tr[data-kind="student"] > td:last-child {
+  white-space: nowrap;
+}
+
 /* ── Card header for tables ── */
 .role-card-header {
   display: flex;

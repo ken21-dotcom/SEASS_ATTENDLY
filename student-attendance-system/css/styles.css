@@ -196,6 +196,59 @@
    ======================================== */
 
 .fingerprint-enroll-body { text-align: center; }
+
+/* Consent row. The modal body centres its text, so the consent line is laid
+   out as its own flex row instead of relying on Bootstrap's floated
+   .form-check-input, which parked a 14px box at the modal's far edge where
+   it was effectively invisible. */
+.fingerprint-enroll-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 470px;
+  margin: 16px auto 0;
+  padding: 12px 14px;
+  text-align: left;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.fingerprint-enroll-consent .form-check-input {
+  flex: 0 0 auto;
+  float: none;
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0;
+  border: 2px solid var(--color-text-muted);
+  background-color: #fff;
+  opacity: 1;
+  cursor: pointer;
+}
+.fingerprint-enroll-consent .form-check-input:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+}
+/* Keep the tick legible: the unchecked background above out-ranks Bootstrap's
+   :checked colour, so the checked state is restated here (Bootstrap's white
+   check mark comes from its background-image and still applies). */
+.fingerprint-enroll-consent .form-check-input:checked {
+  background-color: var(--color-text-success, #0e9f6e);
+  border-color: var(--color-text-success, #0e9f6e);
+}
+.fingerprint-enroll-consent .form-check-label {
+  margin: 0;
+  font-size: .86rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.fingerprint-enroll-progress {
+  max-width: 470px;
+  margin: 18px auto 8px;
+  background: var(--color-bg-input);
+}
 .fingerprint-enroll-visual {
   display: grid;
   place-items: center;
@@ -227,6 +280,20 @@
   font-size: .74rem;
   color: var(--color-text-muted);
 }
+/* ?debug=1 diagnostics: monospace counts, no sample data. */
+.fingerprint-enroll-debug {
+  margin: 10px 0 0;
+  padding: 7px 10px;
+  border: 1px dashed var(--color-border-default);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .68rem;
+  line-height: 1.45;
+  text-align: left;
+  word-break: break-word;
+}
+
 .fingerprint-enroll-error {
   margin: 12px 0 0;
   padding: 9px 12px;

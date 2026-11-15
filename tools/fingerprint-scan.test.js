@@ -5,7 +5,8 @@
  * to the server, and keeps acquisition running across scans. The Web SDK
  * pauses scanning when the page loses focus; the kiosk restarts it on focus,
  * visibilitychange, AcquisitionStopped, and DeviceDisconnected followed by
- * DeviceConnected. Enrollment still uses the WebUSB adapter.
+ * DeviceConnected. Enrollment uses the same Web SDK capture path, one
+ * placement at a time, and never stores samples.
  *
  * These assertions pin the parts that can be proven without the physical
  * scanner: the SDK capture seam, the capture-only boundary, the removed
@@ -23,7 +24,6 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
 const kioskHtml = read('student-attendance-system/pages/kiosk.html');
 const kioskSrc = read('student-attendance-system/js/kiosk.js');
-const scannerSrc = read('student-attendance-system/js/fingerprint-webusb.js');
 const kioskCss = read('student-attendance-system/css/kiosk.css');
 const apiSrc = read('student-attendance-system/js/api.js');
 const enrollmentSrc = read('student-attendance-system/js/fingerprint-enrollment.js');
@@ -116,23 +116,24 @@ ok('kiosk never invents an offline attendance row',
 ok('kiosk keeps manual entry as a server call',
   /api\.manualCheckIn\(/.test(kioskSrc) && /runManualEntry/.test(kioskSrc));
 
-/* ── WebUSB adapter ────────────────────────────────────────────── */
+/* ── Enrollment capture (same Web SDK path as the kiosk) ───────── */
 
-ok('adapter uses the DigitalPersona vendor id', /VENDOR_ID\s*=\s*0x05ba/i.test(scannerSrc));
-ok('adapter requests a vendor-filtered USB device',
-  /requestDevice\(\{[\s\S]*?filters:\s*\[\{\s*vendorId:\s*VENDOR_ID\s*\}\]/.test(scannerSrc));
-ok('adapter reuses an already-authorised device',
-  /getDevices\(\)/.test(scannerSrc) && /candidate\.vendorId === VENDOR_ID/.test(scannerSrc));
-ok('adapter exposes a capture provider seam',
-  /function registerProvider\(/.test(scannerSrc) &&
-  /captureTemplate/.test(scannerSrc));
-ok('adapter refuses to fake a capture without a bridge',
-  /fingerprint_bridge_missing/.test(scannerSrc));
-ok('adapter checks WebUSB support and secure context',
-  /function isSupported\(/.test(scannerSrc) &&
-  /function isSecure\(/.test(scannerSrc));
-ok('adapter has no dependency on the nonexistent CDN package',
-  !/fingerprint-webuse|cdn\.jsdelivr.*fingerprint/i.test(scannerSrc));
+ok('no page loads the retired WebUSB adapter',
+  !/js\/fingerprint-webusb\.js/.test(adminHtml) &&
+  !/js\/fingerprint-webusb\.js/.test(sscHtml) &&
+  !/js\/fingerprint-webusb\.js/.test(kioskHtml) &&
+  !fs.existsSync(path.join(ROOT, 'student-attendance-system/js/fingerprint-webusb.js')));
+ok('enrollment pages load the Web SDK before the modal script',
+  [adminHtml, sscHtml].every((html) =>
+    html.indexOf('@digitalpersona/websdk') !== -1 &&
+    html.indexOf('@digitalpersona/core') !== -1 &&
+    html.indexOf('@digitalpersona/devices') !== -1 &&
+    html.indexOf('@digitalpersona/devices') < html.indexOf('js/fingerprint-enrollment.js')));
+ok('enrollment uses the kiosk capture seam and Intermediate default',
+  /new global\.dp\.devices\.FingerprintReader\(/.test(enrollmentSrc) &&
+  /\.startAcquisition\(sampleFormat\)/.test(enrollmentSrc) &&
+  /function readFormatMode\(\)[\s\S]{0,220}\?\s*value\s*:\s*'intermediate'/.test(enrollmentSrc) &&
+  /'intermediate'[\s\S]{0,80}'raw'[\s\S]{0,80}'png'/.test(enrollmentSrc));
 
 /* ── API client, routes, storage ───────────────────────────────── */
 
@@ -148,8 +149,13 @@ ok('fingerprint route is officer-gated',
   /\$fingerprintCheckIn = function \(\) use \(\$repo, \$auth, \$ctx\): array \{[\s\S]*?requireRole\(\['admin', 'ssc-officer'\]\)/.test(routesSrc));
 ok('enrollment route is staff-gated',
   /enroll-fingerprint[\s\S]{0,220}?requireRole\(\['admin', 'ssc-officer'\]\)/.test(routesSrc));
-ok('repository stores the fingerprint template',
-  /UPDATE students SET fingerprint_template = :template WHERE user_id = :student_id/.test(repositorySrc));
+ok('enrollment goes through the matching-service placeholder',
+  /function matchingServiceEnroll\(int \$studentId, string \$template\): array/.test(repositorySrc) &&
+  /'message' => 'matching service not configured'/.test(repositorySrc) &&
+  /matchingServiceEnroll\(\$studentId, \$template\)/.test(repositorySrc) &&
+  /matching_service_not_configured/.test(repositorySrc));
+ok('enrollment no longer stores an un-matchable template string',
+  !/UPDATE students SET fingerprint_template = :template WHERE user_id = :student_id/.test(repositorySrc));
 ok('repository matches with a case-sensitive template compare',
   /BINARY s\.fingerprint_template = BINARY :template/.test(repositorySrc));
 ok('repository reuses the shared attendance policy',
@@ -171,17 +177,63 @@ ok('migration adds the fingerprint verification method',
 
 ok('admin manage students offers fingerprint enrollment',
   /enrollStudentFingerprint/.test(adminJs) &&
-  /js\/fingerprint-enrollment\.js/.test(adminHtml) &&
-  /js\/fingerprint-webusb\.js/.test(adminHtml));
+  /js\/fingerprint-enrollment\.js/.test(adminHtml));
 ok('SSC manage students offers fingerprint enrollment',
   /enrollStudentFingerprint/.test(sscJs) &&
-  /js\/fingerprint-enrollment\.js/.test(sscHtml) &&
-  /js\/fingerprint-webusb\.js/.test(sscHtml));
-ok('enrollment modal starts capture from the click',
-  /global\.FingerprintScanner\.captureTemplate\(\)/.test(enrollmentSrc) &&
-  /api\.enrollFingerprint\(state\.studentId, template\)/.test(enrollmentSrc));
-ok('enrollment never logs or displays the template',
-  !/console\.(log|info|debug)\([^)]*template/i.test(enrollmentSrc));
+  /js\/fingerprint-enrollment\.js/.test(sscHtml));
+ok('admin student list shows fingerprint enrollment state',
+  /fingerprintEnrolled \? 'Enrolled' : 'Not enrolled'/.test(adminJs));
+ok('manage-students action column keeps the enroll button visible',
+  /tr\[data-kind="student"\] > td:last-child \{[\s\S]{0,200}?max-width: none/.test(
+    fs.readFileSync(path.join(ROOT, 'student-attendance-system/css/role-dashboard.css'), 'utf8')));
+ok('enrollment requires consent before scanning',
+  /Fingerprint is used only for event attendance and stored /.test(enrollmentSrc) &&
+  /as a template, never as an image\. The student has agreed\./.test(enrollmentSrc) &&
+  /id="fingerprintEnrollConsent"/.test(enrollmentSrc) &&
+  /if \(!state\.els \|\| !state\.els\.consent\.checked\)/.test(enrollmentSrc));
+ok('enrollment collects four good scans with progress',
+  /SCANS_REQUIRED = 4/.test(enrollmentSrc) &&
+  /'Scan ' \+ current \+ ' of ' \+ SCANS_REQUIRED/.test(enrollmentSrc) &&
+  /QualityReported/.test(enrollmentSrc) &&
+  /qualityIsGood/.test(enrollmentSrc) &&
+  /Poor scan/.test(enrollmentSrc));
+ok('quality gate compares against the installed QualityCode enum',
+  /global\.dp\.devices\.QualityCode/.test(enrollmentSrc) &&
+  /typeof codes\.Good === 'number'/.test(enrollmentSrc) &&
+  /return value === good/.test(enrollmentSrc) &&
+  !/value >= 90/.test(enrollmentSrc));
+ok('each placement is judged by its own quality value',
+  /function takePendingQuality\(/.test(enrollmentSrc) &&
+  /function deliverQuality\(/.test(enrollmentSrc) &&
+  /function waitForQuality\(/.test(enrollmentSrc) &&
+  !/return state\.lastQuality;/.test(enrollmentSrc));
+ok('a rejected scan restarts acquisition after the two-second gap',
+  /async function restartAcquisition\(/.test(enrollmentSrc) &&
+  /RESTART_GAP_MS - \(Date\.now\(\) - state\.lastStartAt\)/.test(enrollmentSrc) &&
+  /await stopAcquisition\(\);/.test(enrollmentSrc) &&
+  /state\.sampleBusy = false;/.test(enrollmentSrc));
+ok('debug line is opt-in and shows counts, not samples',
+  /function readDebugMode\(/.test(enrollmentSrc) &&
+  /get\('debug'\)/.test(enrollmentSrc) &&
+  /lastEventName/.test(enrollmentSrc) &&
+  /id="fingerprintEnrollDebug"/.test(enrollmentSrc) &&
+  !/(localStorage|sessionStorage)/.test(enrollmentSrc));
+ok('enrollment submits the in-memory samples through the API',
+  /api\.extractFingerprintTemplate\(sample\)/.test(enrollmentSrc) &&
+  /api\.enrollFingerprint\(state\.studentId, payload\)/.test(enrollmentSrc) &&
+  /state\.samples\.push\(template\)/.test(enrollmentSrc) &&
+  /clearSamples\(\)/.test(enrollmentSrc));
+ok('enrollment stops acquisition and keeps samples out of storage',
+  /stopAcquisition/.test(enrollmentSrc) &&
+  /pagehide/.test(enrollmentSrc) &&
+  /DeviceDisconnected/.test(enrollmentSrc) &&
+  /navigator\.locks/.test(enrollmentSrc) &&
+  !/(localStorage|sessionStorage)/.test(enrollmentSrc));
+ok('enrollment logs only sizes and formats',
+  /\[enrollment\] capture ' \+ state\.samples\.length/.test(enrollmentSrc) &&
+  /template\.length \+ ' chars, format ' \+ FORMAT_MODE/.test(enrollmentSrc) &&
+  !/console\.(log|info|debug)\([^)]*state\.samples\[/.test(enrollmentSrc) &&
+  !/(localStorage|sessionStorage)/.test(enrollmentSrc));
 
 /* ── Styling ───────────────────────────────────────────────────── */
 

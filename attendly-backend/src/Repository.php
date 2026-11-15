@@ -19,6 +19,27 @@ require_once __DIR__ . '/PublicIdGenerator.php';
 require_once __DIR__ . '/QrToken.php';
 require_once __DIR__ . '/Mailer.php';
 
+
+/**
+ * Placeholder for the fingerprint matching service.
+ *
+ * A real U.are.U capture is not comparable with a string equality check,
+ * so this prototype has no matcher. Enrollment calls this seam and
+ * surfaces its answer rather than storing a template nothing can match.
+ *
+ * @param int    $studentId user id of the student being enrolled
+ * @param string $template  opaque template captured by the browser
+ * @return array{ok: bool, code?: string, message?: string}
+ */
+function matchingServiceEnroll(int $studentId, string $template): array
+{
+    return [
+        'ok' => false,
+        'code' => 'matching_service_not_configured',
+        'message' => 'matching service not configured',
+    ];
+}
+
 final class Repository
 {
     public function __construct(private PDO $db)
@@ -565,11 +586,12 @@ final class Repository
     /**
      * Save the fingerprint template captured for one student.
      *
-     * The template is opaque to the server: the WebUSB capture bridge
-     * produces it and the kiosk sends it back verbatim. Matching is a
-     * direct string comparison (see migration 042), which is deliberate
-     * for this prototype. The template is never returned to a client and
-     * never copied into the audit log.
+     * The template is opaque to the server: the Web SDK produces it and the
+     * browser sends it back verbatim. Nothing is returned to a client or
+     * written to the audit log. Matching needs a real matcher, so the call
+     * goes through matchingServiceEnroll() — currently "matching service
+     * not configured" (HTTP 501) — instead of storing a template that a
+     * plain string compare could never use.
      */
     public function enrollFingerprint(int $studentId, string $template, array $actor): array
     {
@@ -582,10 +604,7 @@ final class Repository
         }
 
         $stmt = $this->db->prepare(
-            'SELECT u.id, u.role, u.display_name, u.email, s.first_name, s.last_name
-             FROM users u
-             LEFT JOIN students s ON s.user_id = u.id
-             WHERE u.id = :id LIMIT 1'
+            'SELECT u.id, u.role FROM users u WHERE u.id = :id LIMIT 1'
         );
         $stmt->execute(['id' => $studentId]);
         $student = $stmt->fetch();
@@ -594,57 +613,17 @@ final class Repository
             Response::fail('student_not_found', 'No student is registered under that ID.', 404);
         }
 
-        // A template identifies one finger, so it may only belong to one
-        // student. BINARY keeps the comparison case-sensitive: base64 and
-        // hex templates differ by case, while the column's utf8mb4 collation
-        // would otherwise treat them as equal.
-        $duplicate = $this->db->prepare(
-            'SELECT user_id FROM students
-             WHERE fingerprint_template IS NOT NULL
-               AND BINARY fingerprint_template = BINARY :template
-               AND user_id <> :student_id
-             LIMIT 1'
-        );
-        $duplicate->execute(['template' => $template, 'student_id' => $studentId]);
-        if ($duplicate->fetchColumn() !== false) {
+        // No template is stored until a matching service can compare it.
+        $matching = matchingServiceEnroll($studentId, $template);
+        if (($matching['ok'] ?? false) !== true) {
             Response::fail(
-                'fingerprint_already_enrolled',
-                'This fingerprint is already enrolled to another student.',
-                409
+                (string) ($matching['code'] ?? 'matching_service_unavailable'),
+                (string) ($matching['message'] ?? 'matching service not configured'),
+                501
             );
         }
 
-        $update = $this->db->prepare(
-            'UPDATE students SET fingerprint_template = :template WHERE user_id = :student_id'
-        );
-        $update->execute(['template' => $template, 'student_id' => $studentId]);
-
-        $name = trim((string) ($student['first_name'] ?? '') . ' ' . (string) ($student['last_name'] ?? ''));
-        if ($name === '') {
-            $name = trim((string) ($student['display_name'] ?? ''));
-        }
-        if ($name === '') {
-            $name = (string) ($student['email'] ?? 'Student');
-        }
-
-        $this->writeAudit(
-            'update',
-            'students',
-            $studentId,
-            null,
-            ['fingerprintEnrolled' => true],
-            (int) $actor['id'],
-            (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
-            (string) ($_SERVER['HTTP_USER_AGENT'] ?? '')
-        );
-
-        return [
-            'ok' => true,
-            'studentId' => $studentId,
-            'studentName' => $name,
-            'fingerprintEnrolled' => true,
-            'message' => "Fingerprint enrolled for {$name}.",
-        ];
+        return $matching;
     }
 
     public function updateStudentProfile(int $userId, array $input): array

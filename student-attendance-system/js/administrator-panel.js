@@ -387,7 +387,11 @@ function initAdminManageStudents() {
         '<td>' + escapeHtml(student.email) + '</td>' +
         '<td>' + yearBadge(student) + '</td>' +
         '<td>' + escapeHtml(student.block || '—') + '</td>' +
-        '<td>' + accountStatusBadge(status) + '</td>' +
+        '<td>' + accountStatusBadge(status) +
+          '<div class="small mt-1 ' + (student.fingerprintEnrolled ? 'text-success' : 'text-muted') + '">' +
+            '<i class="bi bi-fingerprint"></i> ' +
+            (student.fingerprintEnrolled ? 'Enrolled' : 'Not enrolled') +
+          '</div></td>' +
         '<td>' +
           '<button class="btn btn-sm btn-outline-secondary me-1" onclick="editStudent(\'' + escapeHtml(student.id) + '\')"><i class="bi bi-pencil"></i> Edit</button>' +
           '<button class="btn btn-sm btn-outline-success me-1" onclick="enrollStudentFingerprint(\'' + escapeHtml(student.id) + '\')" title="Capture a fingerprint template for this student"><i class="bi bi-fingerprint"></i> Enroll Fingerprint</button>' +
