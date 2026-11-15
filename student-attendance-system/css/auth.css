@@ -1589,6 +1589,62 @@ body {
 }
 
 /* ========================================
+   OTP Verification Panel
+   ======================================== */
+
+.otp-form-container {
+  max-width: 350px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.otp-form-container .auth-field-group {
+  margin-bottom: 1.5rem;
+}
+
+.otp-form-container .auth-login-btn {
+  width: 100%;
+  margin-top: 1.5rem;
+}
+
+.otp-input {
+  text-align: center;
+  letter-spacing: 0.5em;
+  font-size: 1.5rem;
+}
+
+.otp-input::placeholder {
+  letter-spacing: 0.5em;
+  text-align: center;
+  color: rgba(95, 111, 102, 0.72);
+}
+
+/* ── Inline reset-error alert (forgot-password modal) ──
+   Light mode: soft red fill. Dark mode: deep red on the dark surface,
+   using the danger tokens so it stays legible and on-brand. */
+#resetError {
+  margin: 0 0 18px;
+  padding: 11px 14px;
+  border: 1px solid rgba(195, 53, 53, .25);
+  border-radius: 12px;
+  background: rgba(195, 53, 53, .08);
+  color: var(--campus-risk);
+  font-family: var(--font-body);
+  font-size: .82rem;
+  line-height: 1.45;
+}
+
+#resetError[hidden] {
+  display: none;
+}
+
+:not([data-theme="light"]) #resetError {
+  background: var(--color-bg-danger-light);
+  color: var(--color-text-danger);
+  border-color: var(--color-text-danger);
+}
+
+/* ========================================
    Toast Variants — login-page toasts
    ======================================== */
 

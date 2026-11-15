@@ -197,54 +197,26 @@
         <div>
           <p class="section-kicker">Sanction history</p>
           <h1 style="display:flex;align-items:center;gap:10px;">My sanctions
-            <button class="severity-policy-trigger" type="button" id="severityPolicyBtn" aria-label="Severity policy info"><i class="bi bi-info"></i></button>
+            <button class="severity-policy-trigger" type="button" id="severityPolicyBtn" aria-label="Sanction policy info"><i class="bi bi-info"></i></button>
           </h1>
-          <p class="intro-copy">View your sanction history and the status of each record.</p>
+          <p class="intro-copy">Your standing is based on your total absences from mandatory events.</p>
         </div>
       </section>
 
       <!-- Popover rendered outside flow so it never inherits ancestor transforms -->
       <div class="severity-policy-dropdown" id="severityPolicyDropdown">
-        <h4><i class="bi bi-shield-exclamation" style="margin-right:4px;color:var(--color-badge-probation)"></i> Severity escalation policy</h4>
-        <p>Sanctions escalate based on the number and severity of infractions. Repeated offenses move to the next level automatically.</p>
-        <div class="severity-steps">
-          <div class="severity-step warning">Warning</div>
-          <span class="severity-arrow"><i class="bi bi-arrow-right"></i></span>
-          <div class="severity-step probation">Probation</div>
-          <span class="severity-arrow"><i class="bi bi-arrow-right"></i></span>
-          <div class="severity-step suspension">Suspension</div>
-        </div>
-        <p style="margin-top:10px"><strong style="color:var(--color-text-heading)">Warning:</strong> First-time or minor infractions. A formal notice.</p>
-        <p><strong style="color:var(--color-text-heading)">Probation:</strong> Repeated warnings or moderate violations. Restrictions may apply.</p>
-        <p style="margin-bottom:0"><strong style="color:var(--color-text-heading)">Suspension:</strong> Severe or repeated probation-level offenses. Temporary removal from events.</p>
+        <h4><i class="bi bi-shield-exclamation" style="margin-right:4px;color:var(--color-badge-probation)"></i> Sanction policy</h4>
+        <p style="margin-bottom:0">Students who accumulate more than 3 unexcused absences from mandatory events are automatically flagged for a sanction recommendation.</p>
       </div>
 
-      <!-- Summary stats -->
-      <div class="stat-grid" id="sanctionStats"></div>
-
-      <!-- Sanction history -->
+      <!-- Absence-based standing, computed by the server -->
       <section class="dashboard-card records-card" style="margin-top:1.5rem;">
         <div class="card-heading">
-          <h2>Sanction history</h2>
+          <h2>Attendance standing</h2>
           <span class="card-menu"><i class="bi bi-shield-check"></i></span>
         </div>
-        <div class="table-responsive">
-          <table class="table student-table">
-            <thead>
-              <tr>
-                <th style="width:30px"></th>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Severity</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="sanctionTableBody"></tbody>
-          </table>
-        </div>
-        <div id="emptyState" class="empty-records d-none">
-          <i class="bi bi-shield-check" style="font-size:1.5rem;display:block;margin-bottom:6px;color:var(--color-text-success)"></i>
-          No sanctions found. You're in good standing.
+        <div id="sanctionStatusBody" class="p-4" aria-live="polite">
+          <p class="text-muted mb-0">Loading your attendance standing…</p>
         </div>
       </section>
     </main>
@@ -262,9 +234,6 @@
        Student Sanctions — enhanced features
        ───────────────────────────────────────── */
     document.addEventListener('DOMContentLoaded', function () {
-      var user = getCurrentUser();
-      if (!user) return;
-
       /* ── Severity policy tooltip ── */
       var policyBtn = document.getElementById('severityPolicyBtn');
       var policyDropdown = document.getElementById('severityPolicyDropdown');
@@ -301,79 +270,7 @@
         });
       }
 
-      /* ── Load sanctions with enhanced features ── */
-      loadEnhancedSanctions(user.id);
     });
-
-    function loadEnhancedSanctions(studentId) {
-      var sanctions = getSanctions().filter(function (s) { return s.studentId === studentId; });
-      var users = getUsers();
-      var events = getEvents();
-
-      /* ── Summary stats ── */
-      var total = sanctions.length;
-      var active = sanctions.filter(function (s) { return s.status === 'active'; }).length;
-      var resolved = sanctions.filter(function (s) { return s.status === 'resolved'; }).length;
-
-      var statsHtml =
-        '<article class="stat-card"><div class="stat-head"><span class="stat-label">Total sanctions</span><i class="stat-icon bi-shield" aria-hidden="true"></i></div><div class="stat-value">' + total + '</div><div class="stat-foot">All records</div></article>' +
-        '<article class="stat-card"><div class="stat-head"><span class="stat-label">Active</span><i class="stat-icon bi-exclamation-triangle" aria-hidden="true"></i></div><div class="stat-value">' + active + '</div><div class="stat-foot">Awaiting resolution</div></article>' +
-        '<article class="stat-card"><div class="stat-head"><span class="stat-label">Resolved</span><i class="stat-icon bi-check-circle" aria-hidden="true"></i></div><div class="stat-value">' + resolved + '</div><div class="stat-foot">Cleared</div></article>';
-      document.getElementById('sanctionStats').innerHTML = statsHtml;
-
-      /* ── Sanction rows ── */
-      var tbody = document.getElementById('sanctionTableBody');
-      if (!tbody) return;
-      tbody.innerHTML = '';
-
-      if (!sanctions.length) {
-        document.getElementById('emptyState').classList.remove('d-none');
-        return;
-      }
-      document.getElementById('emptyState').classList.add('d-none');
-
-      sanctions.forEach(function (sanction) {
-        var officer = sanction.officerId ? users.find(function (u) { return u.id === sanction.officerId; }) : null;
-        var event = sanction.eventId ? events.find(function (e) { return e.id === sanction.eventId; }) : null;
-
-        /* ── Main row ── */
-        var row = document.createElement('tr');
-        row.className = 'sanction-row';
-        row.setAttribute('data-sanction-id', sanction.id);
-        row.innerHTML =
-          '<td><i class="bi bi-chevron-right sanction-expand-icon"></i></td>' +
-          '<td>' + formatDate(sanction.date) + '</td>' +
-          '<td>' + escapeHtml(sanction.description) + '</td>' +
-          '<td>' + severityBadge(sanction.severity) + '</td>' +
-          '<td><span class="badge bg-' + (sanction.status === 'active' ? 'danger' : 'secondary') + '">' + sanction.status + '</span></td>';
-        row.addEventListener('click', function () { toggleSanctionDetail(sanction.id); });
-        tbody.appendChild(row);
-
-        /* ── Detail row ── */
-        var detailRow = document.createElement('tr');
-        detailRow.className = 'sanction-detail-row';
-        detailRow.id = 'detail-' + sanction.id;
-        detailRow.innerHTML =
-          '<td class="sanction-detail-cell" colspan="5">' +
-            '<div class="sanction-detail-content">' +
-              '<div class="detail-field"><label>Issued by</label><span>' + (officer ? escapeHtml(officer.name) : '<span style="color:var(--color-text-muted)">System</span>') + '</span></div>' +
-              '<div class="detail-field"><label>Related event</label><span>' + (event ? (event.publicId ? escapeHtml(event.publicId) + ' · ' : '') + escapeHtml(event.name) + ' — ' + formatDate(event.date) : '<span style="color:var(--color-text-muted)">N/A</span>') + '</span></div>' +
-              '<div class="detail-field"><label>Severity level</label><span>' + sanction.severity.charAt(0).toUpperCase() + sanction.severity.slice(1) + '</span></div>' +
-              '<div class="detail-field"><label>Sanction date</label><span>' + formatDate(sanction.date) + '</span></div>' +
-              (sanction.notes ? '<div class="detail-field full-width"><label>Officer notes</label><span>' + escapeHtml(sanction.notes) + '</span></div>' : '') +
-            '</div>' +
-          '</td>';
-        tbody.appendChild(detailRow);
-      });
-    }
-
-    function toggleSanctionDetail(sanctionId) {
-      var detailRow = document.getElementById('detail-' + sanctionId);
-      var mainRow = document.querySelector('[data-sanction-id="' + sanctionId + '"]');
-      if (!detailRow || !mainRow) return;
-      var isOpen = detailRow.classList.toggle('open');
-      mainRow.classList.toggle('expanded', isOpen);
-    }
 
     </script>
 </body>

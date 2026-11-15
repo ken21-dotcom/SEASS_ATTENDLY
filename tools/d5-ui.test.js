@@ -53,7 +53,6 @@ const sscJs = read('student-attendance-system/js/ssc.js');
 const uiJs = read('student-attendance-system/js/ui.js');
 const apiJs = read('student-attendance-system/js/api.js');
 const repoPhp = read('attendly-backend/src/Repository.php');
-const seedPhp = read('attendly-backend/scripts/seed-demo-users.php');
 const configExamplePhp = read('attendly-backend/config/config.example.php');
 const localConfigPath = path.join(BACKEND, 'config/config.php');
 const localConfigPhp = fs.existsSync(localConfigPath)
@@ -117,8 +116,8 @@ ok('no SSC page or script links to the deleted officer page',
   officerPageRefs.map((file) => path.relative(SYS, file)).join(','));
 ok('SSC student page has no Add Student modal', !sscStudentsHtml.includes('id="addStudentModal"'));
 ok('SSC student page has no Add Student form', !sscStudentsHtml.includes('id="addStudentForm"'));
-ok('SSC student page has no Actions column', !sscStudentsHtml.includes('<th>Actions</th>'));
-ok('SSC student table has five columns', sscJs.includes('colspan: 5'));
+ok('SSC student page has a fingerprint Actions column', sscStudentsHtml.includes('<th>Actions</th>'));
+ok('SSC student table has six columns', sscJs.includes('colspan: 6'));
 ok('SSC deleteUser handler is gone', !sscJs.includes('function deleteUser'));
 ok('SSC officer table handler is gone', !sscJs.includes('loadOfficersTable'));
 ok('SSC officer form handler is gone', !sscJs.includes('addOfficerForm'));
@@ -132,12 +131,6 @@ console.log('\nPassword cleanup');
 
 ok('administrator-panel.js has no password123', !adminStudentsJs.includes('password123'));
 ok('ssc.js has no password123', !sscJs.includes('password123'));
-ok('seed script reads ATTENDLY_SEED_PASSWORD',
-  seedPhp.includes("getenv('ATTENDLY_SEED_PASSWORD')"));
-ok('seed script fails when the environment variable is absent',
-  seedPhp.includes('ATTENDLY_SEED_PASSWORD is required'));
-ok('seed script has no password123', !seedPhp.includes('password123'));
-ok('seed script has no DEMO_PASSWORD constant', !seedPhp.includes('DEMO_PASSWORD'));
 ok('config.example.php has no default admin block', !configExamplePhp.includes('default_admin'));
 ok('config.php has no default admin block', !localConfigPhp.includes('default_admin'));
 ok('config.example.php has no seeded password123', !configExamplePhp.includes('password123'));

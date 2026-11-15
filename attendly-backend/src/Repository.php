@@ -200,6 +200,7 @@ final class Repository
                         u.must_change_password,
                         s.student_id_number, s.first_name, s.last_name, s.department,
                         s.program, s.year_level, s.block,
+                        (s.fingerprint_template IS NOT NULL) AS fingerprint_enrolled,
                         s.approved_by, s.approved_at
                  FROM users u
                  LEFT JOIN students s ON s.user_id = u.id
@@ -231,6 +232,7 @@ final class Repository
                        u.must_change_password,
                        s.student_id_number, s.first_name, s.last_name, s.department,
                        s.program, s.year_level, s.block,
+                       (s.fingerprint_template IS NOT NULL) AS fingerprint_enrolled,
                        s.approved_by, s.approved_at,
                        o.position, o.status AS officer_status
                 FROM users u
@@ -543,6 +545,7 @@ final class Repository
                     u.status, u.must_change_password,
                     s.student_id_number, s.first_name, s.last_name, s.department,
                     s.program, s.year_level, s.block,
+                    (s.fingerprint_template IS NOT NULL) AS fingerprint_enrolled,
                     s.approved_by, s.approved_at,
                     o.position, o.status AS officer_status
              FROM users u
@@ -557,6 +560,91 @@ final class Repository
             Response::fail('not_found', 'User not found.', 404);
         }
         return $this->mapUser($row);
+    }
+
+    /**
+     * Save the fingerprint template captured for one student.
+     *
+     * The template is opaque to the server: the WebUSB capture bridge
+     * produces it and the kiosk sends it back verbatim. Matching is a
+     * direct string comparison (see migration 042), which is deliberate
+     * for this prototype. The template is never returned to a client and
+     * never copied into the audit log.
+     */
+    public function enrollFingerprint(int $studentId, string $template, array $actor): array
+    {
+        $template = trim($template);
+        if ($template === '') {
+            Response::fail('invalid_field', 'Field "fingerprintTemplate" is required.', 422);
+        }
+        if (strlen($template) > 65535) {
+            Response::fail('invalid_field', 'Fingerprint template is too large.', 422);
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT u.id, u.role, u.display_name, u.email, s.first_name, s.last_name
+             FROM users u
+             LEFT JOIN students s ON s.user_id = u.id
+             WHERE u.id = :id LIMIT 1'
+        );
+        $stmt->execute(['id' => $studentId]);
+        $student = $stmt->fetch();
+
+        if ($student === false || (string) $student['role'] !== 'student') {
+            Response::fail('student_not_found', 'No student is registered under that ID.', 404);
+        }
+
+        // A template identifies one finger, so it may only belong to one
+        // student. BINARY keeps the comparison case-sensitive: base64 and
+        // hex templates differ by case, while the column's utf8mb4 collation
+        // would otherwise treat them as equal.
+        $duplicate = $this->db->prepare(
+            'SELECT user_id FROM students
+             WHERE fingerprint_template IS NOT NULL
+               AND BINARY fingerprint_template = BINARY :template
+               AND user_id <> :student_id
+             LIMIT 1'
+        );
+        $duplicate->execute(['template' => $template, 'student_id' => $studentId]);
+        if ($duplicate->fetchColumn() !== false) {
+            Response::fail(
+                'fingerprint_already_enrolled',
+                'This fingerprint is already enrolled to another student.',
+                409
+            );
+        }
+
+        $update = $this->db->prepare(
+            'UPDATE students SET fingerprint_template = :template WHERE user_id = :student_id'
+        );
+        $update->execute(['template' => $template, 'student_id' => $studentId]);
+
+        $name = trim((string) ($student['first_name'] ?? '') . ' ' . (string) ($student['last_name'] ?? ''));
+        if ($name === '') {
+            $name = trim((string) ($student['display_name'] ?? ''));
+        }
+        if ($name === '') {
+            $name = (string) ($student['email'] ?? 'Student');
+        }
+
+        $this->writeAudit(
+            'update',
+            'students',
+            $studentId,
+            null,
+            ['fingerprintEnrolled' => true],
+            (int) $actor['id'],
+            (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            (string) ($_SERVER['HTTP_USER_AGENT'] ?? '')
+        );
+
+        return [
+            'ok' => true,
+            'studentId' => $studentId,
+            'studentName' => $name,
+            'fingerprintEnrolled' => true,
+            'message' => "Fingerprint enrolled for {$name}.",
+        ];
     }
 
     public function updateStudentProfile(int $userId, array $input): array
@@ -1975,6 +2063,38 @@ final class Repository
     }
 
     /**
+     * The signed-in student's own standing, derived from the same absence
+     * matrix every staff report reads.
+     *
+     * Sanctions are purely absence-based: a student is flagged once their
+     * total absences exceed three. The matrix is filtered down to this one
+     * student, so a caller can only ever read its own record.
+     *
+     * @return array{totalAbsences:int,status:string}
+     */
+    public function getStudentSanctionStatus(int $studentId): array
+    {
+        $matrix = $this->listSanctionMatrix();
+
+        foreach ($matrix['students'] as $row) {
+            if ((int) $row['studentId'] !== $studentId) {
+                continue;
+            }
+
+            return [
+                'totalAbsences' => (int) $row['totalAbsences'],
+                'status' => $row['forSanction'] === true
+                    ? 'Flagged for Sanction'
+                    : 'Good Standing',
+            ];
+        }
+
+        // A student with no matrix row (for example an inactive account) has
+        // no absences counted against it.
+        return ['totalAbsences' => 0, 'status' => 'Good Standing'];
+    }
+
+    /**
      * Read the report category from a row, falling back to the older
      * mandatory/optional meaning when event_category has not been selected.
      *
@@ -2025,7 +2145,7 @@ final class Repository
             $stmt->execute([
                 'event_id'   => $input['eventId'],
                 'student_id' => $input['studentId'],
-                'method'     => in_array($input['verificationMethod'] ?? '', ['manual', 'qr'], true) ? $input['verificationMethod'] : 'manual',
+                'method'     => in_array($input['verificationMethod'] ?? '', ['manual', 'qr', 'fingerprint'], true) ? $input['verificationMethod'] : 'manual',
             ]);
         } catch (PDOException $e) {
             // getCode() only exposes the SQLSTATE (23000 for both duplicate
@@ -2055,7 +2175,32 @@ final class Repository
              FROM attendance_records a JOIN events e ON e.id = a.event_id WHERE a.id = :id'
         );
         $row->execute(['id' => $id]);
-        return $this->mapAttendance($row->fetch(), $lateGraceMinutes);
+        $mapped = $this->mapAttendance($row->fetch(), $lateGraceMinutes);
+
+        if (($input['verificationMethod'] ?? '') === 'manual') {
+            try {
+                $studentStmt = $this->db->prepare(
+                    'SELECT u.email, s.first_name, s.last_name, e.name AS event_name
+                     FROM users u
+                     JOIN students s ON s.user_id = u.id
+                     JOIN events e ON e.id = :event_id
+                     WHERE u.id = :student_id LIMIT 1'
+                );
+                $studentStmt->execute(['student_id' => $studentId, 'event_id' => $eventId]);
+                $studentData = $studentStmt->fetch();
+                if ($studentData && !empty($studentData['email'])) {
+                    $studentEmail = (string) $studentData['email'];
+                    $fullName = trim(($studentData['first_name'] ?? '') . ' ' . ($studentData['last_name'] ?? ''));
+                    $eventName = (string) ($studentData['event_name'] ?? 'Campus Event');
+                    $time = (string) ($mapped['checkInTime'] ?? date('Y-m-d H:i:s'));
+                    Mailer::sendAttendanceConfirmation($studentEmail, $fullName, $eventName, $time, 'single');
+                }
+            } catch (\Throwable $mailEx) {
+                error_log('[mailer] checkIn confirmation email failed: ' . $mailEx->getMessage());
+            }
+        }
+
+        return $mapped;
     }
 
     /**
@@ -2298,8 +2443,114 @@ final class Repository
             Response::fail('invalid_qr', 'That QR code does not belong to an active student account.', 422);
         }
 
-        $studentId   = (int) $row['id'];
-        $studentName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+        return $this->recordScannedAttendance(
+            $eventId,
+            $row,
+            $action,
+            'qr',
+            $openMinutesBefore,
+            $closeMinutesAfter,
+            $timezone,
+            $lateGraceMinutes,
+            $checkoutOpenMinutesBeforeEnd,
+            $checkoutCloseMinutesAfterEnd
+        );
+    }
+
+    /**
+     * Match a captured fingerprint template to an active student, then
+     * record a check-in or check-out through the same policy engine the QR
+     * kiosk uses.
+     */
+    public function checkInByFingerprint(
+        int $eventId,
+        string $fingerprintTemplate,
+        string $action = 'in',
+        int $openMinutesBefore = 30,
+        int $closeMinutesAfter = 360,
+        string $timezone = 'Asia/Manila',
+        int $lateGraceMinutes = 15,
+        int $checkoutOpenMinutesBeforeEnd = 60,
+        int $checkoutCloseMinutesAfterEnd = 60
+    ): array {
+        $action = strtolower(trim($action));
+        if (!in_array($action, ['in', 'out'], true)) {
+            Response::fail('invalid_field', 'Field "action" must be "in" or "out".', 422);
+        }
+
+        $fingerprintTemplate = trim($fingerprintTemplate);
+        if ($fingerprintTemplate === '') {
+            Response::fail('invalid_field', 'Field "fingerprintTemplate" is required.', 422);
+        }
+        if (strlen($fingerprintTemplate) > 65535) {
+            Response::fail('invalid_field', 'Fingerprint template is too large.', 422);
+        }
+
+        // Direct template comparison is the prototype's matching model. The
+        // BINARY cast keeps the lookup case-sensitive regardless of the
+        // column collation, which matters for base64-encoded templates.
+        $stmt = $this->db->prepare(
+            'SELECT u.id, u.role, u.status, s.first_name, s.last_name, s.department
+             FROM students s
+             JOIN users u ON u.id = s.user_id
+             WHERE s.fingerprint_template IS NOT NULL
+               AND BINARY s.fingerprint_template = BINARY :template
+               AND u.role = \'student\'
+               AND u.status = \'active\'
+             LIMIT 1'
+        );
+        $stmt->execute(['template' => $fingerprintTemplate]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            // One answer covers an unknown finger and a deactivated student,
+            // so the kiosk cannot use this endpoint to enumerate enrollments.
+            Response::fail(
+                'fingerprint_not_recognized',
+                'This fingerprint is not enrolled to an active student.',
+                404
+            );
+        }
+
+        return $this->recordScannedAttendance(
+            $eventId,
+            $row,
+            $action,
+            'fingerprint',
+            $openMinutesBefore,
+            $closeMinutesAfter,
+            $timezone,
+            $lateGraceMinutes,
+            $checkoutOpenMinutesBeforeEnd,
+            $checkoutCloseMinutesAfterEnd
+        );
+    }
+
+    /**
+     * Apply the event's scan policy for a student whose identity has
+     * already been verified (QR token or fingerprint template).
+     *
+     * The caller resolves an active student row and passes it in; this
+     * method enforces the event window, attendance type, department scope,
+     * duplicate rules, and confirmation email exactly once so the QR and
+     * fingerprint front doors cannot drift apart.
+     *
+     * @param array<string,mixed> $student Row with id, first_name, last_name, department
+     */
+    private function recordScannedAttendance(
+        int $eventId,
+        array $student,
+        string $action,
+        string $method,
+        int $openMinutesBefore,
+        int $closeMinutesAfter,
+        string $timezone,
+        int $lateGraceMinutes,
+        int $checkoutOpenMinutesBeforeEnd,
+        int $checkoutCloseMinutesAfterEnd
+    ): array {
+        $studentId   = (int) $student['id'];
+        $studentName = trim(($student['first_name'] ?? '') . ' ' . ($student['last_name'] ?? ''));
 
         // Load the event's attendance_type and target department so we can
         // enforce both the scan policy and department eligibility.
@@ -2316,7 +2567,7 @@ final class Repository
         // the student is not enrolled in that department. Checked before any
         // attendance row is written so an ineligible scan leaves no trace.
         $targetDepartment = $event !== false ? ($event['target_department'] ?? null) : null;
-        if (!empty($targetDepartment) && (string) ($row['department'] ?? '') !== (string) $targetDepartment) {
+        if (!empty($targetDepartment) && (string) ($student['department'] ?? '') !== (string) $targetDepartment) {
             Response::fail('not_eligible', 'This event is not open to your department.', 403);
         }
 
@@ -2413,7 +2664,7 @@ final class Repository
                     );
                 }
                 $attendance = $this->checkIn(
-                    ['eventId' => $eventId, 'studentId' => $studentId, 'verificationMethod' => 'qr'],
+                    ['eventId' => $eventId, 'studentId' => $studentId, 'verificationMethod' => $method],
                     $openMinutesBefore,
                     $closeMinutesAfter,
                     $timezone,
@@ -2438,7 +2689,7 @@ final class Repository
                     );
                 }
                 $attendance = $this->checkIn(
-                    ['eventId' => $eventId, 'studentId' => $studentId, 'verificationMethod' => 'qr'],
+                    ['eventId' => $eventId, 'studentId' => $studentId, 'verificationMethod' => $method],
                     $openMinutesBefore,
                     $closeMinutesAfter,
                     $timezone,
@@ -2451,7 +2702,7 @@ final class Repository
                 if ($existing === false) {
                     // Scan 1: AM In.
                     $attendance = $this->checkIn(
-                        ['eventId' => $eventId, 'studentId' => $studentId, 'verificationMethod' => 'qr'],
+                        ['eventId' => $eventId, 'studentId' => $studentId, 'verificationMethod' => $method],
                         $openMinutesBefore,
                         $closeMinutesAfter,
                         $timezone,
@@ -2487,7 +2738,7 @@ final class Repository
                             );
                         }
                         $attendance = $this->checkIn(
-                            ['eventId' => $eventId, 'studentId' => $studentId, 'verificationMethod' => 'qr'],
+                            ['eventId' => $eventId, 'studentId' => $studentId, 'verificationMethod' => $method],
                             $openMinutesBefore,
                             $closeMinutesAfter,
                             $timezone,
@@ -2511,9 +2762,36 @@ final class Repository
             }
         }
 
+        if ($action === 'in') {
+            try {
+                $scanNum = (int) ($attendance['scanNumber'] ?? 1);
+                if ($attendanceType !== 'four_point' || $scanNum === 1) {
+                    $studentStmt = $this->db->prepare(
+                        'SELECT u.email, s.first_name, s.last_name, e.name AS event_name
+                         FROM users u
+                         JOIN students s ON s.user_id = u.id
+                         JOIN events e ON e.id = :event_id
+                         WHERE u.id = :student_id LIMIT 1'
+                    );
+                    $studentStmt->execute(['student_id' => $studentId, 'event_id' => $eventId]);
+                    $studentData = $studentStmt->fetch();
+                    if ($studentData && !empty($studentData['email'])) {
+                        $studentEmail = (string) $studentData['email'];
+                        $fullName = trim(($studentData['first_name'] ?? '') . ' ' . ($studentData['last_name'] ?? ''));
+                        $eventName = (string) ($studentData['event_name'] ?? 'Campus Event');
+                        $time = (string) ($attendance['checkInTime'] ?? date('Y-m-d H:i:s'));
+                        $typeLabel = $attendanceType === 'single' ? 'single' : ($attendanceType === 'four_point' ? 'AM in' : 'in');
+                        Mailer::sendAttendanceConfirmation($studentEmail, $fullName, $eventName, $time, $typeLabel);
+                    }
+                }
+            } catch (\Throwable $mailEx) {
+                error_log('[mailer] attendance confirmation email failed: ' . $mailEx->getMessage());
+            }
+        }
+
         $attendance['action']           = $action;
         $attendance['studentName']      = $studentName;
-        $attendance['verificationMethod'] = 'qr';
+        $attendance['verificationMethod'] = $method;
         return $attendance;
     }
 
@@ -2746,6 +3024,7 @@ final class Repository
             'program'            => $program,
             'yearLevel'          => $row['year_level'] ?? null,
             'block'              => $row['block'] ?? null,
+            'fingerprintEnrolled' => (bool) (int) ($row['fingerprint_enrolled'] ?? 0),
             'approvedBy'         => isset($row['approved_by']) && $row['approved_by'] !== null
                 ? (int) $row['approved_by']
                 : null,
@@ -2986,4 +3265,174 @@ final class Repository
         return $record;
     }
 
+    /**
+     * Notify students who are currently flagged for sanctions due to excess absences.
+     *
+     * Runs the sanction matrix, filters for forSanction === true, and emails each
+     * student a sanction warning notice via Mailer::sendSanctionWarning().
+     *
+     * @param array|null $actor The staff user initiating the notification
+     * @return array{notifiedCount:int,students:array<int,array<string,mixed>>}
+     */
+    public function notifySanctionedStudents(?array $actor = null): array
+    {
+        $matrix = $this->listSanctionMatrix();
+        $flagged = array_values(array_filter(
+            $matrix['students'] ?? [],
+            static fn(array $s): bool => ($s['forSanction'] ?? false) === true
+        ));
+
+        if ($flagged === []) {
+            return ['notifiedCount' => 0, 'students' => []];
+        }
+
+        $studentIds = array_column($flagged, 'studentId');
+        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+        $stmt = $this->db->prepare("SELECT id, email FROM users WHERE id IN ($placeholders)");
+        $stmt->execute($studentIds);
+        $emailMap = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $notified = [];
+        foreach ($flagged as $student) {
+            $id = (int) $student['studentId'];
+            $email = $emailMap[$id] ?? null;
+            if ($email) {
+                try {
+                    Mailer::sendSanctionWarning(
+                        (string) $email,
+                        (string) ($student['studentName'] ?? 'Student'),
+                        (int) ($student['totalAbsences'] ?? 0)
+                    );
+                    $notified[] = [
+                        'studentId' => $id,
+                        'studentName' => $student['studentName'] ?? '',
+                        'email' => $email,
+                        'totalAbsences' => (int) ($student['totalAbsences'] ?? 0),
+                    ];
+                } catch (\Throwable $e) {
+                    error_log('[mailer] sanction warning failed for student ' . $id . ': ' . $e->getMessage());
+                }
+            }
+        }
+
+        if ($actor !== null) {
+            $this->writeAudit($actor, 'notify_sanctions', 'sanctions', null, [
+                'count' => count($notified),
+            ]);
+        }
+
+        return [
+            'notifiedCount' => count($notified),
+            'students' => $notified,
+        ];
     }
+
+    /**
+     * Create a password reset OTP and send it to the student's email.
+     *
+     * Fails safely (returning ok=true) when the email does not exist to prevent
+     * account enumeration attacks.
+     *
+     * @return array{ok:bool,message:string}
+     */
+    public function createPasswordReset(string $email): array
+    {
+        $normalized = strtolower(trim($email));
+        Validator::email($normalized);
+
+        $stmt = $this->db->prepare(
+            'SELECT id, email, status FROM users WHERE LOWER(email) = :email LIMIT 1'
+        );
+        $stmt->execute(['email' => $normalized]);
+        $user = $stmt->fetch();
+
+        if ($user !== false && $user['status'] === 'active') {
+            // Generate a 6-digit OTP
+            $otp = (string) random_int(100000, 999999);
+            $expires = date('Y-m-d H:i:s', time() + 3600); // 1 hour expiry
+
+            $update = $this->db->prepare(
+                'UPDATE users
+                 SET password_reset_token = :token,
+                     password_reset_expires = :expires
+                 WHERE id = :id'
+            );
+            $update->execute([
+                'token'   => $otp,
+                'expires' => $expires,
+                'id'      => (int) $user['id'],
+            ]);
+
+            try {
+                Mailer::sendPasswordResetEmail((string) $user['email'], $otp);
+            } catch (\Throwable $e) {
+                error_log('[mailer] password reset email failed: ' . $e->getMessage());
+            }
+
+            $this->writeAudit('password_reset_requested', 'user', (int) $user['id'], null, null, (int) $user['id']);
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'If that account exists, a password reset OTP has been sent.',
+        ];
+    }
+
+    /**
+     * Reset the user's password using a valid, unexpired reset OTP.
+     *
+     * @return array{ok:bool}
+     */
+    public function resetPassword(string $email, string $otp, string $newPassword): array
+    {
+        $normalizedEmail = strtolower(trim($email));
+        Validator::email($normalizedEmail);
+
+        $otp = trim($otp);
+        if (strlen($otp) !== 6 || !ctype_digit($otp)) {
+            Response::fail('invalid_otp', 'Invalid OTP format.', 400);
+        }
+
+        Validator::password($newPassword);
+
+        $stmt = $this->db->prepare(
+            'SELECT id, role, email, password_reset_expires, status
+             FROM users
+             WHERE LOWER(email) = :email AND password_reset_token = :otp LIMIT 1'
+        );
+        $stmt->execute(['email' => $normalizedEmail, 'otp' => $otp]);
+        $user = $stmt->fetch();
+
+        if ($user === false || $user['status'] !== 'active') {
+            Response::fail('invalid_otp', 'Invalid or expired OTP.', 400);
+        }
+
+        $expires = strtotime((string) $user['password_reset_expires']);
+        if ($expires === false || $expires < time()) {
+            $this->db->prepare(
+                'UPDATE users SET password_reset_token = NULL, password_reset_expires = NULL WHERE id = :id'
+            )->execute(['id' => (int) $user['id']]);
+
+            Response::fail('expired_otp', 'OTP has expired. Please request a new one.', 400);
+        }
+
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+        $update = $this->db->prepare(
+            'UPDATE users
+             SET password_hash = :hash,
+                 password_reset_token = NULL,
+                 password_reset_expires = NULL,
+                 must_change_password = 0,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id'
+        );
+        $update->execute([
+            'hash' => $hash,
+            'id'   => (int) $user['id'],
+        ]);
+
+        $this->writeAudit('password_reset_completed', 'user', (int) $user['id'], null, null, (int) $user['id']);
+
+        return ['ok' => true];
+    }
+}

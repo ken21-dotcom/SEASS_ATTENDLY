@@ -220,15 +220,17 @@
         <h3 id="otp-title">Verify your email</h3>
         <p>We sent a 6-digit code to <span id="otpEmailDisplay"></span>. Enter it below to verify your account.</p>
         <form id="otpForm" class="auth-form" novalidate>
-          <div class="mb-3 auth-field-group">
-            <label for="otp-field" class="form-label auth-label-uppercase">VERIFICATION CODE</label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
-              <input type="text" class="form-control text-center" id="otp-field" name="otp" autocomplete="one-time-code" placeholder="123456" maxlength="6" required inputmode="numeric" pattern="\d{6}" style="letter-spacing: 0.5em; font-size: 1.25rem;">
+          <div class="otp-form-container">
+            <div class="mb-3 auth-field-group">
+              <label for="otp-field" class="form-label auth-label-uppercase">VERIFICATION CODE</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                <input type="text" class="form-control otp-input" id="otp-field" name="otp" autocomplete="one-time-code" placeholder="123456" maxlength="6" required inputmode="numeric" pattern="\d{6}">
+              </div>
+              <div class="invalid-feedback">Please enter the 6-digit code.</div>
             </div>
-            <div class="invalid-feedback">Please enter the 6-digit code.</div>
+            <button type="submit" class="btn btn-primary auth-login-btn">Verify Code</button>
           </div>
-          <button type="submit" class="btn btn-primary auth-login-btn">Verify Code</button>
           <p class="auth-switch mt-3"><a href="login.html" id="otpBackToLogin">Back to sign in</a></p>
         </form>
       </div>

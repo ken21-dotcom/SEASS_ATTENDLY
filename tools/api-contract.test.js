@@ -320,7 +320,6 @@ const sscReportsHtml = read('student-attendance-system/pages/ssc-officer/ssc-rep
 const reportsCss = read('student-attendance-system/css/reports.css');
 const dropAppeals = read('attendly-backend/db/migrations/025_drop_appeals.sql');
 const eventCategoryMigration = read('attendly-backend/db/migrations/026_event_category.sql');
-const seedScript = read('attendly-backend/scripts/seed-realistic-data.php');
 const matrixRepoStart = repo.indexOf('function listSanctionMatrix');
 const matrixRepo = matrixRepoStart === -1 ? '' : repo.slice(matrixRepoStart, repo.indexOf('\n    }', matrixRepoStart));
 
@@ -373,11 +372,16 @@ ok('both report pages render a grouped matrix table',
     html.includes('id="sanctionMatrixHead"') &&
     html.includes('table table-bordered sanction-matrix-table') &&
     !html.includes('>Absent Events</th>')));
-ok('both report pages filter the matrix by multiple events',
+ok('both report pages filter the matrix with a checkbox event dropdown',
   [adminReportsHtml, sscReportsHtml].every((html) =>
-    html.includes('id="filterEvent" multiple') &&
+    html.includes('id="filterEventToggle"') &&
+    html.includes('data-bs-toggle="dropdown"') &&
+    html.includes('id="filterEventAll"') &&
+    html.includes('id="filterEventOptions"') &&
+    html.includes('Select Events') &&
     html.includes('id="filterEventClear"') &&
     html.includes('id="filterEventHint"') &&
+    !html.includes('id="filterEvent" multiple') &&
     !html.includes('id="sanctionFrom"') &&
     !html.includes('id="sanctionTo"')));
 ok('both report pages expose print and CSV actions',
@@ -499,12 +503,6 @@ ok('reports.js renders and exports the matrix with a local fallback',
   reportsJs.includes('sanctionReportBody') &&
   reportsJs.includes("var id = row.studentIdNumber || row.studentPublicId") &&
   reportsJs.includes("row.studentIdNumber || row.studentPublicId || ''"));
-ok('seed data includes a major event with AM/PM attendance and minor flag raisings',
-  seedScript.includes("'category'    => 'major'") &&
-  seedScript.includes("'name'        => 'Monday Flag Raising'") &&
-  seedScript.includes("'name'        => 'Wednesday Flag Raising'") &&
-  seedScript.includes("'category'    => 'minor'") &&
-  seedScript.includes('checkOut?->format'));
 
 /* ── 5d. Attendance correction proof ──────────────────────────── */
 

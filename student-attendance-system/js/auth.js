@@ -38,6 +38,7 @@ function pageUrl(role) {
   switch (role) {
     case 'login':           return P + 'login.html';
     case 'change-password': return P + 'change-password.html';
+    case 'reset-password':  return P + 'reset-password.html';
     case 'student':         return P + 'student/student-dashboard.html';
     case 'ssc-officer':     return P + 'ssc-officer/ssc-dashboard.html';
     case 'admin':           return P + 'administrator/admin-dashboard.html';
@@ -798,6 +799,244 @@ document.addEventListener('DOMContentLoaded', function () {
     initChangePasswordPage(changePasswordForm);
   }
 
+  // ── Forgot password modal form ──
+  var forgotForm = document.getElementById('forgotPasswordForm');
+  if (forgotForm) {
+    var step1 = document.getElementById('resetStep1');
+    var step2 = document.getElementById('resetStep2');
+    var step2Msg = document.getElementById('resetStep2Msg');
+    var backBtn = document.getElementById('resetBackBtn');
+    var submitBtn = document.getElementById('resetSubmitBtn');
+    var resetError = document.getElementById('resetError');
+    var emailInput = document.getElementById('resetEmail');
+    var otpInput = document.getElementById('resetOtp');
+    var newPwdInput = document.getElementById('resetNewPassword');
+    var confirmPwdInput = document.getElementById('resetConfirmPassword');
+
+    var currentEmail = '';
+    var currentStep = 1; // 1 = email, 2 = OTP + password
+
+    function showStep1() {
+      currentStep = 1;
+      if (step1) step1.style.display = '';
+      if (step2) step2.style.display = 'none';
+      if (backBtn) backBtn.classList.add('d-none');
+      if (submitBtn) submitBtn.textContent = 'Send OTP';
+      if (resetError) { resetError.textContent = ''; resetError.classList.add('d-none'); }
+    }
+
+    function showStep2() {
+      currentStep = 2;
+      if (step1) step1.style.display = 'none';
+      if (step2) step2.style.display = '';
+      if (backBtn) backBtn.classList.remove('d-none');
+      if (submitBtn) submitBtn.textContent = 'Reset Password';
+      if (resetError) { resetError.textContent = ''; resetError.classList.add('d-none'); }
+      if (step2Msg) step2Msg.textContent = 'We sent a 6-digit code to ' + currentEmail + '.';
+      if (otpInput) otpInput.focus();
+    }
+
+    function showError(message) {
+      if (resetError) {
+        resetError.textContent = message;
+        resetError.classList.remove('d-none');
+      }
+    }
+
+    function setLoading(loading) {
+      if (submitBtn) { submitBtn.disabled = loading; submitBtn.textContent = loading ? 'Sending...' : (currentStep === 1 ? 'Send OTP' : 'Reset Password'); }
+      if (backBtn) backBtn.disabled = loading;
+      if (emailInput) emailInput.disabled = loading;
+      if (otpInput) otpInput.disabled = loading;
+      if (newPwdInput) newPwdInput.disabled = loading;
+      if (confirmPwdInput) confirmPwdInput.disabled = loading;
+    }
+
+    // Back button handler
+    if (backBtn) {
+      backBtn.addEventListener('click', function () {
+        showStep1();
+      });
+    }
+
+    // Form submit handler
+    forgotForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (resetError) { resetError.textContent = ''; resetError.classList.add('d-none'); }
+
+      if (currentStep === 1) {
+        // Step 1: Send OTP
+        var email = emailInput ? emailInput.value.trim() : '';
+        if (!email) {
+          if (emailInput) emailInput.classList.add('is-invalid');
+          showError('Please enter your email address.');
+          return;
+        }
+        if (emailInput) emailInput.classList.remove('is-invalid');
+        setLoading(true);
+        try {
+          await api.forgotPassword(email);
+          currentEmail = email;
+          showStep2();
+        } catch (error) {
+          showError(error.message || 'Could not send OTP. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Step 2: Verify OTP and reset password
+        var otp = otpInput ? otpInput.value.trim() : '';
+        var newPwd = newPwdInput ? newPwdInput.value : '';
+        var confirmPwd = confirmPwdInput ? confirmPwdInput.value : '';
+
+        if (!/^\d{6}$/.test(otp)) {
+          if (otpInput) otpInput.classList.add('is-invalid');
+          showError('Please enter the 6-digit OTP from your email.');
+          return;
+        }
+        if (otpInput) otpInput.classList.remove('is-invalid');
+
+        if (newPwd.length < 8 || !/[a-zA-Z]/.test(newPwd) || !/\d/.test(newPwd)) {
+          if (newPwdInput) newPwdInput.classList.add('is-invalid');
+          showError('Password must be at least 8 characters with a letter and a number.');
+          return;
+        }
+        if (newPwdInput) newPwdInput.classList.remove('is-invalid');
+
+        if (newPwd !== confirmPwd) {
+          if (confirmPwdInput) confirmPwdInput.classList.add('is-invalid');
+          showError('Passwords do not match.');
+          return;
+        }
+        if (confirmPwdInput) confirmPwdInput.classList.remove('is-invalid');
+
+        setLoading(true);
+        try {
+          await api.resetPassword(currentEmail, otp, newPwd);
+          // Success: hide modal, show toast, redirect to login
+          var modalEl = document.getElementById('forgotPasswordModal');
+          if (modalEl) {
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+          }
+          if (typeof showToast === 'function') {
+            showToast('success', 'Password successfully reset. Please log in.');
+          } else {
+            var toastContainer = document.getElementById('toastContainer');
+            if (toastContainer) {
+              toastContainer.insertAdjacentHTML('beforeend',
+                '<div class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="polite" aria-assertive="true">' +
+                '<div class="d-flex"><div class="toast-body">Password successfully reset. Please log in.</div></div></div>');
+              var lastToast = toastContainer.lastElementChild;
+              new bootstrap.Toast(lastToast, { delay: 3000 }).show();
+            }
+          }
+          forgotForm.reset();
+          showStep1();
+          currentEmail = '';
+          setTimeout(function () {
+            window.location.href = pageUrl('login');
+          }, 1500);
+        } catch (error) {
+          showError(error.message || 'Could not reset password. The OTP may have expired.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+
+    // Reset modal state when hidden
+    var modalEl = document.getElementById('forgotPasswordModal');
+    if (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', function () {
+        showStep1();
+        forgotForm.reset();
+        currentEmail = '';
+      });
+    }
+  }
+
+  // ── Password reset page ──
+  var resetForm = document.getElementById('resetPasswordForm');
+  if (resetForm) {
+    var urlParams = new URLSearchParams(window.location.search);
+    var email = urlParams.get('email') || '';
+    var otp = urlParams.get('otp') || '';
+    var emailField = document.getElementById('reset-email-field');
+    var otpField = document.getElementById('reset-otp-field');
+    var resetError = document.getElementById('resetPasswordError');
+    var resetSuccess = document.getElementById('resetPasswordSuccess');
+    var resetSubmit = document.getElementById('resetSubmitBtn');
+    var newPwd = document.getElementById('reset-new-password-field');
+    var confirmPwd = document.getElementById('reset-confirm-password-field');
+
+    if (emailField) emailField.value = email;
+    if (otpField && otp) otpField.value = otp;
+    if (!email || !otp) {
+      if (resetError) {
+        resetError.textContent = 'Missing or invalid password reset link. Please request a new one.';
+        resetError.hidden = false;
+      }
+      if (resetSubmit) resetSubmit.disabled = true;
+    }
+
+    resetForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var currentEmail = emailField ? emailField.value.trim() : '';
+      var currentOtp = otpField ? otpField.value.trim() : '';
+      var p1 = newPwd ? newPwd.value : '';
+      var p2 = confirmPwd ? confirmPwd.value : '';
+
+      if (!currentEmail || !currentOtp) {
+        if (resetError) {
+          resetError.textContent = 'Missing email or OTP. Please request a new reset.';
+          resetError.hidden = false;
+        }
+        return;
+      }
+
+      if (currentOtp.length !== 6 || !/^\d{6}$/.test(currentOtp)) {
+        if (otpField) otpField.classList.add('is-invalid');
+        if (resetError) {
+          resetError.textContent = 'Invalid OTP format.';
+          resetError.hidden = false;
+        }
+        return;
+      }
+      if (otpField) otpField.classList.remove('is-invalid');
+
+      if (p1.length < 8 || !/[a-zA-Z]/.test(p1) || !/\d/.test(p1)) {
+        if (newPwd) newPwd.classList.add('is-invalid');
+        return;
+      }
+      if (newPwd) newPwd.classList.remove('is-invalid');
+
+      if (p1 !== p2) {
+        if (confirmPwd) confirmPwd.classList.add('is-invalid');
+        return;
+      }
+      if (confirmPwd) confirmPwd.classList.remove('is-invalid');
+
+      if (resetError) resetError.hidden = true;
+      if (resetSubmit) { resetSubmit.disabled = true; resetSubmit.textContent = 'Updating...'; }
+
+      try {
+        await api.resetPassword(currentEmail, currentOtp, p1);
+        if (resetSuccess) resetSuccess.classList.remove('d-none');
+        resetForm.reset();
+        setTimeout(function () {
+          window.location.href = pageUrl('login');
+        }, 1500);
+      } catch (error) {
+        if (resetError) {
+          resetError.textContent = error.message || 'Could not reset password. The OTP may have expired.';
+          resetError.hidden = false;
+        }
+        if (resetSubmit) { resetSubmit.disabled = false; resetSubmit.textContent = 'Update password'; }
+      }
+    });
+  }
+
   // ── Password visibility toggles (eye / eye-slash) ──
   // Wired per .input-group-password group rather than by id, so the sign-up
   // page's two password fields get the same behaviour as the login page's one
@@ -1036,6 +1275,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const total    = slideContents.length;
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let isPaused   = false; // hover / focus only — there is no manual pause control
+
+    // Role pages load auth.js for the session guard but do not render the
+    // login hero. Without this guard goToSlide() would read indicators[0]
+    // from an empty list and throw on every dashboard and report page.
+    if (!total || !indicators.length) return;
 
     /** Restart a segment's fill so it starts empty again. */
     function restartFill(ind) {

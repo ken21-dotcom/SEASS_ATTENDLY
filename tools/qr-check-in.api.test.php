@@ -39,6 +39,19 @@ if (strlen($qrSecret) < 32) {
 
 $db = get_db();
 
+// Migration 042 adds the fingerprint template used by the kiosk and the
+// matching verification_method enum value. The suite runs against the
+// developer database, which may predate a migration, so make the two schema
+// pieces idempotent here rather than failing every request that lists users.
+$fingerprintColumns = $db->query("SHOW COLUMNS FROM students LIKE 'fingerprint_template'")->fetchAll();
+if (!$fingerprintColumns) {
+    $db->exec('ALTER TABLE students ADD COLUMN fingerprint_template LONGTEXT NULL AFTER block');
+}
+$verificationColumn = $db->query("SHOW COLUMNS FROM attendance_records LIKE 'verification_method'")->fetch();
+if ($verificationColumn && !str_contains((string) ($verificationColumn['Type'] ?? ''), "'fingerprint'")) {
+    $db->exec("ALTER TABLE attendance_records MODIFY COLUMN verification_method ENUM('face', 'manual', 'qr', 'fingerprint') NOT NULL");
+}
+
 // The login and registration limiters are per-IP. Clear only this suite's
 // loopback buckets so running the tests repeatedly inside one rate-limit
 // window does not fail with 429s unrelated to the code under test.
@@ -354,8 +367,11 @@ try {
     $eventIds[] = $closedEventId;
     $cancelledEventId = create_event($db, $officerId, 'QR Check-in Cancelled ' . $suffix, $now->modify('-5 minutes'), 'cancelled');
     $eventIds[] = $cancelledEventId;
+    $fingerprintEventId = create_event($db, $officerId, 'Fingerprint Check-in ' . $suffix, $now->modify('-5 minutes'));
+    $eventIds[] = $fingerprintEventId;
     $correctionEventId = create_event($db, $officerId, 'Correction Proof ' . $suffix, $now->modify('-1 day'));
     $eventIds[] = $correctionEventId;
+    $fingerprintTemplateA = 'FP.' . $suffix . '.' . str_repeat('A1b2', 12);
 
     $port = free_port();
     $baseUrl = 'http://127.0.0.1:' . $port . '/api';
@@ -418,7 +434,7 @@ try {
         'studentIdNumber' => '2026-' . str_pad((string) mt_rand(10000, 99999), 5, '0', STR_PAD_LEFT),
         'email' => 'beta.' . $suffix . '@example.test',
         'password' => $password,
-        'department' => 'Computer Studies', 'program' => 'BSCS',
+        'department' => 'Computer Studies', 'program' => 'BSIT',
         'yearLevel' => '2', 'block' => 'B',
     ]);
     same(200, $regB['status']);
@@ -451,6 +467,98 @@ try {
     $officer = login('officer.' . $suffix . '@example.test', $password, $cookieJars);
     $studentA = login('alpha.' . $suffix . '@example.test', $password, $cookieJars);
     $studentB = login('beta.' . $suffix . '@example.test', $password, $cookieJars);
+
+    // ── Fingerprint enrollment and kiosk check-in (migration 042) ──
+    test('anonymous cannot enroll a fingerprint', function () use ($studentAId, $fingerprintTemplateA): void {
+        $response = http_client('POST', '/users/enroll-fingerprint', [
+            'studentId' => $studentAId,
+            'fingerprintTemplate' => $fingerprintTemplateA,
+        ]);
+        same(401, $response['status']);
+        response_error($response, 'unauthenticated');
+    });
+
+    test('a student cannot enroll a fingerprint', function () use ($studentA, $studentAId, $fingerprintTemplateA): void {
+        $response = http_client('POST', '/users/enroll-fingerprint', [
+            'studentId' => $studentAId,
+            'fingerprintTemplate' => $fingerprintTemplateA,
+        ], $studentA['jar']);
+        same(403, $response['status']);
+        response_error($response, 'forbidden');
+    });
+
+    test('an officer enrolls a fingerprint template', function () use ($db, $officer, $studentAId, $fingerprintTemplateA): void {
+        $response = http_client('POST', '/users/enroll-fingerprint', [
+            'studentId' => $studentAId,
+            'fingerprintTemplate' => $fingerprintTemplateA,
+        ], $officer['jar']);
+        same(200, $response['status']);
+        $data = response_data($response);
+        same(true, $data['fingerprintEnrolled'] ?? null);
+        same($studentAId, (int) ($data['studentId'] ?? 0));
+        same('Alpha Student', (string) ($data['studentName'] ?? ''));
+
+        $stored = $db->prepare('SELECT fingerprint_template FROM students WHERE user_id = :id');
+        $stored->execute(['id' => $studentAId]);
+        same($fingerprintTemplateA, (string) $stored->fetchColumn());
+    });
+
+    test('the same fingerprint cannot be enrolled to a second student', function () use ($officer, $studentBId, $fingerprintTemplateA): void {
+        $response = http_client('POST', '/users/enroll-fingerprint', [
+            'studentId' => $studentBId,
+            'fingerprintTemplate' => $fingerprintTemplateA,
+        ], $officer['jar']);
+        same(409, $response['status']);
+        response_error($response, 'fingerprint_already_enrolled');
+    });
+
+    test('an unknown fingerprint is not recognised', function () use ($db, $officer, $fingerprintEventId, $studentAId, $suffix): void {
+        $response = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintEventId,
+            'fingerprintTemplate' => 'FP.' . $suffix . '.unknown.' . str_repeat('Z9', 16),
+        ], $officer['jar']);
+        same(404, $response['status']);
+        response_error($response, 'fingerprint_not_recognized');
+        same(false, attendance_row($db, $fingerprintEventId, $studentAId));
+    });
+
+    test('an enrolled fingerprint records fingerprint attendance', function () use ($db, $officer, $fingerprintEventId, $studentAId, $fingerprintTemplateA): void {
+        $response = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintEventId,
+            'fingerprintTemplate' => $fingerprintTemplateA,
+        ], $officer['jar']);
+        same(200, $response['status']);
+        $data = response_data($response);
+        same($studentAId, (int) ($data['studentId'] ?? 0));
+        same('Alpha Student', (string) ($data['studentName'] ?? ''));
+        same('fingerprint', (string) ($data['verificationMethod'] ?? ''));
+        same('in', (string) ($data['action'] ?? ''));
+
+        $row = attendance_row($db, $fingerprintEventId, $studentAId);
+        assert_true($row !== false, 'fingerprint attendance row was not created');
+        same('fingerprint', (string) $row['verification_method']);
+    });
+
+    test('scanning the same fingerprint twice is rejected', function () use ($officer, $fingerprintEventId, $fingerprintTemplateA): void {
+        $response = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintEventId,
+            'fingerprintTemplate' => $fingerprintTemplateA,
+        ], $officer['jar']);
+        same(409, $response['status']);
+        response_error($response, 'duplicate_checkin');
+    });
+
+    test('staff listing reports the enrollment without the template', function () use ($officer, $studentAId, $fingerprintTemplateA): void {
+        $response = http_client('GET', '/users', null, $officer['jar']);
+        same(200, $response['status']);
+        $match = null;
+        foreach (response_data($response) as $row) {
+            if ((int) ($row['id'] ?? 0) === $studentAId) { $match = $row; break; }
+        }
+        assert_true(is_array($match), 'student missing from /users');
+        same(true, $match['fingerprintEnrolled'] ?? null);
+        assert_true(!str_contains(json_encode($match, JSON_THROW_ON_ERROR), $fingerprintTemplateA), 'user listing leaked the template');
+    });
 
     test('events expose EVNT public ids', function () use ($db, $officer, $openEventId): void {
         $stored = $db->prepare('SELECT public_id FROM events WHERE id = :id');
@@ -771,6 +879,37 @@ try {
         $range = $data['range'] ?? [];
         assert_true(array_key_exists('department', $range) && array_key_exists('program', $range),
             'sanction report range is missing the department/program scope');
+    });
+
+    test('student can read only their own absence-based sanction status', function () use ($studentA, $studentB, $studentBId): void {
+        $own = http_client('GET', '/users/me/sanctions', null, $studentA['jar']);
+        same(200, $own['status']);
+        $data = response_data($own);
+
+        same(['totalAbsences', 'status'], array_keys($data));
+        assert_true(is_int($data['totalAbsences']), 'totalAbsences must be a number');
+        assert_true($data['totalAbsences'] >= 0, 'totalAbsences must not be negative');
+        assert_true(
+            is_string($data['status']) && in_array($data['status'], ['Good Standing', 'Flagged for Sanction'], true),
+            'unexpected status: ' . var_export($data['status'], true)
+        );
+        same($data['totalAbsences'] > 3, $data['status'] === 'Flagged for Sanction');
+
+        // Query parameters must not widen the scope: naming another student's
+        // id returns the caller's own summary, unchanged.
+        $forced = http_client(
+            'GET',
+            '/users/me/sanctions?student_id=' . $studentBId . '&studentId=' . $studentBId,
+            null,
+            $studentA['jar']
+        );
+        same(200, $forced['status']);
+        same($data, response_data($forced));
+
+        // The summary also never carries another student's identity.
+        $ownB = http_client('GET', '/users/me/sanctions', null, $studentB['jar']);
+        same(200, $ownB['status']);
+        assert_true(!array_key_exists('studentId', response_data($ownB)), 'response exposed a student id');
     });
 
     $tokenA = qr_token_for($studentAId, $openEventId);

@@ -1,16 +1,30 @@
 /* ============================================================
-   Kiosk — officer-operated QR event check-in
+   Kiosk — officer-operated fingerprint event check-in
    ------------------------------------------------------------
    The station is locked until an SSC officer or administrator
    signs in. After unlock it hydrates events, students, attendance
-   and roster metadata from the server, then accepts QR scans.
+   and roster metadata from the server, then reads a fingerprint
+   sample from the DigitalPersona U.are.U 4500 through the HID
+   DigitalPersona Web SDK and its local agent.
 
-   State machine: locked → idle → scanning → processing →
-                  (success | error) → idle
+   State machine: locked → idle → scanning → (success | error) → idle
 
-   The camera reads a dynamic student QR token. The server resolves
-   the token through the unique qr_token index and records attendance,
-   so no camera frames or personal records are stored in the browser.
+   Acquisition is persistent: the kiosk keeps one scanner session
+   running from the moment the officer opens an event until the event
+   ends. Each time a finger is placed the SDK fires SamplesAcquired; the
+   kiosk sends the captured template to the server, shows the result for
+   a few seconds, then returns to "Place your finger" without stopping
+   the scanner. A short cooldown ignores a second placement immediately
+   after a scan so one placement cannot register twice.
+
+   The Web SDK pauses scanning when the page loses focus. The kiosk
+   restarts acquisition on window focus, visibilitychange, the
+   AcquisitionStopped event, and DeviceConnected after a
+   DeviceDisconnected. A watchdog retries startAcquisition for a few
+   seconds if it stops unexpectedly, then reports an error.
+
+   The raw sample is never stored, displayed, or logged — only its size
+   and format leave the page. Matching happens server-side.
 
    Security: all user-supplied strings are escaped via escapeHtml()
    before being injected into innerHTML.
@@ -29,17 +43,25 @@
   let viewer = null;
   let idleTimer = null;
   let stationHeartbeatTimer = null;
+  let fingerprintReader = null;
+  let fingerprintFocusGuard = null;
+  let fingerprintAcquisitionActive = false; // true while startAcquisition is running
+  let fingerprintWatchdogTimer = null;
+  let fingerprintWatchdogAttempts = 0;
+  const FINGERPRINT_WATCHDOG_MAX_ATTEMPTS = 4;
+  const FINGERPRINT_WATCHDOG_INTERVAL_MS = 2500;
+  const FINGERPRINT_RESULT_HOLD_MS = 3000;
+  const FINGERPRINT_COOLDOWN_MS = 1500; // ignore a placement right after a scan
+  let fingerprintCooldownTimer = null;
+  let fingerprintResultTimer = null; // holds a scan result on screen between samples
+  let fingerprintHandlersBound = false; // the reader's session handlers are registered once
+  let fingerprintSessionStarting = false; // a session start is in flight
+  // Auto-start is attempted once per event + scan mode; the Scan Fingerprint
+  // button is the manual retry when it fails.
+  const fingerprintAutoStartAttempts = new Set();
+  let fingerprintWakeLock = null;
+  let fingerprintSessionActive = false; // true while an event is open and scanning is live
   let scanMode = 'in'; // 'in' = check-in, 'out' = check-out
-  let continuousQrText = null;
-  let lastHandledQrText = '';
-  let lastHandledQrScanAt = 0;
-  // Keep ignoring the same code for a moment after a result, so a student
-  // who leaves the QR in front of the camera does not scan twice.
-  const QR_SCAN_REPEAT_WINDOW_MS = 6000;
-  // Student QR codes carry the 43-character URL-safe base64 token from
-  // the server (see backend/src/QrToken.php). Validating the shape here
-  // rejects unrelated QR codes before an API request is made.
-  const QR_TOKEN_PATTERN = /^v1\.\d{1,10}\.\d{1,10}\.[A-Za-z0-9_-]{43}$/;
   let CHECKIN_EARLY_MS = 30 * 60 * 1000;
   let CHECKIN_WINDOW_MS = 6 * 60 * 60 * 1000;
   let CHECKOUT_OPEN_MINUTES = 60;  // fallback when an event omits the offset
@@ -117,19 +139,14 @@
     }
     if (!unlocked) return;
     idleTimer = setTimeout(function () {
+      // A slow finger read must not lock the station out from under the
+      // operator while the scanner is still waiting for a sample.
+      if (busy) {
+        resetIdleTimer();
+        return;
+      }
       lockStation('Station locked after five minutes of inactivity.', { endSession: true });
     }, AUTO_LOCK_MS);
-  }
-
-  function stopCamera(label, message, icon) {
-    const scanner = window.QrScanner;
-    let stopPromise = Promise.resolve();
-    if (scanner && scanner.isRunning()) {
-      stopPromise = scanner.stop().catch(function () {});
-    }
-    setCameraState(false, label || 'Station locked');
-    showCameraPlaceholder(icon || 'lock', message || 'Station locked');
-    return stopPromise;
   }
 
   /**
@@ -157,23 +174,6 @@
     });
   }
 
-  /**
-   * Single source of truth for camera visibility. The camera may only run
-   * while a selected event is inside its check-in/check-out window; any
-   * other phase keeps the station on Step 1 with the guidance message.
-   * Never runs mid-scan, so the 20-second refresh cannot interrupt a scan.
-   */
-  function syncCameraToEvent(phase) {
-    if (!unlocked || busy) return;
-    if (phase === 'live') {
-      setStepState(2);
-      startCamera();
-      return;
-    }
-    setStepState(1);
-    stopCamera('Camera off', 'Select a valid event to start scanning.', 'calendar2-event');
-  }
-
   function showLock(message) {
     unlocked = false;
     viewer = null;
@@ -188,7 +188,10 @@
       stationHeartbeatTimer = null;
     }
 
-    stopCamera();
+    stopFingerprintSession();
+    // A fresh officer session may attempt the automatic start again.
+    fingerprintAutoStartAttempts.clear();
+
     if (els.resultOverlay) els.resultOverlay.hidden = true;
     if (els.operator) els.operator.hidden = true;
     if (els.lock) els.lock.hidden = false;
@@ -211,7 +214,9 @@
       els.statusChip.className = 'kiosk-status-badge is-closed';
     }
     hideCountdown();
-    setScanAvailability(false, 'Station locked', 'Sign in to unlock the scanner.');
+    setScanAvailability(false, 'Station locked', 'Sign in to unlock the fingerprint scanner.');
+    setStatus('idle', 'Station locked', 'Sign in to unlock the scanner.');
+    setStationState(false, 'Station locked');
     setStepState(1);
 
     setTimeout(function () {
@@ -232,7 +237,8 @@
     setModeButtonsEnabled(true);
     syncModeButtons();
     setStepState(1);
-    stopCamera('Camera off', 'Select a valid event to start scanning.', 'calendar2-event');
+    setStationState(true, 'Scanner ready');
+    setStatus('idle', 'Select an event', 'Choose an event to enable the fingerprint scanner.');
     resetIdleTimer();
     startStationHeartbeat();
   }
@@ -370,8 +376,8 @@
       : '<option value="">No events available</option>';
 
     // Never auto-select an event: the officer must choose one before the
-    // camera is allowed to turn on. Keep a previous choice only if it still
-    // exists in the refreshed list.
+    // scanner is allowed to accept fingerprints. Keep a previous choice only
+    // if it still exists in the refreshed list.
     const previous = events.find((e) => sameId(e.id, currentEventId));
     currentEventId = previous ? previous.id : null;
     select.value = currentEventId != null ? String(currentEventId) : '';
@@ -389,12 +395,13 @@
       els.eventMeta.textContent = 'Choose an event above to start scanning.';
       els.statusChip.textContent = 'No event';
       els.statusChip.className = 'kiosk-status-badge is-closed';
-      setScanAvailability(false, 'Select an event', 'Choose an active event first.');
+      stopFingerprintSession();
       hideCountdown();
+      setStatus('idle', 'Select an event', 'Choose an event above to enable the fingerprint scanner.');
       if (!busy) {
-        setStatus('idle', 'Select an event', 'Choose an event above to enable the camera.');
+        setScanAvailability(false, 'Select an event', 'Choose an active event first.');
+        setStepState(1);
       }
-      syncCameraToEvent('none');
       return;
     }
 
@@ -417,25 +424,56 @@
       : phase === 'cancelled' ? 'Cancelled'
       : `${modeTitle} closed`;
 
-    setScanAvailability(
-      unlocked && phase === 'live',
-      phase === 'live' ? 'Scanner Active'
-        : phase === 'upcoming' ? `${modeTitle} opens soon` : `${modeTitle} unavailable`,
-      phase === 'live' ? 'Camera ready'
-        : phase === 'upcoming' ? `Please wait for the ${modeWord} window.`
-        : 'Choose another active event or scan mode.'
-    );
     if (!busy) {
-      setStatus(
-        'idle',
-        phase === 'live' ? `Ready for ${modeWord}`
-          : phase === 'upcoming' ? `${modeTitle} not open yet` : `${modeTitle} unavailable`,
-        phase === 'live' ? 'Hold the student QR code in the frame; scanning starts automatically.'
-          : phase === 'upcoming' ? `This station will unlock when ${modeWord} opens.`
-          : 'Choose another active event or scan mode.'
-      );
+      const overlayOpen = els.resultOverlay && !els.resultOverlay.hidden;
+      if (overlayOpen) {
+        // Keep the scanner disabled while a result is on screen. The Done
+        // button clears the overlay and re-runs this renderer.
+        els.scanBtn.disabled = true;
+        setStepState(3);
+      } else if (phase === 'live') {
+        setScanAvailability(
+          true,
+          fingerprintSessionActive ? 'Scanner active' : 'Scan Fingerprint',
+          fingerprintSessionActive
+            ? 'Place your finger on the sensor; the reader stays on until the event ends.'
+            : 'Tap to wake the scanner, then rest your finger on the sensor.'
+        );
+        setStepState(2);
+        if (fingerprintSessionActive) {
+          setStatus(
+            'scanning',
+            'Place your finger',
+            'Rest your finger on the U.are.U 4500 sensor.'
+          );
+        } else {
+          setStatus(
+            'idle',
+            `Ready for ${modeWord}`,
+            'Tap Scan Fingerprint, then rest your finger on the sensor.'
+          );
+        }
+        // An event that just became live opens the scanner without a tap;
+        // the button only needs pressing if that automatic start fails.
+        maybeAutoStartFingerprintSession();
+      } else {
+        stopFingerprintSession();
+        setScanAvailability(
+          false,
+          phase === 'upcoming' ? `${modeTitle} opens soon` : `${modeTitle} unavailable`,
+          phase === 'upcoming'
+            ? `This station will unlock when ${modeWord} opens.`
+            : 'Choose another active event or scan mode.'
+        );
+        setStepState(1);
+        setStatus(
+          'idle',
+          phase === 'upcoming' ? `${modeTitle} not open yet` : `${modeTitle} unavailable`,
+          phase === 'upcoming' ? `This station will unlock when ${modeWord} opens.`
+            : 'Choose another active event or scan mode.'
+        );
+      }
     }
-    syncCameraToEvent(phase);
     renderCountdown(event, phase);
   }
 
@@ -463,12 +501,14 @@
   }
 
   function setScanAvailability(enabled, title, detail) {
-    els.scanBtn.classList.toggle('is-inactive', !enabled);
+    const usable = enabled === true && unlocked === true;
+    els.scanBtn.disabled = !usable;
+    els.scanBtn.classList.toggle('is-inactive', !usable);
     els.scanBtn.setAttribute('aria-label', title);
     if (els.scanCtaTitle) els.scanCtaTitle.textContent = title;
     if (els.scanCtaDetail) els.scanCtaDetail.textContent = detail;
-    if (els.manualInput) els.manualInput.disabled = !enabled;
-    if (els.manualSubmit) els.manualSubmit.disabled = !enabled;
+    if (els.manualInput) els.manualInput.disabled = !usable;
+    if (els.manualSubmit) els.manualSubmit.disabled = !usable;
   }
 
   function syncModeButtons() {
@@ -546,7 +586,7 @@
 
     els.count.textContent = checkedIn;
 
-    // Every active student can present a QR code, so the roster count is
+    // Every active student can scan a fingerprint, so the roster count is
     // the number of active student accounts returned by the server.
     const roster = (getUsers() || []).filter((u) =>
       u.role === 'student' && (u.status === undefined || u.status === 'active')
@@ -599,12 +639,29 @@
   }
 
   // ── Status rendering — drives the kiosk scan panel ──
-  function setStatus(state, text, hint) {
+  function setStatus(state, text, hint, stateLabelText) {
     const scanner = els.scanner;
     scanner.dataset.state = state;
     scanner.setAttribute('aria-busy', String(state === 'scanning' || state === 'processing'));
     if (text !== undefined) els.statusText.textContent = text;
     if (hint !== undefined) els.scanHint.textContent = hint;
+
+    // Reflect the same state in the sensor's little status pill and the
+    // station chip so the screen reads the same from across the room.
+    // A caller can override the label for states whose meaning differs
+    // (for example a captured sample that was not saved as attendance).
+    const stateLabel = stateLabelText || {
+      idle: 'Scanner ready',
+      scanning: 'Reading fingerprint',
+      processing: 'Verifying identity',
+      success: 'Attendance saved',
+      attention: 'Check the sensor',
+      error: 'Scan failed',
+    }[state] || 'Scanner ready';
+    if (els.fingerprintState) els.fingerprintState.textContent = stateLabel;
+    if (els.stationState && unlocked) {
+      els.stationState.textContent = state === 'idle' ? 'Scanner ready' : stateLabel;
+    }
   }
 
   /**
@@ -618,7 +675,7 @@
     );
     attendance.push(Object.assign({ excused: false, excuseReason: '' }, record, {
       eventId: eventId,
-      method: record.verificationMethod || 'qr',
+      method: record.verificationMethod || 'fingerprint',
     }));
     setAttendance(attendance);
     updateCounts();
@@ -638,14 +695,13 @@
   const RESULT_ICONS = {
     success:            'check-circle-fill',
     'already':          'exclamation-triangle-fill',
-    'no-match':         'x-circle-fill',
-    'no-qr':            'x-circle-fill',
-    'permission-denied': 'camera-video-fill',
-    'device-error':     'x-circle-fill',
-    'model-error':      'x-circle-fill',
-    'server-error':     'x-circle-fill',
+    'no-match':         'fingerprint',
     'no-event':         'info-circle-fill',
-    'invalid_qr':       'qr-code-scan',
+    'permission-denied': 'shield-lock-fill',
+    'device-error':     'usb-drive-fill',
+    'model-error':      'exclamation-triangle-fill',
+    'server-error':     'x-circle-fill',
+    'invalid-field':    'fingerprint',
   };
 
   function showResult(type, title, message, meta) {
@@ -659,139 +715,595 @@
     // meta is controlled HTML from our code — safe to use innerHTML
     els.resultMeta.innerHTML = meta || '';
     els.resultOverlay.hidden = false;
+    els.scanBtn.disabled = true;
     els.resultDone.focus();
   }
 
-  // ── Camera status / lifecycle ──
-  function setCameraState(online, label) {
+  // ── Scanner station indicator ──
+  function setStationState(online, label) {
     if (els.stationState) els.stationState.textContent = label;
     if (els.stationDot) els.stationDot.classList.toggle('is-offline', !online);
   }
 
-  function showCameraPlaceholder(icon, message) {
-    if (!els.cameraPlaceholder) return;
-    els.cameraPlaceholder.hidden = false;
-    els.cameraPlaceholder.innerHTML = `<i class="bi bi-${icon}"></i><span>${escapeHtml(message)}</span>`;
+  /**
+   * Error copy for the fingerprint capture path and the attendance endpoint.
+   * The shape is [result type, title, message, hint].
+   */
+  const FINGERPRINT_ERRORS = {
+    'sdk_missing': [
+      'model-error',
+      'Scanner module missing',
+      'The DigitalPersona Web SDK did not load on this station.',
+      'Reload the kiosk. If it still fails, check the SDK script files.',
+    ],
+    'scanner_not_found': [
+      'device-error',
+      'Scanner not found',
+      'The DigitalPersona agent did not report a fingerprint reader.',
+      'Plug in the U.are.U 4500, make sure the agent is running, then retry.',
+    ],
+    'scanner_unavailable': [
+      'device-error',
+      'Scanner unavailable',
+      'The DigitalPersona agent could not start the fingerprint reader.',
+      'Check that the HID agent is running and no other scanner app is open, then retry.',
+    ],
+    'scanner_disconnected': [
+      'device-error',
+      'Scanner disconnected',
+      'The fingerprint reader was disconnected during the scan.',
+      'Reconnect the U.are.U 4500, then try again.',
+    ],
+    'fingerprint_capture_failed': [
+      'no-match',
+      'Fingerprint not captured',
+      'The scanner could not read a fingerprint. Clean the sensor and place your finger flat.',
+      'Keep your finger on the sensor until the scanner beeps, then try again.',
+    ],
+    'fingerprint_not_recognized': [
+      'no-match',
+      'Fingerprint not recognised',
+      'This fingerprint is not enrolled to an active student.',
+      'Ask the SSC officer to enroll your fingerprint, or use manual entry.',
+    ],
+    'fingerprint_already_enrolled': [
+      'already',
+      'Fingerprint already enrolled',
+      'This fingerprint is already linked to another student.',
+      'Ask the SSC officer to check the enrollment.',
+    ],
+    'invalid_field': [
+      'invalid-field',
+      'Scan rejected',
+      'The fingerprint template could not be verified by the server.',
+      'Try the scan again. If it keeps failing, ask the SSC officer for help.',
+    ],
+    'rate_limited': [
+      'server-error',
+      'Please wait',
+      'Too many scans were sent at once.',
+      'Try again in a moment.',
+    ],
+    'network_error': [
+      'server-error',
+      'Server unreachable',
+      'The attendance server did not respond.',
+      'Check the connection and try again, or use manual entry.',
+    ],
+    'duplicate_checkin': [
+      'already',
+      'Already checked in',
+      'This student is already checked in for this event.',
+      'No action needed.',
+    ],
+    'duplicate_checkout': [
+      'already',
+      'Already checked out',
+      'This student has already checked out for this event.',
+      'No action needed.',
+    ],
+    'not_checked_in': [
+      'already',
+      'Not checked in',
+      'This student has no check-in for this event, so there is nothing to check out.',
+      'Scan for check-in first.',
+    ],
+    'checkin_closed': [
+      'no-event',
+      'Check-in closed',
+      'This event is outside its check-in window.',
+      'Choose another event or scan mode, or ask the SSC officer.',
+    ],
+    'checkout_closed': [
+      'no-event',
+      'Check-out closed',
+      'This event is outside its check-out window.',
+      'Choose another event or scan mode, or ask the SSC officer.',
+    ],
+    'event_unavailable': [
+      'no-event',
+      'Attendance unavailable',
+      'This event is not accepting attendance right now.',
+      'Choose another event or ask the SSC officer.',
+    ],
+    'event_not_found': [
+      'no-event',
+      'Event not found',
+      'The selected event no longer exists.',
+      'Refresh the event list and choose another event.',
+    ],
+    'not_eligible': [
+      'no-event',
+      'Not eligible',
+      'This event is not open to the student’s department.',
+      'Choose another event or ask the SSC officer.',
+    ],
+    'invalid_action': [
+      'no-event',
+      'Scan not allowed',
+      'This event does not use that scan point yet.',
+      'Check the event instructions or ask the SSC officer.',
+    ],
+  };
+
+  // ── Fingerprint capture (DigitalPersona Web SDK, capture-only) ──
+
+  function fingerprintError(code) {
+    const error = new Error(code);
+    error.code = code;
+    return error;
+  }
+
+  function fingerprintSdkReady() {
+    return Boolean(
+      window.WebSdk &&
+      typeof window.WebSdk.WebChannelOptions === 'function' &&
+      window.dp &&
+      window.dp.devices &&
+      typeof window.dp.devices.FingerprintReader === 'function' &&
+      window.dp.devices.SampleFormat &&
+      window.dp.devices.SampleFormat.PngImage != null
+    );
+  }
+
+  function createFingerprintReader() {
+    if (fingerprintReader) return fingerprintReader;
+    const options = new window.WebSdk.WebChannelOptions({ debug: false });
+    fingerprintReader = new window.dp.devices.FingerprintReader(options);
+    return fingerprintReader;
+  }
+
+  // The Web SDK pauses scanning when the page loses focus. Hold the page
+  // focused for the short capture window, then release these listeners.
+  function startFingerprintFocusGuard() {
+    if (fingerprintFocusGuard) return;
+    const refocus = () => {
+      if (!fingerprintFocusGuard) return;
+      try {
+        window.focus();
+      } catch (error) {
+        // Focus is best effort; the status hint asks the operator to click back in.
+      }
+    };
+    const onVisibilityChange = () => {
+      if (!document.hidden) refocus();
+    };
+    fingerprintFocusGuard = {
+      refocus: refocus,
+      onVisibilityChange: onVisibilityChange,
+      timer: setInterval(refocus, 1000),
+    };
+    window.addEventListener('blur', refocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    refocus();
+  }
+
+  function stopFingerprintFocusGuard() {
+    if (!fingerprintFocusGuard) return;
+    clearInterval(fingerprintFocusGuard.timer);
+    window.removeEventListener('blur', fingerprintFocusGuard.refocus);
+    document.removeEventListener('visibilitychange', fingerprintFocusGuard.onVisibilityChange);
+    fingerprintFocusGuard = null;
+  }
+
+  function fingerprintSampleSize(sample) {
+    const data = sample && sample.Data;
+    if (typeof data === 'string') return data.length;
+    if (data && typeof data.length === 'number') return data.length;
+    if (data && typeof data.byteLength === 'number') return data.byteLength;
+    return 0;
+  }
+
+  function fingerprintSampleFormatName(value) {
+    const formats = window.dp && window.dp.devices ? window.dp.devices.SampleFormat : null;
+    return formats && formats[value] ? formats[value] : String(value);
+  }
+
+  function stopFingerprintAcquisition(reader) {
+    fingerprintAcquisitionActive = false;
+    try {
+      const stopping = reader.stopAcquisition();
+      if (stopping && typeof stopping.catch === 'function') {
+        stopping.catch(() => {});
+      }
+    } catch (error) {
+      // Acquisition may never have started; nothing else to do.
+    }
+  }
+
+  // ── Persistent acquisition (one session per open event) ──────────
+
+  /**
+   * Request a Screen Wake Lock so the browser does not dim or lock the
+   * screen while the station is staffed. Fail quietly — some browsers and
+   * some contexts do not support it, and a missing lock must never block
+   * scanning.
+   */
+  function requestFingerprintWakeLock() {
+    if (fingerprintWakeLock) return;
+    const nav = navigator || {};
+    if (!nav.wakeLock || typeof nav.wakeLock.request !== 'function') return;
+    try {
+      nav.wakeLock.request('screen').then((lock) => {
+        fingerprintWakeLock = lock;
+      }).catch(() => {
+        fingerprintWakeLock = null;
+      });
+    } catch (error) {
+      fingerprintWakeLock = null;
+    }
+  }
+
+  function releaseFingerprintWakeLock() {
+    if (!fingerprintWakeLock) return;
+    try {
+      const released = fingerprintWakeLock.release();
+      if (released && typeof released.catch === 'function') released.catch(() => {});
+    } catch (error) {
+      // best effort
+    }
+    fingerprintWakeLock = null;
   }
 
   /**
-   * Analyse a decoded QR payload before it is sent to the server.
-   *
-   * A student dashboard QR contains an event-scoped token
-   * (v1.<studentId>.<eventId>.<signature>), but some phone camera apps wrap
-   * the text in a URL. Both shapes are understood here; everything else is
-   * rejected locally so random QR codes never reach the attendance endpoint.
+   * Restart acquisition after the SDK pauses it (focus loss, tab switch,
+   * the AcquisitionStopped event, or a reconnected reader). The reader
+   * is the same one that fired the event, so the caller passes it in.
    */
-  function analyzeQrText(rawText) {
-    let candidate = String(rawText == null ? '' : rawText)
-      .replace(/[\u200B-\u200D\uFEFF]/g, '')
-      .trim();
-
-    if (/^https?:\/\//i.test(candidate)) {
-      try {
-        const url = new URL(candidate);
-        candidate = url.searchParams.get('qrToken')
-          || url.searchParams.get('token')
-          || '';
-      } catch (error) {
-        candidate = '';
-      }
-    }
-
-    candidate = candidate.trim();
-    return {
-      valid: QR_TOKEN_PATTERN.test(candidate),
-      token: candidate,
-    };
-  }
-
-  function handleContinuousQrScan(rawText) {
-    if (!unlocked || !rawText) return;
-    if (busy) return;
-    // A result is on screen. Ignore the code still in front of the
-    // camera so the same scan cannot loop while it is being read.
-    if (els.resultOverlay && !els.resultOverlay.hidden) return;
-
-    const text = String(rawText);
-    const now = Date.now();
-    if (text === lastHandledQrText && now - lastHandledQrScanAt < QR_SCAN_REPEAT_WINDOW_MS) {
-      return;
-    }
-
-    const event = getEvents().find((e) => sameId(e.id, currentEventId));
-    if (!event || getEventPhase(event, scanMode) !== 'live') return;
-
-    lastHandledQrText = text;
-    lastHandledQrScanAt = now;
-    continuousQrText = text;
-    runQrScan();
-  }
-
-  async function ensureCamera() {
-    const scanner = window.QrScanner;
-    if (!scanner) {
-      const err = new Error('QR scanner module unavailable.');
-      err.code = 'model-error';
-      throw err;
-    }
-    if (scanner.isRunning()) {
-      setCameraState(true, 'Camera online');
-      if (els.cameraPlaceholder) els.cameraPlaceholder.hidden = true;
-      return;
-    }
-    setCameraState(false, 'Starting camera…');
-    await scanner.start(handleContinuousQrScan, function (code) {
-      if (code === 'permission-denied' || code === 'device-error') {
-        setStatus('attention', 'Camera unavailable', 'Allow camera access and keep this station unlocked.');
-      }
+  function restartFingerprintAcquisition(reader) {
+    if (!unlocked || !fingerprintSessionActive) return;
+    if (!fingerprintSdkReady()) return;
+    const activeReader = reader || fingerprintReader;
+    if (!activeReader) return;
+    fingerprintAcquisitionActive = false;
+    stopFingerprintWatchdog();
+    setStatus('scanning', 'Reading fingerprint', 'Place your finger on the sensor.');
+    startAcquisitionOnce(activeReader).catch(() => {
+      startFingerprintWatchdog(activeReader);
     });
-    setCameraState(true, 'Camera online');
-    setStatus('scanning', 'Scanner active', 'Hold the student QR code in front of the camera.');
-    if (els.cameraPlaceholder) els.cameraPlaceholder.hidden = true;
   }
 
-  function startCamera() {
-    if (!unlocked) return;
-    if (!window.QrScanner) {
-      setCameraState(false, 'QR scanner module missing');
-      showCameraPlaceholder('qr-code-scan', 'QR scanner module missing');
-      return;
+  /**
+   * Start acquisition once. The SDK pauses scanning when the page loses
+   * focus, so this is also bound to window focus and visibilitychange.
+   */
+  function startAcquisitionOnce(reader) {
+    if (!fingerprintSdkReady()) return Promise.reject(fingerprintError('sdk_missing'));
+    if (!reader) return Promise.reject(fingerprintError('scanner_not_found'));
+    if (fingerprintAcquisitionActive) return Promise.resolve();
+
+    fingerprintAcquisitionActive = true;
+    fingerprintWatchdogAttempts = 0;
+    stopFingerprintWatchdog();
+
+    const SampleFormat = window.dp.devices.SampleFormat;
+    try {
+      const starting = reader.startAcquisition(SampleFormat.PngImage);
+      if (starting && typeof starting.then === 'function') {
+        return starting.then(() => {
+          fingerprintAcquisitionActive = true;
+          fingerprintWatchdogAttempts = 0;
+        }).catch(() => {
+          fingerprintAcquisitionActive = false;
+          throw fingerprintError('scanner_unavailable');
+        });
+      }
+      fingerprintAcquisitionActive = true;
+      return Promise.resolve();
+    } catch (error) {
+      fingerprintAcquisitionActive = false;
+      throw fingerprintError('scanner_unavailable');
     }
-    ensureCamera()
-      .catch((err) => {
-        const denied = err && err.code === 'permission-denied';
-        const cameraDetail = err && err.message ? err.message : '';
-        console.error('[Kiosk] Camera startup failed:', err && err.name, err && err.message);
-        setCameraState(false, denied ? 'Camera permission blocked' : 'Camera offline');
-        showCameraPlaceholder(
-          'camera-video-off',
-          denied ? 'Allow camera access to scan QR codes' : 'Camera unavailable — use manual entry'
+  }
+
+  /**
+   * The Web SDK can stop acquisition for reasons the kiosk does not
+   * observe directly (a driver hiccup, a transient comms loss). Retry
+   * startAcquisition for a few seconds; if it still will not start, show
+   * an error instead of silently leaving the scanner dead.
+   */
+  function startFingerprintWatchdog(reader) {
+    stopFingerprintWatchdog();
+    const activeReader = reader || fingerprintReader;
+    if (!activeReader || !fingerprintSessionActive) return;
+    fingerprintWatchdogTimer = setInterval(() => {
+      if (!fingerprintSessionActive || fingerprintAcquisitionActive) {
+        stopFingerprintWatchdog();
+        return;
+      }
+      fingerprintWatchdogAttempts += 1;
+      if (fingerprintWatchdogAttempts > FINGERPRINT_WATCHDOG_MAX_ATTEMPTS) {
+        stopFingerprintWatchdog();
+        setStatus('error', 'Scanner stopped', 'The fingerprint scanner will not restart. Reload the kiosk.');
+        showResult(
+          'device-error',
+          'Scanner stopped',
+          'The fingerprint reader stopped and the kiosk could not restart it.',
+          'Reload the kiosk. If it still fails, check the U.are.U 4500 and the HID agent.'
         );
-        if (!busy) {
-          setStatus(
-            'attention',
-            denied ? 'Camera blocked' : 'Camera unavailable',
-            denied
-              ? 'Allow camera access in your browser, then reselect the event.'
-              : (cameraDetail ? `${cameraDetail} — close other apps, check Windows camera access, then reselect the event.` : 'Close other apps using the camera, then reselect the event to retry.')
-          );
-        }
+        return;
+      }
+      setStatus('scanning', 'Reconnecting scanner', 'The fingerprint reader paused; retrying acquisition.');
+      startAcquisitionOnce(activeReader).catch(() => {});
+    }, FINGERPRINT_WATCHDOG_INTERVAL_MS);
+  }
+
+  function stopFingerprintWatchdog() {
+    if (fingerprintWatchdogTimer) {
+      clearInterval(fingerprintWatchdogTimer);
+      fingerprintWatchdogTimer = null;
+    }
+    fingerprintWatchdogAttempts = 0;
+  }
+
+  function clearFingerprintCooldown() {
+    if (fingerprintCooldownTimer) {
+      clearTimeout(fingerprintCooldownTimer);
+      fingerprintCooldownTimer = null;
+    }
+  }
+
+  function fingerprintCaptureAllowed() {
+    if (busy) return false;
+    if (fingerprintCooldownTimer) return false;
+    return true;
+  }
+
+  /**
+   * Register the session handlers on the reader exactly once. The kiosk
+   * keeps a single reader for the life of the page, so binding again would
+   * double every handler.
+   */
+  function bindFingerprintSessionHandlers(reader) {
+    reader.on('SamplesAcquired', (event) => {
+      handleFingerprintSample(event).catch(() => {});
+    });
+    reader.on('AcquisitionStopped', () => {
+      if (!fingerprintSessionActive) return;
+      restartFingerprintAcquisition(reader);
+    });
+    reader.on('DeviceConnected', () => {
+      if (!fingerprintSessionActive) return;
+      restartFingerprintAcquisition(reader);
+    });
+    reader.on('DeviceDisconnected', () => {
+      fingerprintAcquisitionActive = false;
+      if (!fingerprintSessionActive) return;
+      stopFingerprintWatchdog();
+      setStationState(false, 'Reader disconnected');
+      setStatus('error', 'Reader disconnected', 'Reconnect the scanner, then place your finger again.');
+      showResult(
+        'device-error',
+        'Reader disconnected',
+        'Reader disconnected, reconnect the scanner.',
+        'Reconnect the U.are.U 4500; the kiosk resumes scanning automatically.'
+      );
+    });
+  }
+
+  /**
+   * Open the persistent scanner session for the selected event: one reader,
+   * one acquisition run, and a wake lock until the event ends.
+   */
+  async function startFingerprintSession() {
+    if (fingerprintSessionStarting) return;
+    fingerprintSessionStarting = true;
+    try {
+      if (!fingerprintSdkReady()) throw fingerprintError('sdk_missing');
+
+      const reader = createFingerprintReader();
+
+      let devices;
+      try {
+        devices = await reader.enumerateDevices();
+      } catch (error) {
+        throw fingerprintError('scanner_unavailable');
+      }
+      if (!Array.isArray(devices) || devices.length === 0) {
+        throw fingerprintError('scanner_not_found');
+      }
+
+      fingerprintSessionActive = true;
+      requestFingerprintWakeLock();
+      startFingerprintFocusGuard();
+      if (!fingerprintHandlersBound) {
+        fingerprintHandlersBound = true;
+        bindFingerprintSessionHandlers(reader);
+      }
+
+      try {
+        await startAcquisitionOnce(reader);
+      } catch (error) {
+        stopFingerprintSession();
+        throw error;
+      }
+    } finally {
+      fingerprintSessionStarting = false;
+    }
+  }
+
+  /**
+   * End the persistent session: stop acquisition, stop the watchdog, and
+   * release the wake lock. Called when the event ends, the station locks,
+   * another event is chosen, or the page is unloaded.
+   */
+  function stopFingerprintSession() {
+    fingerprintSessionActive = false;
+    if (fingerprintResultTimer) {
+      clearTimeout(fingerprintResultTimer);
+      fingerprintResultTimer = null;
+      busy = false;
+    }
+    clearFingerprintCooldown();
+    if (fingerprintReader) stopFingerprintAcquisition(fingerprintReader);
+    stopFingerprintWatchdog();
+    releaseFingerprintWakeLock();
+    stopFingerprintFocusGuard();
+  }
+
+  function startFingerprintCooldown() {
+    clearFingerprintCooldown();
+    fingerprintCooldownTimer = setTimeout(() => {
+      fingerprintCooldownTimer = null;
+    }, FINGERPRINT_COOLDOWN_MS);
+  }
+
+  /**
+   * Open the scanner as soon as the selected event enters its live window.
+   * One attempt is made per event and scan mode, so a failure (unplugged
+   * reader, missing device) leaves the Scan Fingerprint button as the
+   * manual retry instead of retrying on every render.
+   */
+  function maybeAutoStartFingerprintSession() {
+    if (!unlocked || !isApiEnabled()) return;
+    if (busy || fingerprintSessionActive || fingerprintSessionStarting) return;
+    if (!fingerprintSdkReady()) return;
+
+    const key = `${currentEventId}:${scanMode}`;
+    if (fingerprintAutoStartAttempts.has(key)) return;
+    fingerprintAutoStartAttempts.add(key);
+
+    setStepState(3);
+    setStatus('scanning', 'Starting scanner', 'Opening the fingerprint reader for this event.');
+
+    startFingerprintSession()
+      .then(() => {
+        if (!unlocked || !fingerprintSessionActive) return;
+        setScanAvailability(
+          true,
+          'Scanner active',
+          'Place your finger on the sensor; the reader stays on until the event ends.'
+        );
+        setStationState(true, 'Scanner ready');
+        setStepState(2);
+        setStatus('scanning', 'Place your finger', 'Rest your finger on the U.are.U 4500 sensor.');
+        resetIdleTimer();
+      })
+      .catch((err) => {
+        if (!unlocked) return;
+        // Leave the button usable so the officer can retry by hand.
+        const code = err && err.code ? err.code : 'scanner_unavailable';
+        const detail = FINGERPRINT_ERRORS[code] || FINGERPRINT_ERRORS['scanner_unavailable'];
+        setScanAvailability(
+          true,
+          'Scan Fingerprint',
+          'Tap to wake the scanner, then rest your finger on the sensor.'
+        );
+        setStepState(2);
+        setStationState(false, 'Scanner offline');
+        setStatus(detail[0] === 'no-match' ? 'attention' : 'error', detail[1], detail[3]);
       });
   }
 
-  // ── QR check-in flow (server-verified) ──
-  async function runQrScan() {
+  /**
+   * One placement while the session is live. The sample goes to the server,
+   * the result stays on screen for three seconds, then the sensor invites
+   * the next finger. Acquisition is never stopped after a sample.
+   */
+  async function handleFingerprintSample(event) {
+    if (!fingerprintSessionActive) return;
+    // A cooldown ignores the second placement of one gesture, and busy
+    // means a check-in is in flight (or its result is still showing).
+    if (!fingerprintCaptureAllowed()) return;
+
+    const samples = event && Array.isArray(event.samples) ? event.samples : [];
+    const template = api.extractFingerprintTemplate(samples[0]);
+    if (!template) {
+      setStatus('attention', 'Fingerprint not read', 'Place your finger flat on the sensor and try again.');
+      return;
+    }
+
+    const eventRow = getEvents().find((e) => sameId(e.id, currentEventId));
+    if (!eventRow) {
+      stopFingerprintSession();
+      showResult('no-event', 'No event selected', 'Choose an event before scanning.', '');
+      return;
+    }
+
+    busy = true;
+    resetIdleTimer();
+    setStatus('processing', 'Verifying identity', 'The server is matching the fingerprint.');
+
+    try {
+      const record = await api.fingerprintCheckIn(eventRow.id, template, scanMode);
+      const action = record.action === 'out' ? 'out' : 'in';
+      const stamp = action === 'out'
+        ? (record.checkOutTimeLabel || record.time)
+        : record.time;
+      const studentName = record.studentName || 'Student';
+      addServerRecord(record, eventRow.id);
+      showResult(
+        'success',
+        action === 'out' ? `Goodbye, ${studentName}!` : `Welcome, ${studentName}!`,
+        action === 'out' ? 'Check-out recorded for this event.' : 'Attendance recorded for this event.',
+        `<strong>${escapeHtml(eventRow.name)}</strong> · ${escapeHtml(stamp || new Date().toLocaleTimeString())}`
+      );
+      setStatus('success', `Checked ${action}`, `${studentName} checked ${action}.`);
+    } catch (err) {
+      if (isSessionError(err)) {
+        lockStation('Station locked. Officer session expired — sign in again.', { endSession: true });
+        return;
+      }
+      const code = err && err.code ? err.code : 'fingerprint_capture_failed';
+      const detail = FINGERPRINT_ERRORS[code] || FINGERPRINT_ERRORS['fingerprint_capture_failed'];
+      showResult(detail[0], detail[1], detail[2], '');
+      setStatus(detail[0] === 'no-match' ? 'attention' : 'error', detail[1], detail[3]);
+    }
+
+    if (!fingerprintSessionActive) {
+      busy = false;
+      return;
+    }
+
+    // Show the result for three seconds, then cool down and invite the next
+    // finger. The reader keeps running the whole time.
+    fingerprintResultTimer = setTimeout(() => {
+      fingerprintResultTimer = null;
+      busy = false;
+      if (!fingerprintSessionActive) return;
+      if (els.resultOverlay) els.resultOverlay.hidden = true;
+      startFingerprintCooldown();
+      setScanAvailability(
+        true,
+        'Scanner active',
+        'Place your finger on the sensor; the reader stays on until the event ends.'
+      );
+      setStatus('scanning', 'Place your finger', 'Rest your finger on the U.are.U 4500 sensor.');
+      resetIdleTimer();
+    }, FINGERPRINT_RESULT_HOLD_MS);
+  }
+
+  async function runFingerprintScan() {
     if (!isApiEnabled()) {
       showApiRequired();
       return;
     }
-    const predecodedText = continuousQrText;
-    continuousQrText = null;
     if (!unlocked) {
       showLock('Sign in to unlock this station.');
       return;
     }
     if (busy) return;
+
     const event = getEvents().find((e) => sameId(e.id, currentEventId));
     if (!event) {
       showResult('no-event', 'No event selected', 'Choose an event before scanning.', '');
@@ -809,108 +1321,54 @@
       return;
     }
 
-    // Analyse the decoded payload before calling the server. Only the
-    // token itself leaves the browser; camera frames never do.
-    const analysis = analyzeQrText(predecodedText);
-    if (!analysis.valid) {
-      console.debug('[Kiosk] Ignored QR payload with an invalid token shape.');
-      lastHandledQrText = String(predecodedText || '');
-      lastHandledQrScanAt = Date.now();
+    if (!fingerprintSdkReady()) {
       showResult(
-        'invalid_qr',
-        'Not an Attendly QR code',
-        'This is not a student check-in code. Please use the QR code from the student dashboard.',
-        ''
+        'model-error',
+        'Scanner module missing',
+        'The DigitalPersona Web SDK did not load on this station.',
+        'Reload the kiosk. If it still fails, check the SDK script files.'
       );
-      setStatus('attention', 'QR code not recognised', 'Scan the QR code shown on the student dashboard.');
+      setStatus('error', 'Scanner module missing', 'Reload the kiosk to load the fingerprint SDK.');
       return;
     }
 
-    const decoded = analysis.token;
-    busy = true;
+    // One session per open event: the first tap wakes the reader and every
+    // later placement arrives through the SamplesAcquired handler, so the
+    // scanner stays live until the event ends.
+    if (fingerprintSessionActive) {
+      restartFingerprintAcquisition(fingerprintReader);
+      return;
+    }
+
     resetIdleTimer();
-    els.resultOverlay.hidden = true;
+    if (els.resultOverlay) els.resultOverlay.hidden = true;
     setStepState(3);
-    setStatus('processing', 'Verifying QR', 'The server is checking this code against your enrollment.');
+    els.scanBtn.disabled = true;
+    setStatus('scanning', 'Reading fingerprint', 'Place your finger on the U.are.U 4500 sensor.');
 
     try {
-      // The browser sends only the QR token text. The server looks it
-      // up by unique index and returns the student's name.
-      const record = await api.qrCheckIn(event.id, decoded, scanMode);
-      const action = record.action === 'out' ? 'out' : 'in';
-      const studentName = record.studentName || 'Student';
-      addServerRecord(record, event.id);
-      const stamp = action === 'out'
-        ? (record.checkOutTimeLabel || record.time)
-        : record.time;
-      showResult(
-        'success',
-        action === 'out' ? `Goodbye, ${studentName}!` : `Welcome, ${studentName}!`,
-        action === 'out' ? 'Check-out recorded.' : 'Attendance recorded.',
-        `<strong>${escapeHtml(event.name)}</strong> · ${escapeHtml(stamp || new Date().toLocaleTimeString())}`
+      await startFingerprintSession();
+      setScanAvailability(
+        true,
+        'Scanner active',
+        'Place your finger on the sensor; the reader stays on until the event ends.'
       );
-      setStatus(
-        'success',
-        action === 'out' ? 'Checked out' : 'Checked in',
-        action === 'out' ? 'Check-out saved. You can go ahead.' : 'Attendance saved. You can go ahead.'
-      );
-      resetIdleTimer();
+      setStationState(true, 'Scanner ready');
+      setStatus('scanning', 'Place your finger', 'Rest your finger on the U.are.U 4500 sensor.');
     } catch (err) {
-      if (isSessionError(err)) {
-        lockStation('Station locked. Officer session expired — sign in again.', { endSession: true });
-        return;
-      }
-
-      const code = err.code || 'device-error';
-      const map = {
-        'duplicate_checkin': ['Already checked in', 'This student is already checked in for this event.'],
-        'duplicate_checkout': ['Already checked out', 'This student has already checked out for this event.'],
-        'not_checked_in':    ['Not checked in', 'This student has no check-in for this event, so there is nothing to check out.'],
-        'checkin_closed':    ['Check-in closed', 'This event is outside its check-in window.'],
-        'checkout_closed':   ['Check-out closed', 'This event is outside its check-out window.'],
-        'event_unavailable': ['Attendance unavailable', 'This event is not accepting attendance right now.'],
-        'event_not_found':   ['Event not found', 'The selected event no longer exists. Refresh the event list.'],
-        'invalid_field':     ['Scan rejected', 'The scan could not be verified. Try again in better light.'],
-        'rate_limited':      ['Please wait', 'Too many scans were sent at once. Try again in a moment.'],
-        'network_error':     ['Server unreachable', 'The attendance server did not respond. Check the connection and try again.'],
-        'permission-denied': ['Camera blocked', 'Allow camera access in your browser, then reselect the event to retry.'],
-        'device-error':      ['Camera unavailable', 'Close other apps using the camera and try again, or use manual entry.'],
-        'model-error':       ['QR scanner unavailable', 'The QR scanner library could not load. Serve the kiosk on localhost and refresh the page.'],
-        'no-qr':             ['No QR code detected', 'Hold your check-in QR code in front of the camera.'],
-        'invalid_qr':        ['Invalid QR code', 'This code is not a valid check-in code. Use the code from your dashboard.'],
-        'invalid_qr_event':  ['Wrong event QR code', 'This QR code belongs to a different event. Select the event on the student dashboard and scan the new code.'],
-      };
-      if (code === 'duplicate_checkin' || code === 'duplicate_checkout' || code === 'not_checked_in') {
-        showResult('already', map[code][0], map[code][1], '');
-        setStatus('attention', map[code][0], 'No action needed.');
-        return;
-      }
-      if (code === 'checkin_closed' || code === 'checkout_closed' || code === 'event_unavailable' || code === 'event_not_found') {
-        showResult('no-event', map[code][0], map[code][1], '');
-        setStatus('error', map[code][0], 'Choose another event, scan mode, or ask the SSC officer.');
-        return;
-      }
-      const [title, message] = map[code] || ['Scan failed', 'Something went wrong. Try again or use manual entry.'];
-      const type = map[code] ? code : 'device-error';
-      showResult(type, title, message, '');
+      const code = err && err.code ? err.code : 'scanner_unavailable';
+      const detail = FINGERPRINT_ERRORS[code] || FINGERPRINT_ERRORS['scanner_unavailable'];
+      showResult(detail[0], detail[1], detail[2], '');
       setStatus(
-        'error',
-        title,
-        'Use manual entry below if this keeps happening.'
+        detail[0] === 'no-match' ? 'attention' : 'error',
+        detail[1],
+        detail[3]
       );
-
-      if (code === 'permission-denied' || code === 'device-error') {
-        setCameraState(false, 'Camera offline');
-        showCameraPlaceholder('camera-video-off', 'Camera unavailable — use manual entry');
+      if (code === 'scanner_not_found' || code === 'scanner_unavailable' || code === 'scanner_disconnected') {
+        setStationState(false, 'Scanner offline');
       }
-    } finally {
-      busy = false;
-      // Keep the camera running between successful scans. It is stopped
-      // only by station lock/event lifecycle logic.
-      const activeEvent = getEvents().find((e) => sameId(e.id, currentEventId));
-      syncCameraToEvent(activeEvent ? getEventPhase(activeEvent, scanMode) : 'none');
-      resetIdleTimer();
     }
+    resetIdleTimer();
   }
 
   // ── Manual fallback (server-authorized override) ──
@@ -1008,8 +1466,7 @@
     setScanAvailability(false, 'API required', 'Set API_BASE_URL in js/api.js, then reload.');
     setModeButtonsEnabled(false);
     setStatus('error', 'API required', 'Set API_BASE_URL in js/api.js, then reload this page.');
-    setCameraState(false, 'API required');
-    showCameraPlaceholder('exclamation-triangle', 'API not configured');
+    setStationState(false, 'API required');
     if (els.manualToggle) {
       els.manualToggle.disabled = true;
       els.manualToggle.setAttribute('aria-expanded', 'false');
@@ -1035,8 +1492,9 @@
       scanHint:     $('kioskScanHint'),
       steps:        document.querySelectorAll('.kiosk-steps li'),
       scanBtn:      $('kioskScanBtn'),
-      scanCtaTitle: document.querySelector('.kiosk-scan-cta strong'),
-      scanCtaDetail: document.querySelector('.kiosk-scan-cta small'),
+      scanCtaTitle: $('kioskScanCtaTitle'),
+      scanCtaDetail: $('kioskScanCtaDetail'),
+      fingerprintState: $('kioskFingerprintState'),
       count:        $('kioskCount'),
       listCount:    $('kioskListCount'),
       attendancePct: $('kioskAttendancePct'),
@@ -1055,8 +1513,6 @@
       manualId:     $('manualStudentId'),
       manualInput:  $('manualStudentId'),
       manualSubmit: document.querySelector('#kioskManualForm button[type="submit"]'),
-      camera:       $('kioskCamera'),
-      cameraPlaceholder: $('kioskCameraPlaceholder'),
       stationState: $('kioskStationState'),
       stationDot:   $('kioskStationDot'),
       clockTime:    $('kioskClockTime'),
@@ -1100,11 +1556,9 @@
       }, { passive: true });
     });
 
-    els.event.addEventListener('change', async () => {
+    els.event.addEventListener('change', () => {
+      stopFingerprintSession();
       const chosen = getEvents().find((e) => sameId(e.id, els.event.value));
-      if (!sameId(currentEventId, chosen && chosen.id)) {
-        await stopCamera('Camera switching', 'Changing event. The scanner will restart automatically.', 'calendar2-event');
-      }
       currentEventId = chosen ? chosen.id : null;
       renderEventHeader();
       updateCounts();
@@ -1115,6 +1569,27 @@
     [[els.modeIn, 'in'], [els.modeOut, 'out']].forEach(([button, mode]) => {
       if (!button) return;
       button.addEventListener('click', () => setScanMode(mode));
+    });
+
+    // Capture starts from this click, and the kiosk holds page focus while
+    // it waits because the Web SDK pauses scanning when the page blurs.
+    els.scanBtn.addEventListener('click', () => {
+      runFingerprintScan().catch(() => {
+        showToast('error', 'The scan did not finish. Please try again.');
+        showResult('server-error', 'Scan failed', 'The fingerprint scan did not finish. Please try again.', '');
+      });
+    });
+
+    // The Web SDK pauses scanning when the page loses focus, so resume the
+    // live session whenever the station is focused again.
+    window.addEventListener('focus', () => {
+      if (fingerprintSessionActive) restartFingerprintAcquisition(fingerprintReader);
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && fingerprintSessionActive) restartFingerprintAcquisition(fingerprintReader);
+    });
+    window.addEventListener('pagehide', () => {
+      stopFingerprintSession();
     });
 
     // Manual entry collapse
@@ -1143,10 +1618,10 @@
     if (els.resultDone) {
       els.resultDone.addEventListener('click', () => {
         els.resultOverlay.hidden = true;
-        // The student may still be holding the same QR code. Restart the
-        // repeat window so it is not recorded twice in a row.
-        lastHandledQrScanAt = Date.now();
-        setStatus('idle', `Waiting for ${actionWord(scanMode)}`, `Hold the student QR code in the frame to ${actionWord(scanMode)}.`);
+        // Returning the station to the current event re-enables the
+        // fingerprint button and resets the instruction state.
+        renderEventHeader();
+        setStationState(true, 'Scanner ready');
         resetIdleTimer();
       });
     }
@@ -1154,9 +1629,11 @@
     showLock('Sign in to unlock this check-in station.');
     restoreSession();
 
-    // Refresh the countdown periodically once unlocked.
+    // Refresh the countdown and event window periodically once unlocked.
+    // Never while a capture is in flight, so the button cannot re-enable
+    // halfway through a scan.
     setInterval(() => {
-      if (unlocked) renderEventHeader();
+      if (unlocked && !busy) renderEventHeader();
     }, 20000);
   }
 

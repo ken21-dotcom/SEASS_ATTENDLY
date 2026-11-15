@@ -168,10 +168,15 @@ function workingApi() {
   const dataJs = fs.readFileSync(path.join(ROOT, 'student-attendance-system/js/data.js'), 'utf8');
   const administratorPanelJs = fs.readFileSync(path.join(ROOT, 'student-attendance-system/js/administrator-panel.js'), 'utf8');
 
-  ok('kiosk sends scans to the verified QR endpoint', /api\.qrCheckIn\(/.test(kioskJs));
+  ok('kiosk sends only the extracted template to the server',
+    /new window\.dp\.devices\.FingerprintReader\(/.test(kioskJs) &&
+    /api\.extractFingerprintTemplate\(/.test(kioskJs) &&
+    /api\.fingerprintCheckIn\(/.test(kioskJs) &&
+    !/console\.(log|info|debug|warn|error)\([^)]*(sample|Data|template)/i.test(kioskJs) &&
+    !/(localStorage|sessionStorage)/.test(kioskJs));
   ok('kiosk never matches descriptors locally',
     !/\.identify\(/.test(kioskJs) && !/findBestMatch/.test(kioskJs));
-  ok('kiosk server call is gated on isApiEnabled', /async function runQrScan\(\) \{\s*if \(!isApiEnabled\(\)\)/.test(kioskJs));
+  ok('kiosk server call is gated on isApiEnabled', /async function runFingerprintScan\(\) \{\s*if \(!isApiEnabled\(\)\)/.test(kioskJs));
   ok('kiosk keeps the server attendance row', /addServerRecord\(record, event\.id\)/.test(kioskJs));
   ok('kiosk keeps the excused flag', /excused: false/.test(kioskJs));
   ok('kiosk surfaces a server failure', /'server-error'/.test(kioskJs));
@@ -222,7 +227,7 @@ function workingApi() {
   const syncedWrites = [
     ['event create is wired', /function syncEventToServer/.test(sscJs)],
     ['event delete is wired', /function syncEventDeleteToServer/.test(sscJs)],
-    ['kiosk check-in is wired', /api\.qrCheckIn\(/.test(kioskJs)],
+    ['kiosk manual check-in is wired', /api\.manualCheckIn\(/.test(kioskJs)],
   ];
   for (const [name, wired] of syncedWrites) {
     ok(`${name} and is documented as synced`, wired);

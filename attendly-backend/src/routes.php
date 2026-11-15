@@ -66,6 +66,37 @@ function attendly_route(string $path, string $method, array $ctx): array
         );
     };
 
+    /**
+     * Kiosk fingerprint check-in.
+     *
+     * The browser sends the template produced by the WebUSB capture bridge.
+     * The server resolves the active student by direct template comparison
+     * and then reuses the same attendance policy engine as QR check-in.
+     * Only a signed-in officer or administrator may call this route.
+     */
+    $fingerprintCheckIn = function () use ($repo, $auth, $ctx): array {
+        $officer = $auth->requireRole(['admin', 'ssc-officer']);
+        $ctx['limiter']->consume('fingerprint-checkin-user', (string) $officer['id'], 300, 60);
+
+        $body = Response::body();
+        $action = strtolower(trim((string) ($body['action'] ?? 'in')));
+        if (!in_array($action, ['in', 'out'], true)) {
+            Response::fail('invalid_field', 'Field "action" must be "in" or "out".', 422);
+        }
+
+        return $repo->checkInByFingerprint(
+            Response::requireBodyId($body, 'eventId'),
+            Response::requireString($body, 'fingerprintTemplate'),
+            $action,
+            (int) ($ctx['config']['tunables']['checkin_open_minutes_before'] ?? 30),
+            (int) ($ctx['config']['tunables']['checkin_close_minutes_after'] ?? 360),
+            (string) ($ctx['config']['tunables']['timezone'] ?? 'Asia/Manila'),
+            (int) ($ctx['config']['tunables']['late_grace_minutes'] ?? 15),
+            (int) ($ctx['config']['tunables']['checkout_open_minutes_before_end'] ?? 60),
+            (int) ($ctx['config']['tunables']['checkout_close_minutes_after_end'] ?? 60)
+        );
+    };
+
     $routes = [
         // ── Health ──
         ['GET', '/health', function () use ($ctx): array {
@@ -133,6 +164,22 @@ function attendly_route(string $path, string $method, array $ctx): array
             );
             return ['ok' => true];
         }],
+        ['POST', '/auth/forgot-password', function () use ($repo, $ctx): array {
+            $ctx['limiter']->consume('forgot-password-ip', (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 20, 900);
+            $body = Response::body();
+            $email = Response::requireString($body, 'email');
+            $ctx['limiter']->consume('forgot-password-account', strtolower(trim($email)), 10, 900);
+            return $repo->createPasswordReset($email);
+        }],
+        ['POST', '/auth/reset-password', function () use ($repo, $ctx): array {
+            $ctx['limiter']->consume('reset-password-ip', (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 20, 900);
+            $body = Response::body();
+            return $repo->resetPassword(
+                Response::requireString($body, 'email'),
+                Response::requireString($body, 'otp'),
+                Response::requireString($body, 'password')
+            );
+        }],
 
         // ── Users ──
         ['GET', '/users', function () use ($repo, $auth): array {
@@ -168,8 +215,27 @@ function attendly_route(string $path, string $method, array $ctx): array
                 $admin
             );
         }],
+        // Admin/SSC enrollment: capture happens in the browser, then the
+        // opaque template is stored against one student profile.
+        ['POST', '/users/enroll-fingerprint', function () use ($repo, $auth, $ctx): array {
+            $actor = $auth->requireRole(['admin', 'ssc-officer']);
+            $ctx['limiter']->consume('fingerprint-enroll-user', (string) $actor['id'], 60, 60);
+            $body = Response::body();
+            return $repo->enrollFingerprint(
+                Response::requireBodyId($body, 'studentId'),
+                Response::requireString($body, 'fingerprintTemplate'),
+                $actor
+            );
+        }],
         // Literal "/users/me/*" routes must precede "/users/:id/*" so the
         // router does not try to parse "me" as a numeric user id.
+        // A student's own absence-based standing. The session id is the only
+        // student this endpoint reports on, so no client-supplied id can widen
+        // the scope to another record.
+        ['GET', '/users/me/sanctions', function () use ($repo, $auth): array {
+            $student = $auth->requireRole(['student']);
+            return $repo->getStudentSanctionStatus((int) $student['id']);
+        }],
         ['PATCH', '/users/me/profile', function () use ($repo, $auth): array {
             $viewer = $auth->requireRole(['student']);
             $body = Response::body();
@@ -339,6 +405,10 @@ function attendly_route(string $path, string $method, array $ctx): array
                 query_string('program')
             );
         }],
+        ['POST', '/reports/sanctions/notify', function () use ($repo, $auth): array {
+            $admin = $auth->requireRole(['admin']);
+            return $repo->notifySanctionedStudents($admin);
+        }],
         ['GET', '/attendance-corrections', function () use ($repo, $auth): array {
             $viewer = $auth->requireRole(['admin', 'ssc-officer', 'student']);
             return $repo->listAttendanceCorrectionRequests(
@@ -379,7 +449,11 @@ function attendly_route(string $path, string $method, array $ctx): array
                 $reviewer
             );
         }],
-        // ── QR check-in (the current kiosk front door) ──
+        // ── Fingerprint check-in (the current kiosk front door) ──
+        // The officer-gated route resolves an active student by fingerprint
+        // template, then applies the same attendance policy as the QR path.
+        ['POST', '/attendance/fingerprint', $fingerprintCheckIn],
+        // ── QR check-in (kept during the fingerprint transition) ──
         // The officer-gated QR path verifies the HMAC and event scope before
         // resolving the active student id carried inside the token.
         ['POST', '/attendance/qr-check-in', $qrCheckIn],

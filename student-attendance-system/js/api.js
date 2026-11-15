@@ -348,6 +348,22 @@ var api = {
     });
   },
 
+  forgotPassword: function (email) {
+    return request('/auth/forgot-password', {
+      method: 'POST',
+      body: { email: email },
+      anonymous: true,
+    });
+  },
+
+  resetPassword: function (email, otp, password) {
+    return request('/auth/reset-password', {
+      method: 'POST',
+      body: { email: email, otp: otp, password: password },
+      anonymous: true,
+    });
+  },
+
   listUsers: function (status, role) {
     var params = [];
     if (status) params.push('status=' + encodeURIComponent(status));
@@ -371,6 +387,27 @@ var api = {
       method: 'PATCH',
       body: profile,
       validate: function (user) { return !!user && user.id !== undefined && user.role === 'student'; },
+    });
+  },
+
+  /**
+   * Store the template produced by the WebUSB fingerprint bridge against a
+   * student profile. Admin and SSC-officer sessions only.
+   *
+   * @param {number|string} studentId user id of the student
+   * @param {string} fingerprintTemplate opaque template from the scanner
+   * @returns {Promise<{ok:boolean,studentId:number,studentName:string,fingerprintEnrolled:boolean}>}
+   */
+  enrollFingerprint: function (studentId, fingerprintTemplate) {
+    return request('/users/enroll-fingerprint', {
+      method: 'POST',
+      body: {
+        studentId: studentId,
+        fingerprintTemplate: fingerprintTemplate,
+      },
+      validate: function (result) {
+        return !!result && result.ok === true && result.fingerprintEnrolled === true;
+      },
     });
   },
 
@@ -405,12 +442,17 @@ var api = {
    * @returns {Object} request body for POST/PATCH /events
    */
   toEventPayload: function (event, endTime) {
-    var start = event.time || '00:00';
+    var dynamic = event && event._dynamicTimes ? event._dynamicTimes : {};
+    var start = dynamic.startTime || (event && (event.startTime || event.time)) || '00:00';
+    var end = dynamic.endTime || (event && event.endTime) || endTime;
+    if (!end || end === '') {
+      end = addHour(start);
+    }
     return {
       name: event.name,
       date: event.date,
       startTime: start,
-      endTime: endTime || addHour(start),
+      endTime: end,
       venue: event.location,
       // Mandatory (attendance required) and major/minor (report grouping)
       // are separate fields. Older local events only carry `type`, so fall
@@ -523,6 +565,12 @@ var api = {
     });
   },
 
+  notifySanctionedStudents: function () {
+    return request('/reports/sanctions/notify', {
+      method: 'POST',
+    });
+  },
+
   listAttendanceCorrections: function () {
     return request('/attendance-corrections', { validate: Array.isArray });
   },
@@ -591,6 +639,53 @@ var api = {
         return !!row && row.studentId !== undefined && typeof row.studentName === 'string';
       },
     });
+  },
+
+  /**
+   * Match a captured fingerprint template at the kiosk and record the
+   * check-in or check-out. The server resolves the student; the browser
+   * never sends a name or id.
+   *
+   * @param {number|string} eventId
+   * @param {string} fingerprintTemplate
+   * @param {string} [action='in'] 'in' or 'out'
+   * @returns {Promise<Object>} the attendance row plus studentName/action
+   */
+  fingerprintCheckIn: function (eventId, fingerprintTemplate, action) {
+    return request('/attendance/fingerprint', {
+      method: 'POST',
+      anonymous: true,
+      body: {
+        eventId: eventId,
+        fingerprintTemplate: fingerprintTemplate,
+        action: action === 'out' ? 'out' : 'in',
+      },
+      validate: function (row) {
+        return !!row && row.studentId !== undefined && typeof row.studentName === 'string';
+      },
+    });
+  },
+
+  /**
+   * Extract the opaque template string from a captured fingerprint sample.
+   * The Web SDK returns the sample as { Data, ... }; the kiosk sends Data
+   * to the server and never stores or displays it.
+   *
+   * @param {Object} sample
+   * @returns {string|null}
+   */
+  extractFingerprintTemplate: function (sample) {
+    if (!sample) return null;
+    const data = sample.Data;
+    if (typeof data === 'string' && data.length) return data;
+    if (data && typeof data.byteLength === 'number') {
+      try {
+        return String.fromCharCode.apply(null, new Uint8Array(data));
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
   },
 
   manualCheckIn: function (eventId, studentId, action) {

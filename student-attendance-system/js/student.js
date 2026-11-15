@@ -78,6 +78,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     await initProfilePage(user);
   }
 
+  // On sanctions page: load the student's own absence-based standing.
+  if (document.getElementById('sanctionStatusBody')) {
+    loadStudentSanctions();
+  }
+
   // On attendance page: load attendance records
   if (document.getElementById('attendanceTableBody')) {
     loadStudentAttendance(user.id);
@@ -85,6 +90,85 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   });
+
+/**
+ * Load the signed-in student's own absence-based standing.
+ *
+ * This is deliberately a server read. The legacy `attendly_sanctions`
+ * localStorage cache held manual sanction records, which no longer exist,
+ * so reading it made every student look like they were in good standing.
+ */
+async function loadStudentSanctions() {
+  const body = document.getElementById('sanctionStatusBody');
+  if (!body) return;
+
+  try {
+    const summary = await api.getMySanctions();
+    renderStudentSanctionStatus(summary);
+  } catch (error) {
+    body.innerHTML =
+      '<div class="d-flex align-items-start gap-3" role="alert" style="' + standingBoxStyle('var(--color-text-warning)') + '">' +
+        '<i class="bi bi-exclamation-triangle-fill fs-4" aria-hidden="true" style="color:var(--color-text-warning);"></i>' +
+        '<p class="mb-0" style="color:var(--color-text-primary);">' +
+          escapeHtml(error && error.message ? error.message : 'Could not load your sanction status.') +
+        '</p>' +
+      '</div>';
+  }
+}
+
+/**
+ * Shared surface for the standing box. Built from theme tokens rather than
+ * Bootstrap's alert-* classes: those keep a light background in dark mode
+ * while our theme turns the label light, which made the text invisible.
+ *
+ * @param {string} accentToken CSS colour (token reference) for the left bar
+ */
+function standingBoxStyle(accentToken) {
+  return 'background:var(--color-bg-card);' +
+    'border:1px solid var(--color-border-default);' +
+    'border-left:4px solid ' + accentToken + ';' +
+    'border-radius:var(--radius-md, 12px);' +
+    'padding:14px 16px;' +
+    'color:var(--color-text-primary);';
+}
+
+/**
+ * Paint the absence total and the flagged / good-standing card.
+ *
+ * @param {{totalAbsences:number,status:string}} summary
+ */
+function renderStudentSanctionStatus(summary) {
+  const body = document.getElementById('sanctionStatusBody');
+  if (!body) return;
+
+  const totalAbsences = Number(summary && summary.totalAbsences) || 0;
+  const flagged = !!summary && summary.status === 'Flagged for Sanction';
+  const absencesLine =
+    '<p class="mb-0" style="color:var(--color-text-primary);">You currently have ' + totalAbsences + ' total absences.</p>';
+
+  if (flagged) {
+    body.innerHTML =
+      '<div class="d-flex align-items-start gap-3 mb-3" role="alert" style="' + standingBoxStyle('var(--color-danger)') + '">' +
+        '<i class="bi bi-exclamation-octagon-fill fs-4" aria-hidden="true" style="color:var(--color-text-danger);"></i>' +
+        '<div>' +
+          '<h2 class="h6 mb-1" style="color:var(--color-text-heading);">Flagged for Sanction</h2>' +
+          '<p class="mb-0" style="color:var(--color-text-primary);">You are flagged for a sanction. Please contact the SSC office.</p>' +
+        '</div>' +
+      '</div>' +
+      absencesLine;
+    return;
+  }
+
+  body.innerHTML =
+    '<div class="d-flex align-items-start gap-3 mb-3" role="status" style="' + standingBoxStyle('var(--color-text-success)') + '">' +
+      '<i class="bi bi-check-circle-fill fs-4" aria-hidden="true" style="color:var(--color-text-success);"></i>' +
+      '<div>' +
+        '<h2 class="h6 mb-1" style="color:var(--color-text-heading);">Good Standing</h2>' +
+        '<p class="mb-0" style="color:var(--color-text-primary);">You are not flagged for a sanction.</p>' +
+      '</div>' +
+    '</div>' +
+    absencesLine;
+}
 
 /** Write static profile text, falling back to an em dash when empty. */
 function setProfileText(id, value) {

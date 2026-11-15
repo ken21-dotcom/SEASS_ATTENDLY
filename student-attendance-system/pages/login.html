@@ -118,7 +118,7 @@
   </div>
 
   <!-- Forgot password placeholder modal -->
-  
+
 
   <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1090;"></div>
 
@@ -133,16 +133,68 @@
   <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Forgot password?</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p class="mb-0">Password reset isn't available in this prototype yet. Please contact an administrator if you need help signing in.</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
+        <form id="forgotPasswordForm" novalidate>
+          <div class="modal-header">
+            <h5 class="modal-title">Reset password</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="resetError" class="d-none text-danger small mb-3" role="alert"></div>
+
+            <!-- Step 1: Enter Email -->
+            <div id="resetStep1">
+              <p class="text-muted small mb-3">Enter the email associated with your account and we will send you a 6-digit OTP.</p>
+              <div class="mb-3">
+                <label for="resetEmail" class="form-label auth-label-uppercase">EMAIL ADDRESS</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <input type="email" class="form-control" id="resetEmail" name="email" placeholder="name@example.com" required
+                    style="background: var(--color-bg-input); color: var(--color-text-primary); border: 1px solid var(--color-border-default);">
+                  <div class="invalid-feedback">Enter a valid email address.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: Enter OTP and New Password -->
+            <div id="resetStep2" style="display: none;">
+              <p class="text-muted small mb-3" id="resetStep2Msg">Check your email for the 6-digit OTP and enter it below with your new password.</p>
+              <div class="mb-3">
+                <label for="resetOtp" class="form-label auth-label-uppercase">6-DIGIT OTP</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                  <input type="text" class="form-control otp-input" id="resetOtp" name="otp" placeholder="123456" required maxlength="6" pattern="\d{6}"
+                    style="background: var(--color-bg-input); color: var(--color-text-primary); border: 1px solid var(--color-border-default); text-align: center; letter-spacing: 0.5em; font-size: 1.5rem;">
+                  <div class="invalid-feedback">Enter the 6-digit OTP from your email.</div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="resetNewPassword" class="form-label auth-label-uppercase">NEW PASSWORD</label>
+                <div class="input-group input-group-password">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input type="password" class="form-control" id="resetNewPassword" name="newPassword" placeholder="New password" required minlength="8"
+                    style="background: var(--color-bg-input); color: var(--color-text-primary); border: 1px solid var(--color-border-default);">
+                  <button type="button" class="input-group-text auth-password-toggle" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                  <div class="invalid-feedback">Password must be at least 8 characters with a letter and a number.</div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="resetConfirmPassword" class="form-label auth-label-uppercase">CONFIRM PASSWORD</label>
+                <div class="input-group input-group-password">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input type="password" class="form-control" id="resetConfirmPassword" name="confirmPassword" placeholder="Confirm password" required minlength="8"
+                    style="background: var(--color-bg-input); color: var(--color-text-primary); border: 1px solid var(--color-border-default);">
+                  <button type="button" class="input-group-text auth-password-toggle" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                  <div class="invalid-feedback">Passwords do not match.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary d-none" id="resetBackBtn">Back</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary" id="resetSubmitBtn">Send OTP</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

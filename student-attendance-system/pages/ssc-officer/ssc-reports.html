@@ -10,7 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
   <link href="../../css/styles.css" rel="stylesheet">
   <link href="../../css/dark-style.css" rel="stylesheet">
-  <link href="../../css/reports.css?v=20261107b" rel="stylesheet">
+  <link href="../../css/reports.css?v=20261111c" rel="stylesheet">
 </head>
 <body class="role-dashboard-page">
   <a href="#main-content" class="visually-hidden focusable">Skip to main content</a>
@@ -42,9 +42,9 @@
       <section class="dashboard-card mb-4 report-hide-print" aria-labelledby="correctionReviewHeading"><div class="card-heading"><div><p class="section-kicker">Student requests</p><h2 id="correctionReviewHeading">Attendance corrections</h2><p class="records-caption">Approving a request updates the attendance record and marks it as manually verified.</p></div></div><div class="table-responsive"><table class="table correction-review-table"><caption class="visually-hidden">Attendance correction requests awaiting or completed review</caption><thead><tr><th scope="col">Student</th><th scope="col">Event</th><th scope="col">Requested time</th><th scope="col">Reason</th><th scope="col">Proof</th><th scope="col">Status</th><th scope="col">Review</th></tr></thead><tbody id="attendanceCorrectionsBody"><tr><td colspan="7" class="text-muted">Loading requests…</td></tr></tbody></table></div></section>
 
       <div class="report-tabs-container">
-        <div class="report-tabs">
-          <button type="button" class="report-tab active" data-tab="attendance">Attendance Report</button>
-          <button type="button" class="report-tab" data-tab="sanction">Sanction Reports</button>
+        <div class="report-tabs" role="tablist" aria-label="Report type">
+          <button type="button" class="report-tab active" id="attendanceTab" role="tab" aria-controls="attendancePane" aria-selected="true" tabindex="0" data-tab="attendance">Attendance Report</button>
+          <button type="button" class="report-tab" id="sanctionTab" role="tab" aria-controls="sanctionPane" aria-selected="false" tabindex="-1" data-tab="sanction">Sanction Reports</button>
         </div>
       </div>
 
@@ -113,39 +113,53 @@
             <div id="attendancePrintSections" class="attendance-print-sections"></div>
             <p class="report-generated-note" id="reportGeneratedNote" aria-live="polite"></p>
           </section>
-        </div>        <div class="tab-pane fade" id="sanctionPane" role="tabpanel" aria-labelledby="sanctionTab" tabindex="0">
+        </div>
+        <div class="tab-pane fade" id="sanctionPane" role="tabpanel" aria-labelledby="sanctionTab" tabindex="0">
           <section class="report-sheet" id="sanctionReportSection" aria-labelledby="sanctionReportHeading">
               <h2 class="visually-hidden" id="sanctionReportHeading">Sanction and absence report</h2>
 
               <div class="sanction-report-toolbar report-hide-print">
-                <div class="row g-3 align-items-end sanction-filter-row">
-                  <div class="col-md-3 sanction-event-field">
-                    <label class="form-label" for="filterEvent">Events</label>
-                    <select class="form-select" id="filterEvent" multiple aria-describedby="filterEventHint" title="Leave empty for all events (semester view). Ctrl/Cmd-click to select multiple events."></select>
-                    <small class="form-text visually-hidden" id="filterEventHint">Leave empty for all events (semester view). Ctrl/Cmd-click to select multiple events.</small>
+                <div class="sanction-filter-bar">
+                  <div class="sanction-filter-actions" role="group" aria-label="Sanction report actions">
+                    <button class="btn btn-success" id="printSanctionBtn" type="button"><i class="bi bi-printer" aria-hidden="true"></i> Print Report</button>
+                    <button class="btn btn-outline-success" id="exportSanctionCsvBtn" type="button"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> Export CSV</button>
+                    <button class="btn btn-link sanction-clear-link" id="filterEventClear" type="button">Clear Filters</button>
                   </div>
-                  <div class="col-md-3 sanction-semester-field">
-                    <label class="form-label" for="sanctionSemesterFilter">Semester</label>
-                    <select class="form-select" id="sanctionSemesterFilter">
-                      <option value="">All Semesters</option>
-                      <option value="1st Semester">1st Semester</option>
-                      <option value="2nd Semester">2nd Semester</option>
-                      <option value="Summer">Summer</option>
-                    </select>
-                  </div>
-                  <div class="col-md-2 sanction-department-field">
-                    <label class="form-label" for="sanctionDepartmentFilter">Department</label>
-                    <select class="form-select" id="sanctionDepartmentFilter"></select>
-                  </div>
-                  <div class="col-md-2 sanction-program-field">
-                    <label class="form-label" for="sanctionProgramFilter">Program</label>
-                    <select class="form-select" id="sanctionProgramFilter"></select>
-                  </div>
-                  <div class="col-md-2">
-                    <div class="sanction-filter-actions">
-                      <button class="btn btn-success" id="printSanctionBtn" type="button"><i class="bi bi-printer"></i> Print Report</button>
-                      <button class="btn btn-outline-success" id="exportSanctionCsvBtn" type="button"><i class="bi bi-file-earmark-spreadsheet"></i> Export CSV</button>
-                      <button class="btn btn-outline-success sanction-clear-link" id="filterEventClear" type="button">Clear filters</button>
+                  <div class="sanction-filter-fields">
+                    <div class="sanction-filter-field sanction-event-field">
+                      <span class="form-label" id="filterEventLabel">Events</span>
+                      <div class="dropdown sanction-event-dropdown">
+                        <button class="btn dropdown-toggle sanction-event-toggle" id="filterEventToggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-labelledby="filterEventLabel filterEventToggle" aria-describedby="filterEventHint">
+                          <span id="filterEventSummary">Select Events</span>
+                        </button>
+                        <div class="dropdown-menu sanction-event-menu" aria-labelledby="filterEventLabel">
+                          <label class="sanction-event-option sanction-event-all" for="filterEventAll">
+                            <input class="form-check-input" type="checkbox" id="filterEventAll">
+                            <span>All Events</span>
+                          </label>
+                          <div class="dropdown-divider"></div>
+                          <div id="filterEventOptions"></div>
+                          <p class="sanction-event-empty d-none" id="filterEventEmpty">No events available</p>
+                        </div>
+                      </div>
+                      <small class="form-text visually-hidden" id="filterEventHint">Leave unchecked for all events. Tick one or more events to narrow the report.</small>
+                    </div>
+                    <div class="sanction-filter-field sanction-semester-field">
+                      <label class="form-label" for="sanctionSemesterFilter">Semester</label>
+                      <select class="form-select" id="sanctionSemesterFilter">
+                        <option value="">All Semesters</option>
+                        <option value="1st Semester">1st Semester</option>
+                        <option value="2nd Semester">2nd Semester</option>
+                        <option value="Summer">Summer</option>
+                      </select>
+                    </div>
+                    <div class="sanction-filter-field sanction-department-field">
+                      <label class="form-label" for="sanctionDepartmentFilter">Department</label>
+                      <select class="form-select" id="sanctionDepartmentFilter"></select>
+                    </div>
+                    <div class="sanction-filter-field sanction-program-field">
+                      <label class="form-label" for="sanctionProgramFilter">Program</label>
+                      <select class="form-select" id="sanctionProgramFilter"></select>
                     </div>
                   </div>
                 </div>
@@ -173,7 +187,7 @@
                 <div class="table-responsive sanction-summary-wrap">
                   <table class="table sanction-summary-table mb-0">
                     <caption class="visually-hidden">Summary of total absences and sanction status per student</caption>
-                    <thead><tr><th scope="col">Student ID</th><th scope="col">Name</th><th scope="col" class="text-center">Total Absences</th><th scope="col" class="text-center">For Sanction</th></tr></thead>
+                    <thead><tr><th scope="col">Student ID</th><th scope="col">Name</th><th scope="col" class="text-center">Total Absences</th></tr></thead>
                     <tbody id="sanctionSummaryBody"><tr><td colspan="4" class="text-center text-muted py-4">Loading summary…</td></tr></tbody>
                   </table>
                 </div>
@@ -192,7 +206,6 @@
             </section>
           </div>
         </div>
-      </section>
     </main>
   </div>
   
@@ -203,7 +216,8 @@
   <script src="../../js/data.js"></script>
   <script src="../../js/auth.js"></script>
   <script src="../../js/ui.js"></script>
-  <script src="../../js/vendor/xlsx.full.min.js"></script>      <script src="../../js/reports.js?v=20261107b"></script>
+  <script src="../../js/vendor/xlsx.full.min.js"></script>
+  <script src="../../js/reports.js?v=20261111b"></script>
   <script src="../../js/ssc.js"></script>
 
 

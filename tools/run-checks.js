@@ -11,6 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
@@ -62,14 +63,14 @@ for (const file of htmlFiles) {
   const html = fs.readFileSync(file, 'utf8');
   const blocks = [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)];
   blocks.forEach((m, i) => {
-    const tmp = path.join(ROOT, '.syntax-check.tmp.js');
+    const tmp = path.join(os.tmpdir(), `.syntax-check-${Date.now()}-${i}.tmp.js`);
     fs.writeFileSync(tmp, m[1]);
     try {
       execFileSync(process.execPath, ['--check', tmp], { stdio: 'pipe' });
     } catch (e) {
       report(`${path.basename(file)} block ${i + 1}`, false, String(e.stderr || e.message).split('\n')[0]);
     } finally {
-      fs.unlinkSync(tmp);
+      try { fs.unlinkSync(tmp); } catch {}
     }
     inlineCount++;
   });
@@ -169,7 +170,7 @@ report('no references to admin.js / admin-panel.js', stale === 0);
 
 /* ── 5. Behavioural suites ──────────────────────────────────────── */
 
-for (const suite of ['tools/escaping.test.js', 'tools/api-contract.test.js', 'tools/hydration.test.js', 'tools/qr-scan.test.js', 'tools/data-storage.test.js', 'tools/first-run.test.js', 'tools/d5-ui.test.js', 'tools/global-search.test.js', 'tools/d6-id-normalization.test.js', 'tools/student-org.test.js', 'tools/student-attendance-rate.test.js', 'tools/weather.test.js']) {
+for (const suite of ['tools/escaping.test.js', 'tools/api-contract.test.js', 'tools/hydration.test.js', 'tools/fingerprint-scan.test.js', 'tools/data-storage.test.js', 'tools/first-run.test.js', 'tools/d5-ui.test.js', 'tools/global-search.test.js', 'tools/d6-id-normalization.test.js', 'tools/student-org.test.js', 'tools/student-attendance-rate.test.js', 'tools/weather.test.js']) {
   section(path.basename(suite));
   try {
     const out = execFileSync(process.execPath, [path.join(ROOT, suite)], { stdio: 'pipe' });

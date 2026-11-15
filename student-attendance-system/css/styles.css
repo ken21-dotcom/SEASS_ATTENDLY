@@ -189,3 +189,52 @@
   background: var(--color-bg-card-elevated);
   border-color: var(--color-border-default);
 }
+
+/* ========================================
+   Fingerprint Enrollment Modal
+   (Admin + SSC "Manage Students")
+   ======================================== */
+
+.fingerprint-enroll-body { text-align: center; }
+.fingerprint-enroll-visual {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  margin: 4px auto 14px;
+  border-radius: 50%;
+  background: var(--color-bg-success-light);
+  border: 1px solid var(--brand-200);
+  color: var(--brand-600);
+}
+.fingerprint-enroll-visual .bi {
+  font-size: 3.4rem;
+  line-height: 1;
+}
+.fingerprint-enroll-student {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 750;
+  color: var(--color-text-heading);
+}
+.fingerprint-enroll-status {
+  margin: 0 0 10px;
+  font-size: .82rem;
+  color: var(--color-text-secondary);
+}
+.fingerprint-enroll-help {
+  margin: 0;
+  font-size: .74rem;
+  color: var(--color-text-muted);
+}
+.fingerprint-enroll-error {
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-danger-light, rgba(220, 38, 38, .08));
+  border: 1px solid rgba(220, 38, 38, .22);
+  color: var(--color-text-danger, #b91c1c);
+  font-size: .76rem;
+  font-weight: 600;
+  text-align: left;
+}

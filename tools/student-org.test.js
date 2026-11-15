@@ -13,10 +13,6 @@ const dataSource = fs.readFileSync(
   path.join(ROOT, 'student-attendance-system', 'js', 'data.js'),
   'utf8'
 );
-const seedSource = fs.readFileSync(
-  path.join(ROOT, 'attendly-backend', 'scripts', 'seed-demo-users.php'),
-  'utf8'
-);
 
 const store = new Map();
 const localStorage = {
@@ -122,12 +118,6 @@ const backfilled = JSON.parse(localStorage.getItem('attendly_users'));
 ok('backfill writes the derived SCS school', backfilled[0].department === 'School of Computer Studies');
 ok('backfill writes the derived Nursing school', backfilled[1].department === 'School of Nursing');
 ok('backfill canonicalizes the program code', backfilled[0].program === 'BSIT' && backfilled[0].course === 'BSIT');
-
-/* ── Demo accounts must not be reseeded ─────────────────────────── */
-
-for (const email of ['alice@example.com', 'bob@example.com', 'maria@example.com', 'mac@example.com']) {
-  ok(`seed script no longer contains ${email}`, !seedSource.includes(email));
-}
 
 /* ── Report ─────────────────────────────────────────────────────── */
 

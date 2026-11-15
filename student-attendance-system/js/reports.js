@@ -58,12 +58,42 @@
     return element ? element.value : '';
   }
 
+  function sanctionEventCheckboxes() {
+    var container = byId('filterEventOptions');
+    if (!container) return [];
+    return Array.prototype.slice.call(container.querySelectorAll('input[type="checkbox"]'));
+  }
+
   function selectedEventIds() {
-    var select = byId('filterEvent');
-    if (!select) return [];
-    return Array.prototype.filter.call(select.options, function (option) {
-      return option.selected && option.value !== '';
-    }).map(function (option) { return option.value; });
+    return sanctionEventCheckboxes().filter(function (checkbox) {
+      return checkbox.checked && checkbox.value !== '';
+    }).map(function (checkbox) { return checkbox.value; });
+  }
+
+  // Keeps the "All Events" checkbox, its mixed state, and the toggle label in
+  // sync with the individual event checkboxes.
+  function syncSanctionEventDropdown() {
+    var boxes = sanctionEventCheckboxes();
+    var checked = boxes.filter(function (checkbox) { return checkbox.checked; });
+    var all = byId('filterEventAll');
+    if (all) {
+      all.checked = boxes.length > 0 && checked.length === boxes.length;
+      all.indeterminate = checked.length > 0 && checked.length < boxes.length;
+    }
+
+    var summary = byId('filterEventSummary');
+    if (!summary) return;
+    if (!boxes.length) {
+      summary.textContent = 'No events available';
+    } else if (!checked.length) {
+      summary.textContent = 'Select Events';
+    } else if (checked.length === boxes.length) {
+      summary.textContent = 'All Events';
+    } else if (checked.length === 1) {
+      summary.textContent = checked[0].getAttribute('data-label') || '1 event selected';
+    } else {
+      summary.textContent = checked.length + ' events selected';
+    }
   }
 
   function fillSelect(select, placeholder, options, selected) {
@@ -455,7 +485,7 @@
         '<article class="stat-card">' +
           '<div class="stat-head"><span class="stat-label">Total Attendance Records</span><i class="stat-icon bi bi-clipboard-check" aria-hidden="true"></i></div>' +
           '<div class="stat-value">' + totalRecords + '</div>' +
-          '<div class="stat-foot">' + lateRecords + ' late' + (lateRecords ? ' · ' : '') + attendanceRate + '% rate</div>' +
+          '<div class="stat-foot">' + lateRecords + ' late · ' + attendanceRate + '% rate</div>' +
         '</article>' +
         '<article class="stat-card">' +
           '<div class="stat-head"><span class="stat-label">Late Records</span><i class="stat-icon bi bi-clock-history" aria-hidden="true"></i></div>' +
@@ -901,12 +931,12 @@
     if (!tbody) return;
 
     if (!events.length) {
-      tbody.innerHTML = emptyTableRow(4, 'No events match this filter', 'Choose another event or switch to the semester view.', 'bi-calendar-x');
+      tbody.innerHTML = emptyTableRow(3, 'No events match this filter', 'Choose another event or switch to the semester view.', 'bi-calendar-x');
       return;
     }
 
     if (!rows.length) {
-      tbody.innerHTML = emptyTableRow(4, 'No students match this filter', 'Try a different event or semester.', 'bi-people');
+      tbody.innerHTML = emptyTableRow(3, 'No students match this filter', 'Try a different event or semester.', 'bi-people');
       return;
     }
 
@@ -919,7 +949,6 @@
         '<td class="sanction-summary-name">' + escapeHtml(row.studentName || 'Unknown student') + '</td>' +
         '<td class="sanction-summary-absences' + (absencesValue ? '' : ' is-zero') + '">' +
           absencesValue + (forSanction ? ' <span class="badge bg-danger ms-2">SANCTIONED</span>' : '') + '</td>' +
-        '<td class="sanction-summary-for-sanction">' + (forSanction ? '<span class="badge bg-danger">YES</span>' : '<span class="badge bg-success">NO</span>') + '</td>' +
         '</tr>';
     }).join('');
   }
@@ -1085,7 +1114,14 @@
       state.sanctionGeneratedAt = new Date();
       renderSanctionReport();
     } catch (error) {
-      console.error('Sanction report failed:', error);
+      // Print the exact server/network reason so a failed matrix fetch is
+      // diagnosable from the browser console without guessing.
+      console.error('Sanction report failed', {
+        message: error && error.message ? error.message : String(error),
+        code: error && error.code ? error.code : 'unknown',
+        status: error && error.status ? error.status : null,
+        filters: filters
+      }, error);
       state.sanctionEvents = [];
       state.sanctionRows = [];
       state.sanctionGeneratedAt = new Date();
@@ -1109,9 +1145,12 @@
     if (event) {
       return (event.publicId ? event.publicId + ' - ' : '') + (event.name || 'Selected event');
     }
-    var select = byId('filterEvent');
-    var option = select && select.selectedOptions && select.selectedOptions[0];
-    return option && option.value ? option.textContent : 'Selected event';
+    var checkbox = sanctionEventCheckboxes().filter(function (box) {
+      return box.checked && sameId(box.value, eventId);
+    })[0];
+    return checkbox && checkbox.getAttribute('data-label')
+      ? checkbox.getAttribute('data-label')
+      : 'Selected event';
   }
 
   function sanctionRangeLabel(range) {
@@ -1166,8 +1205,8 @@
   }
 
   function populateSanctionEventSelect() {
-    var select = byId('filterEvent');
-    if (!select) return;
+    var container = byId('filterEventOptions');
+    if (!container) return;
     var selected = selectedEventIds();
     var options = getEvents().slice().sort(function (a, b) {
       return (String(a.date || '') + ' ' + String(a.startTime || a.time || ''))
@@ -1179,15 +1218,22 @@
       };
     }).filter(function (option) { return option.value !== ''; });
 
-    select.innerHTML = options.length
-      ? options.map(function (option) {
-          return '<option value="' + escapeHtml(option.value) + '">' + escapeHtml(option.label) + '</option>';
-        }).join('')
-      : '<option value="" disabled>No events available</option>';
+    container.innerHTML = options.map(function (option) {
+      var checked = selected.indexOf(option.value) !== -1 ? ' checked' : '';
+      return '<label class="sanction-event-option">' +
+        '<input class="form-check-input" type="checkbox" value="' + escapeHtml(option.value) +
+        '" data-label="' + escapeHtml(option.label) + '"' + checked + '>' +
+        '<span>' + escapeHtml(option.label) + '</span>' +
+        '</label>';
+    }).join('');
 
-    Array.prototype.forEach.call(select.options, function (option) {
-      option.selected = selected.indexOf(option.value) !== -1;
-    });
+    var empty = byId('filterEventEmpty');
+    if (empty) empty.classList.toggle('d-none', options.length > 0);
+
+    var all = byId('filterEventAll');
+    if (all) all.disabled = options.length === 0;
+
+    syncSanctionEventDropdown();
   }
 
   /* ── CSV ────────────────────────────────────────────────────── */
@@ -1518,15 +1564,128 @@
 
   /* ── Wiring ─────────────────────────────────────────────────── */
 
-  function showTab(tabId) {
-    var trigger = byId(tabId) || document.querySelector('#reportTabs .nav-link');
-    if (window.bootstrap && trigger) {
+  var REPORT_TABS = {
+    attendance: {
+      buttonId: 'attendanceTab',
+      paneId: 'attendancePane',
+      hash: '#attendance'
+    },
+    sanction: {
+      buttonId: 'sanctionTab',
+      paneId: 'sanctionPane',
+      hash: '#sanctions'
+    }
+  };
+
+  function normalizeReportTab(tab) {
+    var value = String(tab || '').replace(/^#/, '').toLowerCase();
+    if (value === 'sanction' || value === 'sanctions' ||
+        value === 'sanctiontab' || value === 'sanctionpane') {
+      return 'sanction';
+    }
+    return 'attendance';
+  }
+
+  function tabFromLocation() {
+    var value = String(window.location.hash || '').replace(/^#/, '').toLowerCase();
+    if (value === 'sanction' || value === 'sanctions') return 'sanction';
+    if (value === 'attendance') return 'attendance';
+    return null;
+  }
+
+  function activateTab(tab, options) {
+    var opts = options || {};
+    var name = normalizeReportTab(tab);
+    var config = REPORT_TABS[name];
+
+    Array.prototype.forEach.call(document.querySelectorAll('.report-tab[data-tab]'), function (button) {
+      var isActive = button.getAttribute('data-tab') === name;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      button.setAttribute('tabindex', isActive ? '0' : '-1');
+    });
+
+    Object.keys(REPORT_TABS).forEach(function (key) {
+      var pane = byId(REPORT_TABS[key].paneId);
+      if (!pane) return;
+      var isActive = key === name;
+      pane.classList.toggle('active', isActive);
+      pane.classList.toggle('show', isActive);
+      pane.hidden = !isActive;
+      pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    });
+
+    if (opts.updateHash !== false && window.history && window.history.replaceState) {
       try {
-        window.bootstrap.Tab.getOrCreateInstance(trigger).show();
+        window.history.replaceState(null, '', config.hash);
       } catch (error) {
-        // Printing still works if the tab plugin is unavailable.
+        // file:// pages can reject history writes; the tab still switches.
       }
     }
+
+    if (opts.load && name === 'sanction') {
+      loadSanctionReport();
+    }
+
+    if (opts.focus) {
+      var activeButton = byId(config.buttonId);
+      if (activeButton) activeButton.focus();
+    }
+
+    return name;
+  }
+
+  function bindReportTabs() {
+    var tabList = document.querySelector('.report-tabs');
+    if (tabList) {
+      tabList.setAttribute('role', 'tablist');
+      tabList.setAttribute('aria-label', 'Report type');
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.report-tab[data-tab]'), function (button) {
+      var name = normalizeReportTab(button.getAttribute('data-tab'));
+      var config = REPORT_TABS[name];
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-controls', config.paneId);
+      if (!button.id) button.id = config.buttonId;
+
+      button.addEventListener('click', function () {
+        activateTab(name, { updateHash: true, load: true });
+      });
+
+      button.addEventListener('keydown', function (event) {
+        var keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+        if (keys.indexOf(event.key) === -1) return;
+        event.preventDefault();
+
+        var names = Object.keys(REPORT_TABS);
+        var current = names.indexOf(name);
+        var next = current;
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          var step = event.key === 'ArrowRight' ? 1 : -1;
+          next = (current + step + names.length) % names.length;
+        } else if (event.key === 'Home') {
+          next = 0;
+        } else if (event.key === 'End') {
+          next = names.length - 1;
+        }
+
+        var target = names[next];
+        activateTab(target, { updateHash: true, load: true, focus: true });
+      });
+    });
+
+    window.addEventListener('hashchange', function () {
+      var name = tabFromLocation();
+      if (!name) return;
+      activateTab(name, { updateHash: false, load: true });
+    });
+  }
+
+  // Used by the print buttons: switch panes without changing the URL or
+  // triggering another sanctions fetch.
+  function showTab(tabId) {
+    activateTab(tabId, { updateHash: false, load: false });
   }
 
   function setSanctionMatrixPrintVisible(visible) {
@@ -1586,6 +1745,10 @@
     if (initialized) return;
     initialized = true;
 
+    // Wire the report tabs first so the buttons respond even while the
+    // event cache is still refreshing from the backend.
+    bindReportTabs();
+
     // Pull the latest events from the backend into the shared localStorage
     // cache before any select reads it. The sanction event listbox and the
     // attendance report's event select both consume the same cache, so one
@@ -1620,25 +1783,41 @@
     var sanctionProgram = byId('sanctionProgramFilter');
     if (sanctionProgram) sanctionProgram.addEventListener('change', loadSanctionReport);
 
-    var sanctionEvent = byId('filterEvent');
-    if (sanctionEvent) sanctionEvent.addEventListener('change', loadSanctionReport);
+    var sanctionEventAll = byId('filterEventAll');
+    if (sanctionEventAll) {
+      sanctionEventAll.addEventListener('change', function () {
+        sanctionEventCheckboxes().forEach(function (checkbox) {
+          checkbox.checked = sanctionEventAll.checked;
+        });
+        syncSanctionEventDropdown();
+        loadSanctionReport();
+      });
+    }
+
+    var sanctionEventOptions = byId('filterEventOptions');
+    if (sanctionEventOptions) {
+      sanctionEventOptions.addEventListener('change', function (event) {
+        if (!event.target || event.target.type !== 'checkbox') return;
+        syncSanctionEventDropdown();
+        loadSanctionReport();
+      });
+    }
 
     var clearSanctionEvents = byId('filterEventClear');
     if (clearSanctionEvents) {
       clearSanctionEvents.addEventListener('click', function () {
-        // "Clear filters" resets the whole bar, not just the event listbox.
-        ['filterEvent', 'sanctionSemesterFilter', 'sanctionDepartmentFilter', 'sanctionProgramFilter']
+        // "Clear filters" resets the whole bar, not just the event dropdown.
+        ['sanctionSemesterFilter', 'sanctionDepartmentFilter', 'sanctionProgramFilter']
           .forEach(function (id) {
             var field = byId(id);
-            if (!field) return;
-            if (field.multiple) {
-              Array.prototype.forEach.call(field.options, function (option) {
-                option.selected = false;
-              });
-            } else {
-              field.value = '';
-            }
+            if (field) field.value = '';
           });
+        sanctionEventCheckboxes().forEach(function (checkbox) {
+          checkbox.checked = false;
+        });
+        var allEvents = byId('filterEventAll');
+        if (allEvents) allEvents.checked = false;
+        syncSanctionEventDropdown();
         // Dropping the department filter widens the program list again.
         populateSanctionProgramSelect();
         loadSanctionReport();
@@ -1672,6 +1851,11 @@
     populateSanctionSemesterSelect();
     populateSanctionDepartmentSelect();
     populateSanctionProgramSelect();
+
+    // Deep links such as admin-reports.html#sanctions open on the
+    // sanction matrix; the default continues to be attendance.
+    activateTab(tabFromLocation() || 'attendance', { updateHash: false, load: false });
+
     await Promise.all([generateAttendanceReport(), loadSanctionReport()]);
   }
 

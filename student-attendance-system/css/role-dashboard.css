@@ -25,6 +25,17 @@
   flex-grow: 1;
 }
 
+/* ── Card gutter ──
+   A .dashboard-card on these pages has no padding of its own, so its
+   .card-heading sat flush against the top edge and was clipped by the
+   rounded border (the "Student requests" card on the reports pages).
+   ssc.css already pads cards on the pages that load it; this gives the
+   remaining role pages (e.g. ssc-reports.html, admin-reports.html) the
+   same 18px gutter. */
+.role-dashboard-page .dashboard-card {
+  padding: 18px;
+}
+
 /* ── Section entrance animation ──
    Staggers the four top-level content blocks. Previously targeted
    `.role-main > section`, which only ever matched .role-intro — the

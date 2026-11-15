@@ -390,6 +390,7 @@ function initAdminManageStudents() {
         '<td>' + accountStatusBadge(status) + '</td>' +
         '<td>' +
           '<button class="btn btn-sm btn-outline-secondary me-1" onclick="editStudent(\'' + escapeHtml(student.id) + '\')"><i class="bi bi-pencil"></i> Edit</button>' +
+          '<button class="btn btn-sm btn-outline-success me-1" onclick="enrollStudentFingerprint(\'' + escapeHtml(student.id) + '\')" title="Capture a fingerprint template for this student"><i class="bi bi-fingerprint"></i> Enroll Fingerprint</button>' +
           (status === 'active'
             ? '<button class="btn btn-sm btn-outline-warning" onclick="deactivateStudent(\'' + escapeHtml(student.id) + '\')"><i class="bi bi-pause"></i> Deactivate</button>'
             : '<button class="btn btn-sm btn-outline-success" onclick="reactivateStudent(\'' + escapeHtml(student.id) + '\')"><i class="bi bi-play"></i> Reactivate</button>') +
@@ -755,11 +756,13 @@ if (addForm) {
     e.preventDefault();
     const name = document.getElementById('eventName').value.trim();
     const date = document.getElementById('eventDate').value;
-    const time = document.getElementById('eventTime').value;
     const location = document.getElementById('eventLocation').value.trim();
     const type = document.getElementById('eventType').value;
     const mandatory = type === 'major';
     const attendanceType = document.getElementById('eventAttendanceType').value;
+    const times = EventTimeHelper.readDynamicTimeInputs(
+      document.getElementById('dynamicTimeInputs'), attendanceType);
+    const time = times.startTime;
     const semesterEl = document.getElementById('eventSemester');
     const semester = semesterEl ? semesterEl.value : 'N/A';
     if (!name || !date || !time || !location) {
@@ -775,7 +778,8 @@ if (addForm) {
       type,
       mandatory,
       attendanceType,
-      semester
+      semester,
+      _dynamicTimes: times,
     };
     if (isApiEnabled()) {
       try {
@@ -810,6 +814,17 @@ if (addForm) {
   });
 }
 
+// Re-render the time inputs whenever the attendance type changes so the
+// user always sees exactly the fields the selected mode needs.
+var addAttendanceType = document.getElementById('eventAttendanceType');
+if (addAttendanceType) {
+  addAttendanceType.addEventListener('change', function () {
+    EventTimeHelper.renderDynamicTimeInputs(
+      document.getElementById('dynamicTimeInputs'),
+      addAttendanceType.value || 'single');
+  });
+}
+
 var editForm = document.getElementById('editEventForm');
 if (editForm) {
   editForm.addEventListener('submit', async function(e) {
@@ -817,11 +832,13 @@ if (editForm) {
     const id = document.getElementById('editEventId').value;
     const name = document.getElementById('editEventName').value.trim();
     const date = document.getElementById('editEventDate').value;
-    const time = document.getElementById('editEventTime').value;
     const location = document.getElementById('editEventLocation').value.trim();
     const type = document.getElementById('editEventType').value;
     const mandatory = type === 'major';
     const attendanceType = document.getElementById('editEventAttendanceType').value;
+    const times = EventTimeHelper.readDynamicTimeInputs(
+      document.getElementById('editDynamicTimeInputs'), attendanceType);
+    const time = times.startTime;
     const semesterEl = document.getElementById('editEventSemester');
     const semester = semesterEl ? semesterEl.value : 'N/A';
     if (!name || !date || !time || !location) {
@@ -835,7 +852,7 @@ if (editForm) {
       return;
     }
     const existing = events[idx];
-    const updated = { ...existing, name, date, time, location, type, mandatory, attendanceType, semester };
+    const updated = { ...existing, name, date, time, location, type, mandatory, attendanceType, semester, _dynamicTimes: times };
 
     if (isApiEnabled()) {
       try {
@@ -859,6 +876,16 @@ if (editForm) {
   });
 }
 
+// Re-render the edit time inputs whenever the attendance type changes.
+var editAttendanceType = document.getElementById('editEventAttendanceType');
+if (editAttendanceType) {
+  editAttendanceType.addEventListener('change', function () {
+    EventTimeHelper.renderDynamicTimeInputs(
+      document.getElementById('editDynamicTimeInputs'),
+      editAttendanceType.value || 'single');
+  });
+}
+
 // Expose event functions globally for inline onclick handlers
 window.editEvent = function(eventId) {
   const events = getEvents();
@@ -867,12 +894,37 @@ window.editEvent = function(eventId) {
   document.getElementById('editEventId').value = event.id;
   document.getElementById('editEventName').value = event.name;
   document.getElementById('editEventDate').value = event.date;
-  document.getElementById('editEventTime').value = event.time;
   document.getElementById('editEventLocation').value = event.location;
   document.getElementById('editEventType').value = event.type || 'minor';
-  document.getElementById('editEventAttendanceType').value = event.attendanceType || 'single';
+  const attendanceType = event.attendanceType || 'single';
+  document.getElementById('editEventAttendanceType').value = attendanceType;
   const semesterEl = document.getElementById('editEventSemester');
   if (semesterEl) semesterEl.value = event.semester || 'N/A';
+
+  // Build the time inputs for the chosen attendance type, then seed them
+  // from the event's stored start/end times.
+  const container = document.getElementById('editDynamicTimeInputs');
+  if (container) {
+    EventTimeHelper.renderDynamicTimeInputs(container, attendanceType);
+    if (event.time != null) {
+      document.getElementById('editEventTime').value = event.time;
+    }
+    if (attendanceType === 'in_out' || attendanceType === 'four_point') {
+      if (event.startTime != null) {
+        const startField = attendanceType === 'four_point'
+          ? document.getElementById('editEventAmTimeIn')
+          : document.getElementById('editEventTimeIn');
+        if (startField) startField.value = event.startTime;
+      }
+      if (event.endTime != null) {
+        const endField = attendanceType === 'four_point'
+          ? document.getElementById('editEventPmTimeOut')
+          : document.getElementById('editEventTimeOut');
+        if (endField) endField.value = event.endTime;
+      }
+    }
+  }
+
   const modal = new bootstrap.Modal(document.getElementById('editEventModal'));
   modal.show();
 };
