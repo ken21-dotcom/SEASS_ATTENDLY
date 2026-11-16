@@ -18,32 +18,24 @@ require_once __DIR__ . '/ProgramCatalog.php';
 require_once __DIR__ . '/PublicIdGenerator.php';
 require_once __DIR__ . '/QrToken.php';
 require_once __DIR__ . '/Mailer.php';
-
-
-/**
- * Placeholder for the fingerprint matching service.
- *
- * A real U.are.U capture is not comparable with a string equality check,
- * so this prototype has no matcher. Enrollment calls this seam and
- * surfaces its answer rather than storing a template nothing can match.
- *
- * @param int    $studentId user id of the student being enrolled
- * @param string $template  opaque template captured by the browser
- * @return array{ok: bool, code?: string, message?: string}
- */
-function matchingServiceEnroll(int $studentId, string $template): array
-{
-    return [
-        'ok' => false,
-        'code' => 'matching_service_not_configured',
-        'message' => 'matching service not configured',
-    ];
-}
+require_once __DIR__ . '/MatchingService.php';
 
 final class Repository
 {
-    public function __construct(private PDO $db)
+    private ?MatchingService $matching = null;
+
+    /**
+     * @param array<string,mixed> $config Full application config; the matching
+     *                                    section is used lazily so requests that
+     *                                    never touch fingerprints still work.
+     */
+    public function __construct(private PDO $db, private array $config = [])
     {
+    }
+
+    private function matchingService(): MatchingService
+    {
+        return $this->matching ??= MatchingService::fromConfig($this->config);
     }
 
     /**
@@ -584,27 +576,34 @@ final class Repository
     }
 
     /**
-     * Save the fingerprint template captured for one student.
+     * Turn four captured PNG samples into SourceAFIS templates and store
+     * them as a JSON array. Images are sent to the local matching service
+     * one at a time and are never written to the database or a log.
      *
-     * The template is opaque to the server: the Web SDK produces it and the
-     * browser sends it back verbatim. Nothing is returned to a client or
-     * written to the audit log. Matching needs a real matcher, so the call
-     * goes through matchingServiceEnroll() — currently "matching service
-     * not configured" (HTTP 501) — instead of storing a template that a
-     * plain string compare could never use.
+     * @param string[] $images four base64 PNG samples
      */
-    public function enrollFingerprint(int $studentId, string $template, array $actor): array
+    public function enrollFingerprint(int $studentId, array $images, array $actor): array
     {
-        $template = trim($template);
-        if ($template === '') {
-            Response::fail('invalid_field', 'Field "fingerprintTemplate" is required.', 422);
+        $images = array_values($images);
+        if (count($images) !== 4) {
+            Response::fail('invalid_field', 'Field "images" must contain exactly four fingerprint images.', 422);
         }
-        if (strlen($template) > 65535) {
-            Response::fail('invalid_field', 'Fingerprint template is too large.', 422);
+        foreach ($images as $index => $image) {
+            if (!is_string($image) || trim($image) === '') {
+                Response::fail('invalid_field', 'Each fingerprint image is required.', 422);
+            }
+            $image = trim($image);
+            if (strlen($image) > 2_000_000) {
+                Response::fail('invalid_field', 'A fingerprint image is too large.', 422);
+            }
+            $images[$index] = $image;
         }
 
         $stmt = $this->db->prepare(
-            'SELECT u.id, u.role FROM users u WHERE u.id = :id LIMIT 1'
+            'SELECT u.id, u.role, s.first_name, s.last_name
+             FROM users u
+             LEFT JOIN students s ON s.user_id = u.id
+             WHERE u.id = :id LIMIT 1'
         );
         $stmt->execute(['id' => $studentId]);
         $student = $stmt->fetch();
@@ -613,17 +612,108 @@ final class Repository
             Response::fail('student_not_found', 'No student is registered under that ID.', 404);
         }
 
-        // No template is stored until a matching service can compare it.
-        $matching = matchingServiceEnroll($studentId, $template);
-        if (($matching['ok'] ?? false) !== true) {
+        $service = $this->matchingService();
+        if (!$service->isConfigured()) {
             Response::fail(
-                (string) ($matching['code'] ?? 'matching_service_unavailable'),
-                (string) ($matching['message'] ?? 'matching service not configured'),
-                501
+                'matching_service_not_configured',
+                'Fingerprint matching is not configured on this server.',
+                503
             );
         }
+        try {
+            $templates = [];
+            foreach ($images as $image) {
+                $templates[] = $service->template($image);
+            }
+            $this->assertFingerprintNotEnrolledToAnotherStudent($service, $images, $studentId);
+        } catch (MatchingServiceRejected $e) {
+            Response::fail(
+                'invalid_field',
+                'The captured fingerprint image could not be read. Scan the same finger again.',
+                422
+            );
+        } catch (MatchingServiceUnavailable $e) {
+            Response::fail('matching_service_unavailable', $e->getMessage(), 503);
+        }
 
-        return $matching;
+        $encoded = json_encode($templates, JSON_THROW_ON_ERROR);
+        $update = $this->db->prepare(
+            'UPDATE students SET fingerprint_template = :templates WHERE user_id = :student_id'
+        );
+        $update->execute(['templates' => $encoded, 'student_id' => $studentId]);
+
+        $studentName = trim((string) ($student['first_name'] ?? '') . ' ' . (string) ($student['last_name'] ?? ''));
+
+        return [
+            'ok' => true,
+            'studentId' => $studentId,
+            'studentName' => $studentName,
+            'fingerprintEnrolled' => true,
+            'message' => ($studentName !== '' ? $studentName : 'Student') . ' fingerprint enrolled.',
+        ];
+    }
+
+    /**
+     * @param string[] $images
+     */
+    private function assertFingerprintNotEnrolledToAnotherStudent(
+        MatchingService $service,
+        array $images,
+        int $studentId
+    ): void {
+        $stmt = $this->db->prepare(
+            'SELECT s.user_id, s.fingerprint_template
+             FROM students s
+             WHERE s.fingerprint_template IS NOT NULL
+               AND s.user_id <> :student_id'
+        );
+        $stmt->execute(['student_id' => $studentId]);
+
+        $candidates = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $templates = $this->decodeFingerprintTemplates($row['fingerprint_template'] ?? null);
+            if ($templates !== []) {
+                $candidates[] = [
+                    'id' => (int) $row['user_id'],
+                    'templates' => $templates,
+                ];
+            }
+        }
+        if ($candidates === []) {
+            return;
+        }
+
+        foreach ($images as $image) {
+            if ($service->identify($image, $candidates) !== null) {
+                Response::fail(
+                    'fingerprint_already_enrolled',
+                    'This fingerprint is already enrolled to another student.',
+                    409
+                );
+            }
+        }
+    }
+
+    /**
+     * @return string[]
+     */
+    private function decodeFingerprintTemplates(mixed $raw): array
+    {
+        if (!is_string($raw) || trim($raw) === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $templates = [];
+        foreach ($decoded as $template) {
+            if (is_string($template) && trim($template) !== '') {
+                $templates[] = trim($template);
+            }
+        }
+        return $templates;
     }
 
     public function updateStudentProfile(int $userId, array $input): array
@@ -2154,32 +2244,7 @@ final class Repository
              FROM attendance_records a JOIN events e ON e.id = a.event_id WHERE a.id = :id'
         );
         $row->execute(['id' => $id]);
-        $mapped = $this->mapAttendance($row->fetch(), $lateGraceMinutes);
-
-        if (($input['verificationMethod'] ?? '') === 'manual') {
-            try {
-                $studentStmt = $this->db->prepare(
-                    'SELECT u.email, s.first_name, s.last_name, e.name AS event_name
-                     FROM users u
-                     JOIN students s ON s.user_id = u.id
-                     JOIN events e ON e.id = :event_id
-                     WHERE u.id = :student_id LIMIT 1'
-                );
-                $studentStmt->execute(['student_id' => $studentId, 'event_id' => $eventId]);
-                $studentData = $studentStmt->fetch();
-                if ($studentData && !empty($studentData['email'])) {
-                    $studentEmail = (string) $studentData['email'];
-                    $fullName = trim(($studentData['first_name'] ?? '') . ' ' . ($studentData['last_name'] ?? ''));
-                    $eventName = (string) ($studentData['event_name'] ?? 'Campus Event');
-                    $time = (string) ($mapped['checkInTime'] ?? date('Y-m-d H:i:s'));
-                    Mailer::sendAttendanceConfirmation($studentEmail, $fullName, $eventName, $time, 'single');
-                }
-            } catch (\Throwable $mailEx) {
-                error_log('[mailer] checkIn confirmation email failed: ' . $mailEx->getMessage());
-            }
-        }
-
-        return $mapped;
+        return $this->mapAttendance($row->fetch(), $lateGraceMinutes);
     }
 
     /**
@@ -2345,6 +2410,67 @@ final class Repository
     }
 
     /**
+     * Record a manual check-in or check-out by an administrator or SSC officer,
+     * routing through the same scan policy engine as QR and fingerprint.
+     */
+    public function checkInManual(
+        int $eventId,
+        int $studentId,
+        string $action = 'in',
+        int $openMinutesBefore = 30,
+        int $closeMinutesAfter = 360,
+        string $timezone = 'Asia/Manila',
+        int $lateGraceMinutes = 15,
+        int $checkoutOpenMinutesBeforeEnd = 60,
+        int $checkoutCloseMinutesAfterEnd = 60
+    ): array {
+        $action = strtolower(trim($action));
+        if (!in_array($action, ['in', 'out'], true)) {
+            Response::fail('invalid_field', 'Field "action" must be "in" or "out".', 422);
+        }
+
+        if ($action === 'out') {
+            $this->assertCheckoutWindow(
+                $eventId,
+                $checkoutOpenMinutesBeforeEnd,
+                $checkoutCloseMinutesAfterEnd,
+                $timezone
+            );
+        } else {
+            $this->assertCheckInWindow($eventId, $openMinutesBefore, $closeMinutesAfter, $timezone);
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT u.id, u.role, u.status, s.first_name, s.last_name, s.department
+             FROM users u
+             JOIN students s ON s.user_id = u.id
+             WHERE u.id = :student_id
+               AND u.role = \'student\'
+               AND u.status = \'active\'
+             LIMIT 1'
+        );
+        $stmt->execute(['student_id' => $studentId]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            Response::fail('student_not_active', 'This student account is not active.', 403);
+        }
+
+        return $this->recordScannedAttendance(
+            $eventId,
+            $row,
+            $action,
+            'manual',
+            $openMinutesBefore,
+            $closeMinutesAfter,
+            $timezone,
+            $lateGraceMinutes,
+            $checkoutOpenMinutesBeforeEnd,
+            $checkoutCloseMinutesAfterEnd
+        );
+    }
+
+    /**
      * Match a live kiosk QR scan to an active student, then record a
      * check-in or check-out. The token must be signed for the same event
      * the kiosk is currently operating; a valid token for another event is
@@ -2437,13 +2563,13 @@ final class Repository
     }
 
     /**
-     * Match a captured fingerprint template to an active student, then
-     * record a check-in or check-out through the same policy engine the QR
-     * kiosk uses.
+     * Match one captured fingerprint image against the active students who
+     * are eligible for the event, then record a check-in or check-out
+     * through the same policy engine the QR kiosk uses.
      */
     public function checkInByFingerprint(
         int $eventId,
-        string $fingerprintTemplate,
+        string $fingerprintImage,
         string $action = 'in',
         int $openMinutesBefore = 30,
         int $closeMinutesAfter = 360,
@@ -2457,31 +2583,78 @@ final class Repository
             Response::fail('invalid_field', 'Field "action" must be "in" or "out".', 422);
         }
 
-        $fingerprintTemplate = trim($fingerprintTemplate);
-        if ($fingerprintTemplate === '') {
-            Response::fail('invalid_field', 'Field "fingerprintTemplate" is required.', 422);
+        $fingerprintImage = trim($fingerprintImage);
+        if ($fingerprintImage === '') {
+            Response::fail('invalid_field', 'Field "image" is required.', 422);
         }
-        if (strlen($fingerprintTemplate) > 65535) {
-            Response::fail('invalid_field', 'Fingerprint template is too large.', 422);
+        if (strlen($fingerprintImage) > 2_000_000) {
+            Response::fail('invalid_field', 'Fingerprint image is too large.', 422);
         }
 
-        // Direct template comparison is the prototype's matching model. The
-        // BINARY cast keeps the lookup case-sensitive regardless of the
-        // column collation, which matters for base64-encoded templates.
-        $stmt = $this->db->prepare(
-            'SELECT u.id, u.role, u.status, s.first_name, s.last_name, s.department
-             FROM students s
-             JOIN users u ON u.id = s.user_id
-             WHERE s.fingerprint_template IS NOT NULL
-               AND BINARY s.fingerprint_template = BINARY :template
-               AND u.role = \'student\'
-               AND u.status = \'active\'
-             LIMIT 1'
+        // Candidate scope follows the event audience: a department-targeted
+        // event only compares against students from that department. This
+        // keeps the kiosk from identifying students who could not attend.
+        $eventStmt = $this->db->prepare(
+            'SELECT target_department FROM events WHERE id = :id LIMIT 1'
         );
-        $stmt->execute(['template' => $fingerprintTemplate]);
-        $row = $stmt->fetch();
+        $eventStmt->execute(['id' => $eventId]);
+        $event = $eventStmt->fetch();
+        if ($event === false) {
+            Response::fail('event_not_found', 'No event is registered under that ID.', 404);
+        }
+        $targetDepartment = trim((string) ($event['target_department'] ?? ''));
 
-        if ($row === false) {
+        $sql = 'SELECT u.id, u.role, u.status, s.first_name, s.last_name, s.department,
+                       s.fingerprint_template
+                FROM students s
+                JOIN users u ON u.id = s.user_id
+                WHERE s.fingerprint_template IS NOT NULL
+                  AND u.role = \'student\'
+                  AND u.status = \'active\'';
+        $params = [];
+        if ($targetDepartment !== '') {
+            $sql .= ' AND s.department = :department';
+            $params['department'] = $targetDepartment;
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        $students = [];
+        $candidates = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $templates = $this->decodeFingerprintTemplates($row['fingerprint_template'] ?? null);
+            if ($templates === []) {
+                continue;
+            }
+            $id = (int) $row['id'];
+            $students[$id] = $row;
+            $candidates[] = ['id' => $id, 'templates' => $templates];
+        }
+
+        $matchedId = null;
+        if ($candidates !== []) {
+            $service = $this->matchingService();
+            if (!$service->isConfigured()) {
+                Response::fail(
+                    'matching_service_not_configured',
+                    'Fingerprint matching is not configured on this server.',
+                    503
+                );
+            }
+            try {
+                $matchedId = $service->identify($fingerprintImage, $candidates);
+            } catch (MatchingServiceRejected $e) {
+                Response::fail(
+                    'invalid_field',
+                    'The captured fingerprint image could not be read. Place the finger again.',
+                    422
+                );
+            } catch (MatchingServiceUnavailable $e) {
+                Response::fail('matching_service_unavailable', $e->getMessage(), 503);
+            }
+        }
+
+        if ($matchedId === null || !isset($students[$matchedId])) {
             // One answer covers an unknown finger and a deactivated student,
             // so the kiosk cannot use this endpoint to enumerate enrollments.
             Response::fail(
@@ -2493,7 +2666,7 @@ final class Repository
 
         return $this->recordScannedAttendance(
             $eventId,
-            $row,
+            $students[$matchedId],
             $action,
             'fingerprint',
             $openMinutesBefore,
@@ -3295,9 +3468,20 @@ final class Repository
         }
 
         if ($actor !== null) {
-            $this->writeAudit($actor, 'notify_sanctions', 'sanctions', null, [
-                'count' => count($notified),
-            ]);
+            $actorId = isset($actor['id']) ? (int) $actor['id'] : 0;
+            $this->writeAudit(
+                'create',
+                'sanction_notifications',
+                0,
+                null,
+                [
+                    'count' => count($notified),
+                    'studentIds' => array_column($notified, 'studentId'),
+                ],
+                $actorId > 0 ? $actorId : null,
+                null,
+                null
+            );
         }
 
         return [
@@ -3348,7 +3532,16 @@ final class Repository
                 error_log('[mailer] password reset email failed: ' . $e->getMessage());
             }
 
-            $this->writeAudit('password_reset_requested', 'user', (int) $user['id'], null, null, (int) $user['id']);
+            $this->writeAudit(
+                'update',
+                'users',
+                (int) $user['id'],
+                null,
+                ['password_reset_requested' => true],
+                null,
+                null,
+                null
+            );
         }
 
         return [
@@ -3410,7 +3603,16 @@ final class Repository
             'id'   => (int) $user['id'],
         ]);
 
-        $this->writeAudit('password_reset_completed', 'user', (int) $user['id'], null, null, (int) $user['id']);
+        $this->writeAudit(
+            'update',
+            'users',
+            (int) $user['id'],
+            null,
+            ['password_reset_completed' => true],
+            null,
+            null,
+            null
+        );
 
         return ['ok' => true];
     }

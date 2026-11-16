@@ -40,7 +40,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         `<td>${escapeHtml(student.email)}</td>` +
         `<td>${yearBadge(student)}</td>` +
         `<td>${escapeHtml(student.block || '—')}</td>` +
-        `<td><button class="btn btn-sm btn-outline-success" type="button" ` +
+        `<td><div class="small mb-1 ${student.fingerprintEnrolled ? 'text-success' : 'text-muted'}">` +
+          `<i class="bi bi-fingerprint"></i> ${student.fingerprintEnrolled ? 'Enrolled' : 'Not enrolled'}</div>` +
+          `<button class="btn btn-sm btn-outline-success" type="button" ` +
           `onclick="enrollStudentFingerprint('${escapeHtml(student.id)}')" ` +
           `title="Capture a fingerprint template for this student">` +
           `<i class="bi bi-fingerprint"></i> Enroll Fingerprint</button></td>`,

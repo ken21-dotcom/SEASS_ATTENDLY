@@ -65,9 +65,10 @@ ok('kiosk loads the DigitalPersona Web SDK before kiosk.js',
 ok('kiosk no longer loads the WebUSB adapter',
   kioskHtml.indexOf('js/fingerprint-webusb.js') === -1);
 ok('kiosk no longer loads qr-scanner.js', !/js\/qr-scanner\.js/.test(kioskHtml));
-ok('kiosk privacy note explains the template boundary',
-  /No fingerprint image is uploaded or stored/.test(kioskHtml) &&
-  /template is sent to the server/.test(kioskHtml));
+ok('kiosk privacy note explains the local matching boundary',
+  /sent only to this laptop's matching service/.test(kioskHtml) &&
+  /used to create or compare a template, and then discarded/.test(kioskHtml) &&
+  /Only the template is stored/.test(kioskHtml));
 
 /* ── Kiosk flow ────────────────────────────────────────────────── */
 
@@ -75,14 +76,15 @@ ok('kiosk captures through the DigitalPersona Web SDK',
   /new window\.dp\.devices\.FingerprintReader\(/.test(kioskSrc) &&
   /const sampleFormat = fingerprintSampleFormatValue\(\)/.test(kioskSrc) &&
   /\.startAcquisition\(sampleFormat\)/.test(kioskSrc) &&
-  /function readKioskFormatMode\(\)[\s\S]{0,220}\?\s*value\s*:\s*'intermediate'/.test(kioskSrc) &&
+  /function readKioskFormatMode\(\)[\s\S]{0,220}\?\s*value\s*:\s*'png'/.test(kioskSrc) &&
   /SamplesAcquired/.test(kioskSrc));
 ok('kiosk keeps acquisition running across scans',
   /'SamplesAcquired'/.test(kioskSrc) &&
   /startAcquisition\(/.test(kioskSrc) &&
   /restartFingerprintAcquisition\(/.test(kioskSrc));
-ok('kiosk sends the template to the server',
-  /api\.fingerprintCheckIn\(/.test(kioskSrc) &&
+ok('kiosk sends one PNG sample to the server',
+  /api\.encodeFingerprintSample\(samples\[0\]\)/.test(kioskSrc) &&
+  /api\.fingerprintCheckIn\(eventRow\.id, image, scanMode\)/.test(kioskSrc) &&
   !/captureTemplate\(\)/.test(kioskSrc));
 ok('kiosk logs nothing about the fingerprint sample',
   !/console\.(log|info|debug|warn|error)\([^)]*(sample|Data|template)/i.test(kioskSrc) &&
@@ -129,35 +131,50 @@ ok('enrollment pages load the Web SDK before the modal script',
     html.indexOf('@digitalpersona/core') !== -1 &&
     html.indexOf('@digitalpersona/devices') !== -1 &&
     html.indexOf('@digitalpersona/devices') < html.indexOf('js/fingerprint-enrollment.js')));
-ok('enrollment uses the kiosk capture seam and Intermediate default',
+ok('enrollment uses the kiosk capture seam and PNG default',
   /new global\.dp\.devices\.FingerprintReader\(/.test(enrollmentSrc) &&
   /\.startAcquisition\(sampleFormat\)/.test(enrollmentSrc) &&
-  /function readFormatMode\(\)[\s\S]{0,220}\?\s*value\s*:\s*'intermediate'/.test(enrollmentSrc) &&
+  /function readFormatMode\(\)[\s\S]{0,220}\?\s*value\s*:\s*'png'/.test(enrollmentSrc) &&
   /'intermediate'[\s\S]{0,80}'raw'[\s\S]{0,80}'png'/.test(enrollmentSrc));
 
 /* ── API client, routes, storage ───────────────────────────────── */
 
-ok('API client posts fingerprint check-ins',
+ok('API client posts one fingerprint image for check-in',
   /request\('\/attendance\/fingerprint'/.test(apiSrc) &&
-  /fingerprintTemplate:\s*fingerprintTemplate/.test(apiSrc));
-ok('API client exposes enrollment',
-  /enrollFingerprint:\s*function \(studentId, fingerprintTemplate\)/.test(apiSrc) &&
+  /image:\s*fingerprintImage/.test(apiSrc));
+ok('API client sends four enrollment images',
+  /enrollFingerprint:\s*function \(studentId, fingerprintImages\)/.test(apiSrc) &&
+  /images:\s*fingerprintImages/.test(apiSrc) &&
   /request\('\/users\/enroll-fingerprint'/.test(apiSrc));
+ok('API client has a chunked PNG base64 encoder',
+  /encodeFingerprintSample:\s*function \(sample\)/.test(apiSrc) &&
+  /chunkSize = 0x8000/.test(apiSrc) &&
+  /btoa\(chunks\.join\(''\)\)/.test(apiSrc) &&
+  !/String\.fromCharCode\.apply\(null, new Uint8Array\(data\)\)/.test(apiSrc));
 ok('fingerprint kiosk route exists', /\['POST', '\/attendance\/fingerprint'/.test(routesSrc));
 ok('fingerprint enrollment route exists', /\['POST', '\/users\/enroll-fingerprint'/.test(routesSrc));
 ok('fingerprint route is officer-gated',
   /\$fingerprintCheckIn = function \(\) use \(\$repo, \$auth, \$ctx\): array \{[\s\S]*?requireRole\(\['admin', 'ssc-officer'\]\)/.test(routesSrc));
 ok('enrollment route is staff-gated',
   /enroll-fingerprint[\s\S]{0,220}?requireRole\(\['admin', 'ssc-officer'\]\)/.test(routesSrc));
-ok('enrollment goes through the matching-service placeholder',
-  /function matchingServiceEnroll\(int \$studentId, string \$template\): array/.test(repositorySrc) &&
-  /'message' => 'matching service not configured'/.test(repositorySrc) &&
-  /matchingServiceEnroll\(\$studentId, \$template\)/.test(repositorySrc) &&
-  /matching_service_not_configured/.test(repositorySrc));
-ok('enrollment no longer stores an un-matchable template string',
-  !/UPDATE students SET fingerprint_template = :template WHERE user_id = :student_id/.test(repositorySrc));
-ok('repository matches with a case-sensitive template compare',
-  /BINARY s\.fingerprint_template = BINARY :template/.test(repositorySrc));
+ok('matching service client is local, keyed and fails with 503',
+  /curl_init\(\$this->baseUrl \. \$path\)/.test(fs.readFileSync(path.join(ROOT, 'attendly-backend/src/MatchingService.php'), 'utf8')) &&
+  /CURLOPT_CONNECTTIMEOUT => 2/.test(fs.readFileSync(path.join(ROOT, 'attendly-backend/src/MatchingService.php'), 'utf8')) &&
+  /Matching service is not running\./.test(fs.readFileSync(path.join(ROOT, 'attendly-backend/src/MatchingService.php'), 'utf8')) &&
+  /matching_service_unavailable/.test(repositorySrc));
+ok('enrollment templates one image at a time and stores a JSON array',
+  /require_once __DIR__ \. '\/MatchingService\.php'/.test(repositorySrc) &&
+  /\$service->template\(\$image\)/.test(repositorySrc) &&
+  /json_encode\(\$templates, JSON_THROW_ON_ERROR\)/.test(repositorySrc) &&
+  /UPDATE students SET fingerprint_template = :templates WHERE user_id = :student_id/.test(repositorySrc) &&
+  !/function matchingServiceEnroll/.test(repositorySrc));
+ok('enrollment rejects a finger enrolled to another student with 409',
+  /assertFingerprintNotEnrolledToAnotherStudent/.test(repositorySrc) &&
+  /\$service->identify\(\$image, \$candidates\) !== null/.test(repositorySrc) &&
+  /'fingerprint_already_enrolled'[\s\S]{0,160}?409/.test(repositorySrc));
+ok('repository identifies with the matching service instead of BINARY compare',
+  /\$service->identify\(\$fingerprintImage, \$candidates\)/.test(repositorySrc) &&
+  !/BINARY s\.fingerprint_template = BINARY :template/.test(repositorySrc));
 ok('repository reuses the shared attendance policy',
   /private function recordScannedAttendance\(/.test(repositorySrc) &&
   /checkInByFingerprint\([\s\S]*?recordScannedAttendance\([\s\S]*?'fingerprint'/.test(repositorySrc));
@@ -183,12 +200,15 @@ ok('SSC manage students offers fingerprint enrollment',
   /js\/fingerprint-enrollment\.js/.test(sscHtml));
 ok('admin student list shows fingerprint enrollment state',
   /fingerprintEnrolled \? 'Enrolled' : 'Not enrolled'/.test(adminJs));
+ok('SSC student list shows fingerprint enrollment state',
+  /fingerprintEnrolled \? 'Enrolled' : 'Not enrolled'/.test(sscJs));
 ok('manage-students action column keeps the enroll button visible',
   /tr\[data-kind="student"\] > td:last-child \{[\s\S]{0,200}?max-width: none/.test(
     fs.readFileSync(path.join(ROOT, 'student-attendance-system/css/role-dashboard.css'), 'utf8')));
 ok('enrollment requires consent before scanning',
-  /Fingerprint is used only for event attendance and stored /.test(enrollmentSrc) &&
-  /as a template, never as an image\. The student has agreed\./.test(enrollmentSrc) &&
+  /sent only to this laptop\\'s matching '/.test(enrollmentSrc) &&
+  /service, used to create a template, and then discarded/.test(enrollmentSrc) &&
+  /Only the template '\s*\+ 'is stored/.test(enrollmentSrc) &&
   /id="fingerprintEnrollConsent"/.test(enrollmentSrc) &&
   /if \(!state\.els \|\| !state\.els\.consent\.checked\)/.test(enrollmentSrc));
 ok('enrollment collects four good scans with progress',
@@ -218,10 +238,11 @@ ok('debug line is opt-in and shows counts, not samples',
   /lastEventName/.test(enrollmentSrc) &&
   /id="fingerprintEnrollDebug"/.test(enrollmentSrc) &&
   !/(localStorage|sessionStorage)/.test(enrollmentSrc));
-ok('enrollment submits the in-memory samples through the API',
-  /api\.extractFingerprintTemplate\(sample\)/.test(enrollmentSrc) &&
-  /api\.enrollFingerprint\(state\.studentId, payload\)/.test(enrollmentSrc) &&
-  /state\.samples\.push\(template\)/.test(enrollmentSrc) &&
+ok('enrollment submits the in-memory images through the API',
+  /api\.encodeFingerprintSample\(sample\)/.test(enrollmentSrc) &&
+  /var images = state\.samples\.slice\(\)/.test(enrollmentSrc) &&
+  /api\.enrollFingerprint\(state\.studentId, images\)/.test(enrollmentSrc) &&
+  /state\.samples\.push\(image\)/.test(enrollmentSrc) &&
   /clearSamples\(\)/.test(enrollmentSrc));
 ok('enrollment stops acquisition and keeps samples out of storage',
   /stopAcquisition/.test(enrollmentSrc) &&
@@ -231,7 +252,7 @@ ok('enrollment stops acquisition and keeps samples out of storage',
   !/(localStorage|sessionStorage)/.test(enrollmentSrc));
 ok('enrollment logs only sizes and formats',
   /\[enrollment\] capture ' \+ state\.samples\.length/.test(enrollmentSrc) &&
-  /template\.length \+ ' chars, format ' \+ FORMAT_MODE/.test(enrollmentSrc) &&
+  /image\.length \+ ' base64 chars, format ' \+ FORMAT_MODE/.test(enrollmentSrc) &&
   !/console\.(log|info|debug)\([^)]*state\.samples\[/.test(enrollmentSrc) &&
   !/(localStorage|sessionStorage)/.test(enrollmentSrc));
 

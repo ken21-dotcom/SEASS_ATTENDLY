@@ -30,8 +30,9 @@
   var RESTART_GAP_MS = 2000;    // spacing for an automatic restart
   var QUALITY_WAIT_MS = 600;    // wait for this placement's QualityReported
   var LOCK_NAME = 'attendly-fingerprint-acquisition';
-  var CONSENT_TEXT = 'Fingerprint is used only for event attendance and stored '
-    + 'as a template, never as an image. The student has agreed.';
+  var CONSENT_TEXT = 'Fingerprint images are sent only to this laptop\'s matching '
+    + 'service, used to create a template, and then discarded. Only the template '
+    + 'is stored and used for event attendance. The student has agreed.';
 
   var FORMAT_MODE = readFormatMode();
   var DEBUG = readDebugMode();
@@ -49,7 +50,7 @@
     submitting: false,
     restartInFlight: false,
     restartTimer: null,
-    samples: [],            // in-memory templates only
+    samples: [],            // in-memory base64 images, discarded after submit
     lastStartAt: 0,
     cooldownUntil: 0,
     lastQuality: null,      // quality of the last QualityReported event
@@ -74,7 +75,7 @@
 
   function readFormatMode() {
     var value = String(searchParams().get('format') || '').toLowerCase();
-    return value === 'intermediate' || value === 'raw' || value === 'png' ? value : 'intermediate';
+    return value === 'intermediate' || value === 'raw' || value === 'png' ? value : 'png';
   }
 
   /** ?debug=1 shows the SDK diagnostics line in the modal. */
@@ -83,21 +84,21 @@
   }
 
   /**
-   * Map ?format= to a SampleFormat value, defaulting to Intermediate and
-   * falling back to PngImage when the installed agent exposes a different
-   * enum name. ?format=png and ?format=raw stay optional overrides.
+   * Map ?format= to a SampleFormat value. PNG is the default because the
+   * matching service consumes image samples; ?format=intermediate and
+   * ?format=raw stay optional diagnostics overrides.
    */
   function fingerprintSampleFormatValue() {
     var formats = (global.dp && global.dp.devices && global.dp.devices.SampleFormat) || {};
     var candidates = {
+      png: ['PngImage'],
       intermediate: ['Intermediate', 'IntermediateImage'],
       raw: ['Raw', 'RawImage'],
-      png: ['PngImage'],
-    }[FORMAT_MODE] || ['Intermediate', 'IntermediateImage'];
+    }[FORMAT_MODE] || ['PngImage'];
     for (var i = 0; i < candidates.length; i += 1) {
       if (formats[candidates[i]] != null) return formats[candidates[i]];
     }
-    return formats.Intermediate != null ? formats.Intermediate : formats.PngImage;
+    return formats.PngImage != null ? formats.PngImage : formats.Intermediate;
   }
 
   function sdkReady() {
@@ -260,7 +261,7 @@
                 'Tick the consent box, then press Start scanning.</p>' +
               '<p class="fingerprint-enroll-help">Place the same finger on the U.are.U 4500 sensor four times. ' +
                 'Poor placements are not counted. Only the captured templates are sent to the server; ' +
-                'the fingerprint image stays on this laptop.</p>' +
+                'the image is sent only to this laptop\'s matching service, used to create a template, then discarded.</p>' +
               '<p class="fingerprint-enroll-error" id="fingerprintEnrollError" role="alert" hidden></p>' +
               '<p class="fingerprint-enroll-debug" id="fingerprintEnrollDebug" hidden></p>' +
             '</div>' +
@@ -698,8 +699,8 @@
         state.lastRejectReason = '';
       }
 
-      var template = api.extractFingerprintTemplate(sample);
-      if (!template) {
+      var image = api.encodeFingerprintSample(sample);
+      if (!image) {
         state.cooldownUntil = Date.now() + SCAN_COOLDOWN_MS;
         state.lastRejectReason = 'the SDK returned an empty sample';
         setStatus('Fingerprint not read — place the same finger again. ' + progressLabel());
@@ -707,15 +708,15 @@
         return;
       }
 
-      state.samples.push(template);
+      state.samples.push(image);
       state.cooldownUntil = Date.now() + SCAN_COOLDOWN_MS;
       accepted = true;
 
-      // Sizes and formats only; the template itself is never logged.
+      // Sizes and formats only; the image data itself is never logged.
       if (global.console && typeof global.console.info === 'function') {
         global.console.info(
           '[enrollment] capture ' + state.samples.length + '/' + SCANS_REQUIRED +
-          ' accepted — ' + template.length + ' chars, format ' + FORMAT_MODE
+          ' accepted — ' + image.length + ' base64 chars, format ' + FORMAT_MODE
         );
       }
 
@@ -768,9 +769,9 @@
     // No acquisition while the server call runs.
     stopSession();
 
-    var payload = state.samples.join('|');
+    var images = state.samples.slice();
     try {
-      var result = await api.enrollFingerprint(state.studentId, payload);
+      var result = await api.enrollFingerprint(state.studentId, images);
       markEnrolled(state.studentId);
       if (typeof showToast === 'function') {
         showToast('success', result.message || (state.studentName + ' fingerprint enrolled.'));
@@ -797,10 +798,10 @@
       'scanner_unavailable': 'The fingerprint reader could not be opened. Close any other page or scanner application using it, then retry.',
       'scanner_busy': 'The fingerprint reader is already in use in another tab (for example the kiosk). Close that tab and retry.',
       'matching_service_not_configured': 'Fingerprint matching is not configured on the server yet, so these scans were not saved. Ask the administrator to configure the matching service.',
-      'matching_service_unavailable': 'The fingerprint matching service is unavailable, so these scans were not saved.',
+      'matching_service_unavailable': 'The fingerprint matching service is not running on this laptop, so these scans were not saved.',
       'fingerprint_already_enrolled': 'This fingerprint is already enrolled to another student.',
       'student_not_found': 'This student record no longer exists.',
-      'invalid_field': 'The captured template was rejected. Scan the same finger again.',
+      'invalid_field': 'The captured image was rejected. Scan the same finger again.',
       'network_error': 'The attendance server did not respond. Check the connection and retry.',
     };
     return map[code] || error.message || 'The fingerprint could not be enrolled.';

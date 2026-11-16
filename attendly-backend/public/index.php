@@ -138,7 +138,7 @@ $path = '/' . ltrim($path, '/');
 
 try {
     $db    = get_db();
-    $repo  = new Repository($db);
+    $repo  = new Repository($db, $config);
     $auth  = new Auth($db);
     $limiter = new RateLimiter($db);
     $ctx   = ['repo' => $repo, 'auth' => $auth, 'limiter' => $limiter, 'method' => $method, 'config' => $config];

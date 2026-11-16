@@ -168,9 +168,9 @@ function workingApi() {
   const dataJs = fs.readFileSync(path.join(ROOT, 'student-attendance-system/js/data.js'), 'utf8');
   const administratorPanelJs = fs.readFileSync(path.join(ROOT, 'student-attendance-system/js/administrator-panel.js'), 'utf8');
 
-  ok('kiosk sends only the extracted template to the server',
+  ok('kiosk sends only the captured PNG sample to the server',
     /new window\.dp\.devices\.FingerprintReader\(/.test(kioskJs) &&
-    /api\.extractFingerprintTemplate\(/.test(kioskJs) &&
+    /api\.encodeFingerprintSample\(/.test(kioskJs) &&
     /api\.fingerprintCheckIn\(/.test(kioskJs) &&
     !/console\.(log|info|debug|warn|error)\([^)]*(sample|Data|template)/i.test(kioskJs) &&
     !/(localStorage|sessionStorage)/.test(kioskJs));

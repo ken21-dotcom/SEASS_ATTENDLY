@@ -69,9 +69,9 @@ function attendly_route(string $path, string $method, array $ctx): array
     /**
      * Kiosk fingerprint check-in.
      *
-     * The browser sends the template produced by the WebUSB capture bridge.
-     * The server resolves the active student by direct template comparison
-     * and then reuses the same attendance policy engine as QR check-in.
+     * The browser sends one base64 PNG sample. The local matching service
+     * identifies the student among the event's in-scope enrolled candidates,
+     * then the same attendance policy engine as QR check-in records the scan.
      * Only a signed-in officer or administrator may call this route.
      */
     $fingerprintCheckIn = function () use ($repo, $auth, $ctx): array {
@@ -86,7 +86,7 @@ function attendly_route(string $path, string $method, array $ctx): array
 
         return $repo->checkInByFingerprint(
             Response::requireBodyId($body, 'eventId'),
-            Response::requireString($body, 'fingerprintTemplate'),
+            Response::requireString($body, 'image'),
             $action,
             (int) ($ctx['config']['tunables']['checkin_open_minutes_before'] ?? 30),
             (int) ($ctx['config']['tunables']['checkin_close_minutes_after'] ?? 360),
@@ -215,15 +215,19 @@ function attendly_route(string $path, string $method, array $ctx): array
                 $admin
             );
         }],
-        // Admin/SSC enrollment: capture happens in the browser, then the
-        // opaque template is stored against one student profile.
+        // Admin/SSC enrollment: capture happens in the browser, then each PNG
+        // is turned into a template by the local matching service.
         ['POST', '/users/enroll-fingerprint', function () use ($repo, $auth, $ctx): array {
             $actor = $auth->requireRole(['admin', 'ssc-officer']);
             $ctx['limiter']->consume('fingerprint-enroll-user', (string) $actor['id'], 60, 60);
             $body = Response::body();
+            $images = $body['images'] ?? null;
+            if (!is_array($images)) {
+                Response::fail('invalid_field', 'Field "images" must be an array of four fingerprint images.', 422);
+            }
             return $repo->enrollFingerprint(
                 Response::requireBodyId($body, 'studentId'),
-                Response::requireString($body, 'fingerprintTemplate'),
+                $images,
                 $actor
             );
         }],
@@ -458,7 +462,9 @@ function attendly_route(string $path, string $method, array $ctx): array
         // resolving the active student id carried inside the token.
         ['POST', '/attendance/qr-check-in', $qrCheckIn],
         ['POST', '/attendance/manual', function () use ($repo, $auth, $ctx): array {
-            $auth->requireRole(['admin', 'ssc-officer']);
+            $officer = $auth->requireRole(['admin', 'ssc-officer']);
+            $ctx['limiter']->consume('manual-checkin-user', (string) $officer['id'], 300, 60);
+
             $body = Response::body();
             $action = strtolower(trim((string) ($body['action'] ?? 'in')));
             if (!in_array($action, ['in', 'out'], true)) {
@@ -467,28 +473,17 @@ function attendly_route(string $path, string $method, array $ctx): array
             $timezone = (string) ($ctx['config']['tunables']['timezone'] ?? 'Asia/Manila');
             $lateGrace = (int) ($ctx['config']['tunables']['late_grace_minutes'] ?? 15);
 
-            $attendance = $action === 'out'
-                ? $repo->checkOut([
-                    'eventId' => Response::requireBodyId($body, 'eventId'),
-                    'studentId' => Response::requireBodyId($body, 'studentId'),
-                ],
-                    (int) ($ctx['config']['tunables']['checkout_open_minutes_before_end'] ?? 60),
-                    (int) ($ctx['config']['tunables']['checkout_close_minutes_after_end'] ?? 60),
-                    $timezone,
-                    $lateGrace
-                )
-                : $repo->checkIn([
-                    'eventId' => Response::requireBodyId($body, 'eventId'),
-                    'studentId' => Response::requireBodyId($body, 'studentId'),
-                    'verificationMethod' => 'manual',
-                ],
-                    (int) ($ctx['config']['tunables']['checkin_open_minutes_before'] ?? 30),
-                    (int) ($ctx['config']['tunables']['checkin_close_minutes_after'] ?? 360),
-                    $timezone,
-                    $lateGrace
-                );
-            $attendance['action'] = $action;
-            return $attendance;
+            return $repo->checkInManual(
+                Response::requireBodyId($body, 'eventId'),
+                Response::requireBodyId($body, 'studentId'),
+                $action,
+                (int) ($ctx['config']['tunables']['checkin_open_minutes_before'] ?? 30),
+                (int) ($ctx['config']['tunables']['checkin_close_minutes_after'] ?? 360),
+                $timezone,
+                $lateGrace,
+                (int) ($ctx['config']['tunables']['checkout_open_minutes_before_end'] ?? 60),
+                (int) ($ctx['config']['tunables']['checkout_close_minutes_after_end'] ?? 60)
+            );
         }],
 
         ['GET', '/reenrollment-requests', function () use ($repo, $auth): array {

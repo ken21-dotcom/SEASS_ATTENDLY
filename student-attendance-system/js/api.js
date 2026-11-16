@@ -391,19 +391,20 @@ var api = {
   },
 
   /**
-   * Store the template produced by the DigitalPersona Web SDK against a
-   * student profile. Admin and SSC-officer sessions only.
+   * Store the fingerprint images captured by the DigitalPersona Web SDK
+   * against a student profile. Admin and SSC-officer sessions only. The
+   * server turns each image into a template and discards the image.
    *
    * @param {number|string} studentId user id of the student
-   * @param {string} fingerprintTemplate opaque template from the scanner
+   * @param {string[]} fingerprintImages four base64 PNG samples
    * @returns {Promise<{ok:boolean,studentId:number,studentName:string,fingerprintEnrolled:boolean}>}
    */
-  enrollFingerprint: function (studentId, fingerprintTemplate) {
+  enrollFingerprint: function (studentId, fingerprintImages) {
     return request('/users/enroll-fingerprint', {
       method: 'POST',
       body: {
         studentId: studentId,
-        fingerprintTemplate: fingerprintTemplate,
+        images: fingerprintImages,
       },
       validate: function (result) {
         return !!result && result.ok === true && result.fingerprintEnrolled === true;
@@ -647,17 +648,17 @@ var api = {
    * never sends a name or id.
    *
    * @param {number|string} eventId
-   * @param {string} fingerprintTemplate
+   * @param {string} fingerprintImage one base64 PNG sample
    * @param {string} [action='in'] 'in' or 'out'
    * @returns {Promise<Object>} the attendance row plus studentName/action
    */
-  fingerprintCheckIn: function (eventId, fingerprintTemplate, action) {
+  fingerprintCheckIn: function (eventId, fingerprintImage, action) {
     return request('/attendance/fingerprint', {
       method: 'POST',
       anonymous: true,
       body: {
         eventId: eventId,
-        fingerprintTemplate: fingerprintTemplate,
+        image: fingerprintImage,
         action: action === 'out' ? 'out' : 'in',
       },
       validate: function (row) {
@@ -667,25 +668,46 @@ var api = {
   },
 
   /**
-   * Extract the opaque template string from a captured fingerprint sample.
-   * The Web SDK returns the sample as { Data, ... }; the kiosk sends Data
-   * to the server and never stores or displays it.
+   * Encode a captured fingerprint sample as base64 for transport.
+   *
+   * The Web SDK returns a PNG sample as { Data, ... } where Data is a
+   * Uint8Array of image bytes. Base64 conversion is done in small chunks so
+   * a full-size capture cannot exceed the argument limit of
+   * String.fromCharCode.apply (which throws RangeError). The value is never
+   * logged, stored, or rendered.
    *
    * @param {Object} sample
-   * @returns {string|null}
+   * @returns {string|null} base64 image, or null when there is no data
    */
-  extractFingerprintTemplate: function (sample) {
+  encodeFingerprintSample: function (sample) {
     if (!sample) return null;
-    const data = sample.Data;
-    if (typeof data === 'string' && data.length) return data;
-    if (data && typeof data.byteLength === 'number') {
-      try {
-        return String.fromCharCode.apply(null, new Uint8Array(data));
-      } catch (error) {
-        return null;
-      }
+    const data = sample.Data != null ? sample.Data : sample;
+    if (typeof data === 'string') return data.length ? data : null;
+
+    let bytes;
+    if (data instanceof Uint8Array) {
+      bytes = data;
+    } else if (ArrayBuffer.isView(data)) {
+      bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    } else if (typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) {
+      bytes = new Uint8Array(data);
+    } else if (Array.isArray(data)) {
+      bytes = Uint8Array.from(data);
+    } else {
+      return null;
     }
-    return null;
+    if (!bytes.length) return null;
+
+    const chunks = [];
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      chunks.push(String.fromCharCode.apply(null, bytes.subarray(offset, offset + chunkSize)));
+    }
+    try {
+      return btoa(chunks.join(''));
+    } catch (error) {
+      return null;
+    }
   },
 
   manualCheckIn: function (eventId, studentId, action) {
@@ -749,5 +771,12 @@ var api = {
     return request('/users/me/deactivate', {
       method: 'POST',
     });
+  },
+
+  /**
+   * Fetch the signed-in student's own sanction status and standing.
+   */
+  getMySanctions: function () {
+    return request('/users/me/sanctions');
   },
 };

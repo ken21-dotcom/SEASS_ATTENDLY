@@ -69,7 +69,7 @@
   // ?debug=1 puts an operator diagnostics line on the kiosk. It never shows
   // sample data — only SDK events, counters and error text.
   const KIOSK_DEBUG = readKioskDebugFlag();
-  const FINGERPRINT_FORMAT_MODE = readKioskFormatMode(); // intermediate (default) | png | raw
+  const FINGERPRINT_FORMAT_MODE = readKioskFormatMode(); // png (default) | intermediate | raw
   let debugEl = null;
   let debugLastEvent = null; // { name, at }
   let debugStopTimes = []; // AcquisitionStopped timestamps within the last minute
@@ -789,8 +789,20 @@
     'invalid_field': [
       'invalid-field',
       'Scan rejected',
-      'The fingerprint template could not be verified by the server.',
+      'The fingerprint image could not be read by the matching service.',
       'Try the scan again. If it keeps failing, ask the SSC officer for help.',
+    ],
+    'matching_service_unavailable': [
+      'server-error',
+      'Matching service offline',
+      'The fingerprint matching service is not running on this laptop.',
+      'Ask the SSC officer to start the matching service, or use manual entry.',
+    ],
+    'matching_service_not_configured': [
+      'server-error',
+      'Matching service offline',
+      'Fingerprint matching is not configured on this server.',
+      'Ask the administrator to configure the matching service, or use manual entry.',
     ],
     'rate_limited': [
       'server-error',
@@ -883,25 +895,25 @@
 
   function readKioskFormatMode() {
     const value = String(kioskSearchParams().get('format') || '').toLowerCase();
-    return value === 'intermediate' || value === 'raw' || value === 'png' ? value : 'intermediate';
+    return value === 'intermediate' || value === 'raw' || value === 'png' ? value : 'png';
   }
 
   /**
-   * Map ?format= to a SampleFormat value, defaulting to Intermediate and
-   * falling back to PngImage when the installed agent exposes a different
-   * enum name.
+   * Map ?format= to a SampleFormat value. PNG is the default because the
+   * local matching service consumes images; Intermediate and Raw remain
+   * optional overrides for diagnostics only.
    */
   function fingerprintSampleFormatValue() {
     const formats = (window.dp && window.dp.devices && window.dp.devices.SampleFormat) || {};
     const candidates = {
+      png: ['PngImage'],
       intermediate: ['Intermediate', 'IntermediateImage'],
       raw: ['Raw', 'RawImage'],
-      png: ['PngImage'],
-    }[FINGERPRINT_FORMAT_MODE] || ['Intermediate', 'IntermediateImage'];
+    }[FINGERPRINT_FORMAT_MODE] || ['PngImage'];
     for (let i = 0; i < candidates.length; i += 1) {
       if (formats[candidates[i]] != null) return formats[candidates[i]];
     }
-    return formats.Intermediate != null ? formats.Intermediate : formats.PngImage;
+    return formats.PngImage != null ? formats.PngImage : formats.Intermediate;
   }
 
   /**
@@ -1454,9 +1466,9 @@
     }
 
     const samples = event && Array.isArray(event.samples) ? event.samples : [];
-    const template = api.extractFingerprintTemplate(samples[0]);
-    if (!template) {
-      noteSampleIgnored('template extraction failed');
+    const image = api.encodeFingerprintSample(samples[0]);
+    if (!image) {
+      noteSampleIgnored('sample carried no image data');
       setStatus('attention', 'Fingerprint not read', 'Place your finger flat on the sensor and try again.');
       return;
     }
@@ -1473,7 +1485,7 @@
     setStatus('processing', 'Verifying identity', 'The server is matching the fingerprint.');
 
     try {
-      const record = await api.fingerprintCheckIn(eventRow.id, template, scanMode);
+      const record = await api.fingerprintCheckIn(eventRow.id, image, scanMode);
       const action = record.action === 'out' ? 'out' : 'in';
       const stamp = action === 'out'
         ? (record.checkOutTimeLabel || record.time)

@@ -73,6 +73,17 @@ return [
     // committed. It authenticates requests to the attendance SOAP service.
     'soap_api_token' => 'change-this-to-a-long-random-token',
 
+    // ─── Fingerprint matching service ─────────────────────────────
+    // Local SourceAFIS service in tools/matching-service. MATCHING_KEY is
+    // read from the environment first, then this file; both sides must use
+    // the same value. The service listens on 127.0.0.1:8090 only.
+    'matching' => [
+        'url' => 'http://127.0.0.1:8090',
+        'key' => 'change-this-to-a-long-random-matching-key',
+        'threshold' => 40,
+        'timeout_seconds' => 5,
+    ],
+
     // Dedicated HMAC key for event-scoped student QR codes. Must be at least
     // 32 characters; generate one with: php -r "echo bin2hex(random_bytes(32));"
     // Changing this key invalidates every QR code currently displayed.

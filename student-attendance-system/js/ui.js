@@ -926,7 +926,7 @@ function initGlobalSearch(links) {
     let html = '';
 
     const students = users.filter(u => u.role === 'student'
-      && (u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query)));
+      && ((u.name && u.name.toLowerCase().includes(query)) || (u.email && u.email.toLowerCase().includes(query))));
     if (students.length) {
       html += '<div class="search-result-group"><i class="bi bi-people"></i> Students</div>';
       students.slice(0, 5).forEach(s => {
@@ -937,7 +937,7 @@ function initGlobalSearch(links) {
     }
 
     const officers = users.filter(u => u.role === 'ssc-officer'
-      && (u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query)));
+      && ((u.name && u.name.toLowerCase().includes(query)) || (u.email && u.email.toLowerCase().includes(query))));
     if (officers.length && targets.officers) {
       html += '<div class="search-result-group"><i class="bi bi-person-badge"></i> Officers</div>';
       officers.slice(0, 5).forEach(o => {
@@ -947,8 +947,8 @@ function initGlobalSearch(links) {
       });
     }
 
-    const matchedEvents = events.filter(e => e.name.toLowerCase().includes(query)
-      || e.location.toLowerCase().includes(query)
+    const matchedEvents = events.filter(e => (e.name ? e.name.toLowerCase().includes(query) : false)
+      || (e.location ? e.location.toLowerCase().includes(query) : false)
       || String(e.publicId || '').toLowerCase().includes(query));
     if (matchedEvents.length) {
       html += '<div class="search-result-group"><i class="bi bi-calendar-event"></i> Events</div>';
