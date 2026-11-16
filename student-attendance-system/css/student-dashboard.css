@@ -648,90 +648,6 @@ flex: 1;
   font-size: .68rem;
 }
 
-/* ── Enlarged QR modal ──
-   The body is solid white in both themes so the kiosk camera always sees a
-   clean, high-contrast code; the canvas itself is rendered at 320px. */
-.qr-enlarge-modal-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-}
-
-.qr-enlarge-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-}
-
-.qr-enlarge-container canvas {
-  display: block;
-  width: min(320px, 100%);
-  height: auto;
-  border-radius: var(--radius-sm);
-}
-
-.qr-enlarge-container p {
-  margin: 0;
-  color: #405047;
-  font-size: .86rem;
-  line-height: 1.5;
-  text-align: center;
-}
-
-#qrCodeEnlargeModal .modal-header,
-#qrCodeEnlargeModal .modal-footer {
-  display: none !important;
-}
-
-.qr-focus-modal .modal-dialog {
-  width: 100vw;
-  max-width: none;
-  height: 100vh;
-  margin-right: auto;
-  margin-left: auto;
-}
-
-.qr-focus-modal .modal-content {
-  height: 100%;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: #FFFFFF;
-}
-
-.qr-focus-modal .modal-body {
-  position: relative;
-  min-height: 100%;
-  padding: 0;
-  background: #FFFFFF;
-}
-
-#qrCodeEnlargeModal .qr-enlarge-container {
-  min-height: 100%;
-  width: 100%;
-  height: 100%;
-}
-
-#qrCodeEnlargeModal .qr-enlarge-container canvas {
-  width: min(80vw, 80vh) !important;
-  height: min(80vw, 80vh) !important;
-  max-width: none;
-  border-radius: 0;
-}
-
-.qr-close-hint {
-  position: absolute;
-  bottom: 16px;
-  left: 0;
-  width: 100%;
-  color: rgba(0, 0, 0, 0.45);
-  font-size: .75rem;
-  text-align: center;
-  pointer-events: none;
-}
-
 /* Lower Columns — explicit grid row so the calendar and forecast
    cards are normal-flow siblings with a real gap between them. */
 .lower-columns {
@@ -1730,7 +1646,7 @@ flex: 1;
    .guide-icon and .enrollment-pill keep their standalone rules (student.js
    toggles the latter at runtime). */
 
-/* Biometric styles removed — the app now uses QR code attendance. */
+
 
 /* Responsive - Student Dashboard */
 @media (max-width: 900px) {

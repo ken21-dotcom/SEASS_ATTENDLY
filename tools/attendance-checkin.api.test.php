@@ -3,22 +3,19 @@
 declare(strict_types=1);
 
 /**
- * End-to-end tests for the server-verified kiosk QR check-in,
- * plus the user token-exposure and sanction-review route contracts.
+ * End-to-end tests for fingerprint/manual kiosk attendance,
+ * plus student profile and sanction-review route contracts.
  *
  * Proves the whole path against a real PHP server and MySQL:
- * a student requests an event-scoped token -> an officer scans it at that
- * event -> attendance row; duplicate/window/inactive/wrong-event guards.
- * Anonymous and student sessions must never be able to record a QR check-in.
- * Staff listings and profile updates must never carry QR tokens, and the
- * sanction review route accepts only integer ids.
+ * Fingerprint matching and manual entry must record attendance with the
+ * expected duplicate/window guards. The sanction review route accepts only
+ * integer ids.
  *
- * Run: php tools/qr-check-in.api.test.php
+ * Run: php tools/attendance-checkin.api.test.php
  */
 
 require __DIR__ . '/../attendly-backend/config/db.php';
 require __DIR__ . '/../attendly-backend/src/PublicIdGenerator.php';
-require __DIR__ . '/../attendly-backend/src/QrToken.php';
 
 error_reporting(E_ALL);
 set_error_handler(static function (int $severity, string $message, string $file, int $line): void {
@@ -26,16 +23,10 @@ set_error_handler(static function (int $severity, string $message, string $file,
 });
 
 use Attendly\PublicIdGenerator;
-use Attendly\QrToken;
 
 $root = dirname(__DIR__);
 $backend = $root . '/attendly-backend';
 $config = require $backend . '/config/config.php';
-$qrSecret = (string) ($config['qr_hmac_secret'] ?? '');
-if (strlen($qrSecret) < 32) {
-    fwrite(STDERR, "config/config.php is missing a 32+ character qr_hmac_secret.\n");
-    exit(1);
-}
 
 $db = get_db();
 
@@ -302,50 +293,11 @@ function attendance_count(PDO $db, int $eventId, int $studentId): int
     return (int) $stmt->fetchColumn();
 }
 
-function qr_token_for(int $studentId, int $eventId): string
-{
-    global $qrSecret;
-    return QrToken::generateEventToken($studentId, $eventId, $qrSecret);
-}
-
 $suffix = bin2hex(random_bytes(4));
 $password = 'TestPass123!';
 $timezone = new DateTimeZone((string) ($config['tunables']['timezone'] ?? 'Asia/Manila'));
 
 try {
-    // ── Unit-level checks on event-scoped QrToken before HTTP wiring ──
-    test('generated event token has the HMAC token format', function (): void {
-        $token = qr_token_for(123, 456);
-        same('v1.123.456.', substr($token, 0, 11));
-        assert_true(QrToken::isValid($token), 'fresh event token rejected by isValid');
-        assert_true(strlen(explode('.', $token)[3]) === QrToken::SIGNATURE_LENGTH, 'signature length is wrong');
-    });
-
-    test('tokens are scoped to different students and events', function (): void {
-        $a = qr_token_for(123, 456);
-        $b = qr_token_for(124, 456);
-        $c = qr_token_for(123, 457);
-        assert_true($a !== $b, 'student scope is not represented in the token');
-        assert_true($a !== $c, 'event scope is not represented in the token');
-    });
-
-    test('parseEventToken verifies the embedded student and event ids', function () use ($qrSecret): void {
-        $token = qr_token_for(123, 456);
-        $parsed = QrToken::parseEventToken($token, $qrSecret);
-        same(['studentId' => 123, 'eventId' => 456], $parsed);
-        $tampered = substr($token, 0, -1) . (substr($token, -1) === 'A' ? 'B' : 'A');
-        assert_true(QrToken::parseEventToken($tampered, $qrSecret) === null, 'tampered signature was accepted');
-    });
-
-    test('malformed and legacy static tokens are rejected', function (): void {
-        foreach([
-            '', str_repeat('A', 43), 'v1.123.456.short',
-            'v1.0.456.' . str_repeat('A', 43), 'v1.123.456.' . str_repeat('+', 43),
-        ] as $bad) {
-            assert_true(!QrToken::isValid($bad), "accepted malformed token: {$bad}");
-        }
-    });
-
     // ── Seed accounts through the real registration endpoint so the
     //    token comes from registerStudent(), not hand-written SQL. ──
     $adminId = create_admin($db, $suffix, $password);

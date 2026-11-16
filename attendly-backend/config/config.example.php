@@ -84,11 +84,6 @@ return [
         'timeout_seconds' => 5,
     ],
 
-    // Dedicated HMAC key for event-scoped student QR codes. Must be at least
-    // 32 characters; generate one with: php -r "echo bin2hex(random_bytes(32));"
-    // Changing this key invalidates every QR code currently displayed.
-    'qr_hmac_secret' => 'change-this-to-a-long-random-qr-secret',
-
     // ─── Email (SMTP) ──────────────────────────────────────────────
     // Never commit real credentials. config.php is gitignored; this file
     // ships placeholder values only. Gmail SMTP via SSL on port 465.

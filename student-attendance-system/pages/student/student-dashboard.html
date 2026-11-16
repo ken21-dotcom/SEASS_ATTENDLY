@@ -85,32 +85,6 @@
           <div class="stat-value" id="sanctionCount">0</div>
           <div class="stat-foot">Active records</div>
         </article>
-
-        <!-- Event-specific check-in QR Code -->
-        <article class="stat-card stat-card--qr">
-          <div class="stat-head">
-            <span class="stat-label">Event check-in QR</span>
-            <i class="stat-icon bi bi-qr-code" aria-hidden="true"></i>
-          </div>
-          <div class="stat-value qr-card-body">
-            <div class="qr-event-picker" hidden>
-              <label class="qr-event-label" for="qrEventSelect">Live event</label>
-              <select class="qr-event-select" id="qrEventSelect" aria-describedby="qrCardHint">
-                <option value="">Choose a live event…</option>
-              </select>
-            </div>
-            <div class="qr-card-main">
-              <button class="qr-card-canvas-button" id="qrEnlargeTrigger" type="button" aria-label="Enlarge check-in QR code" aria-haspopup="dialog" hidden>
-                <span id="studentQrCanvas" class="qr-card-canvas"></span>
-                <span class="qr-zoom-badge" aria-hidden="true"><i class="bi bi-zoom-in"></i></span>
-              </button>
-              <div class="qr-card-copy">
-                <p class="qr-card-hint" id="qrCardHint" aria-live="polite">Loading active events…</p>
-                <p class="qr-card-note"><i class="bi bi-shield-check" aria-hidden="true"></i> This code only works for its live event.</p>
-              </div>
-            </div>
-          </div>
-        </article>
       </div>
 
       <section class="dashboard-columns">
@@ -261,34 +235,7 @@
   </div>
   <div class="notification-backdrop" id="notificationBackdrop" hidden></div>
 
-  <!-- Enlarged QR code modal: white body so the code scans in either theme -->
-  
-
   <!-- All announcements modal (opened by the panel's "View all" link) -->
-  
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="../../js/api.js"></script>
-  <script src="../../js/data.js"></script>
-  <script src="../../js/auth.js"></script>
-  <script src="../../js/ui.js"></script>
-  <script src="../../js/vendor/qrcode.min.js"></script>
-  <script src="../../js/qr.js"></script>
-  <script src="../../js/student.js"></script>
-
-
-  <!-- Page modals -->
-  <div class="modal fade qr-focus-modal" id="qrCodeEnlargeModal" tabindex="-1" aria-hidden="true" aria-label="Full screen check-in QR code">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-body qr-enlarge-modal-body" data-bs-dismiss="modal">
-          <div id="enlargedQrContainer" class="qr-enlarge-container"></div>
-          <span class="qr-close-hint">Tap anywhere to close</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="modal fade" id="allAnnouncementsModal" tabindex="-1" aria-hidden="true" aria-labelledby="allAnnouncementsModalTitle">
     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
       <div class="modal-content">
@@ -302,5 +249,11 @@
       </div>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="../../js/data.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/ui.js"></script>
+  <script src="../../js/student.js"></script>
 </body>
 </html>

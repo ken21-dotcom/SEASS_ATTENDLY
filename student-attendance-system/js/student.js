@@ -3,8 +3,6 @@
 let dashboardCalendarDate = new Date();
 let dashboardSelectedDate = null;
 let dashboardAttendanceByEvent = {};
-let dashboardQrToken = null;
-let dashboardQrEventId = null;
 let currentUser = null;
 
 // Initialize profile page on DOMContentLoaded
@@ -59,18 +57,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   const viewAllAnnouncements = document.getElementById('viewAllAnnouncements');
   if (viewAllAnnouncements) {
     viewAllAnnouncements.addEventListener('click', renderAllAnnouncements);
-  }
-
-  // The QR thumbnail opens the enlarged modal renderer.
-  const qrEnlargeTrigger = document.getElementById('qrEnlargeTrigger');
-  if (qrEnlargeTrigger) {
-    qrEnlargeTrigger.addEventListener('click', openQrEnlargeModal);
-  }
-
-  // Event picker: a QR code is generated only after an event is chosen.
-  const qrEventSelect = document.getElementById('qrEventSelect');
-  if (qrEventSelect) {
-    qrEventSelect.addEventListener('change', handleQrEventChange);
   }
 
   // ── Profile page wiring (Personal Info, Security, Preferences, Account) ──
@@ -439,6 +425,20 @@ async function initProfilePage(user) {
  * have already ended. Future and in-progress events are not absences, and
  * the denominator never drops below the number of check-ins.
  */
+function hasEventEnded(event, now = new Date()) {
+  if (!event || !event.date) return false;
+
+  const date = String(event.date).slice(0, 10);
+  const endTime = String(event.endTime || '23:59').slice(0, 5);
+  const end = new Date(date + 'T' + endTime);
+  if (Number.isNaN(end.getTime())) return false;
+
+  const startTime = String(event.startTime || event.time || '00:00').slice(0, 5);
+  const start = new Date(date + 'T' + startTime);
+  if (!Number.isNaN(start.getTime()) && end <= start) end.setDate(end.getDate() + 1);
+  return end <= now;
+}
+
 function calculateAttendanceRate(events, attendance, now = new Date()) {
   const presentCount = attendance.filter(record => record.status === 'present' || record.status === 'late').length;
   const completedEvents = events.filter(event => hasEventEnded(event, now));
@@ -529,221 +529,7 @@ function loadStudentDashboard(user) {
   renderDashboardEvents(events);
   loadWeather();
 
-  // Phase 2: the QR card becomes event-scoped. Populate the picker and
-  // leave the card on its "select an event" empty state until the student
-  // chooses one; only then is a signed token requested from the server.
-  renderQrEventOptions(events);
 }
-
-/**
- * Open the enlarge modal and draw a 320px copy of the student's QR code into
- * its container. The dashboard thumbnail keeps its compact size.
- */
-function openQrEnlargeModal() {
-  const modalElement = document.getElementById('qrCodeEnlargeModal');
-  if (!modalElement) return;
-
-  // The trigger is hidden until a token exists, but guard the modal anyway
-  // so a keyboard/programmatic open can never show an empty QR canvas.
-  if (!dashboardQrToken) {
-    const select = document.getElementById('qrEventSelect');
-    if (select) select.focus();
-    return;
-  }
-
-  if (typeof window.renderStudentQr === 'function') {
-    window.renderStudentQr('enlargedQrContainer', dashboardQrToken, 320);
-  }
-
-  if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
-    window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
-  }
-}
-
-/* ── Event-specific check-in QR ───────────────────────────────── */
-
-/**
- * End instant for an event, including events that finish after midnight.
- * Returns null when the date cannot be parsed.
- */
-function eventEndMoment(event) {
-  if (!event || !event.date) return null;
-
-  const date = String(event.date).slice(0, 10);
-  const startTime = String(event.startTime || event.time || '00:00').slice(0, 5);
-  const endTime = String(event.endTime || '23:59').slice(0, 5);
-  const startsAt = new Date(date + 'T' + startTime);
-  let endsAt = new Date(date + 'T' + endTime);
-
-  if (Number.isNaN(endsAt.getTime())) {
-    const dayEnd = new Date(date + 'T23:59:59');
-    return Number.isNaN(dayEnd.getTime()) ? null : dayEnd;
-  }
-
-  // An event that ends at or before it starts runs into the next day.
-  if (!Number.isNaN(startsAt.getTime()) && endsAt <= startsAt) {
-    endsAt = new Date(endsAt.getTime() + 24 * 60 * 60 * 1000);
-  }
-  return endsAt;
-}
-
-/** True when the event's end instant has passed. */
-function hasEventEnded(event, now = new Date()) {
-  const endsAt = eventEndMoment(event);
-  return endsAt !== null && endsAt <= now;
-}
-
-/** Start instant for an event. */
-function eventStartMoment(event) {
-  if (!event || !event.date) return null;
-  const date = String(event.date).slice(0, 10);
-  const startTime = String(event.startTime || event.time || '00:00').slice(0, 5);
-  const startsAt = new Date(date + 'T' + startTime);
-  return Number.isNaN(startsAt.getTime()) ? null : startsAt;
-}
-
-/** Events whose scheduled window contains the supplied instant. */
-function liveQrEvents(events, now = new Date()) {
-  return (events || [])
-    .filter(event => event && event.id != null && String(event.status || 'scheduled') === 'scheduled')
-    .filter(event => {
-      const startsAt = eventStartMoment(event);
-      const endsAt = eventEndMoment(event);
-      return startsAt !== null && endsAt !== null && startsAt <= now && now <= endsAt;
-    })
-    .sort((a, b) => eventSortKey(a).localeCompare(eventSortKey(b)));
-}
-
-function clearQrDisplay() {
-  dashboardQrToken = null;
-  dashboardQrEventId = null;
-  const button = document.getElementById('qrEnlargeTrigger');
-  const canvas = document.getElementById('studentQrCanvas');
-  if (button) button.hidden = true;
-  if (canvas) canvas.innerHTML = '';
-}
-
-function setQrCardMessage(message, showCanvas = false) {
-  const hint = document.getElementById('qrCardHint');
-  if (hint) hint.textContent = message;
-
-  const button = document.getElementById('qrEnlargeTrigger');
-  const canvas = document.getElementById('studentQrCanvas');
-  if (button) button.hidden = !showCanvas;
-  if (canvas) canvas.innerHTML = '';
-  return { button, canvas };
-}
-
-function resetQrCard() {
-  clearQrDisplay();
-  setQrCardMessage('No active events right now. Your check-in QR will appear here when an event starts.');
-}
-
-/** Populate and automatically select the currently live event(s). */
-function renderQrEventOptions(events) {
-  const select = document.getElementById('qrEventSelect');
-  const picker = select ? select.closest('.qr-event-picker') : null;
-  const liveEvents = liveQrEvents(events);
-  console.log('[QR] renderQrEventOptions: liveEvents=', liveEvents.length, 'total events=', (events || []).length);
-
-  clearQrDisplay();
-  if (select) select.innerHTML = '';
-
-  if (liveEvents.length === 0) {
-    if (picker) picker.hidden = true;
-    // The cache can be stale in two ways: empty (a student on a new device
-    // before hydrateFromApi() finished) or populated but missing events that
-    // were created after it was written. Both need a one-shot server refresh;
-    // only refreshing when the cache is empty is what let a freshly created
-    // event stay invisible until the next logout/login.
-    if (!events || events.length === 0) {
-      console.log('[QR] No events in local cache — attempting API refresh.');
-    } else {
-      console.log('[QR] No live events among', events.length, 'cached events. Event statuses:', events.map(e => String(e.status || 'missing')).join(', '), '— cache may be stale, attempting API refresh.');
-    }
-    refreshEventsForQr();
-    return;
-  }
-
-  console.log('[QR] Found', liveEvents.length, 'live event(s); auto-selecting.');
-  if (liveEvents.length === 1) {
-    if (picker) picker.hidden = true;
-    const event = liveEvents[0];
-    if (select) select.value = String(event.id);
-    handleQrEventChange(event);
-    return;
-  }
-
-  if (picker) picker.hidden = false;
-  if (!select) return;
-
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = 'Choose a live event…';
-  select.appendChild(placeholder);
-
-  liveEvents.forEach(event => {
-    const option = document.createElement('option');
-    option.value = String(event.id);
-    option.textContent = String(event.name || 'Untitled event') + ' — ' + formatDate(event.date);
-    select.appendChild(option);
-  });
-
-  select.disabled = false;
-  setQrCardMessage('Choose the live event you are attending.');
-}
-
-/** Ask the server for an event's signed token and render it. */
-async function handleQrEventChange(eventOverride = null) {
-  const select = document.getElementById('qrEventSelect');
-  const eventId = eventOverride
-    ? String(eventOverride.id)
-    : String(select ? select.value || '' : '');
-  const event = eventOverride || (getEvents() || []).find(row => sameId(row.id, eventId));
-  const button = document.getElementById('qrEnlargeTrigger');
-
-  console.log('[QR] handleQrEventChange: eventId=', eventId, 'event=', event ? event.name : 'null');
-  if (!eventId || eventId === 'undefined' || eventId === 'null') {
-    console.error('[QR] handleQrEventChange: invalid eventId —', eventId);
-    clearQrDisplay();
-    setQrCardMessage('No event selected. Please choose a live event.');
-    return;
-  }
-
-  clearQrDisplay();
-  setQrCardMessage('Generating your check-in QR code…');
-  if (select) select.disabled = true;
-
-  try {
-    console.log('[QR] Fetching token from GET /events/' + eventId + '/qr-token');
-    const payload = await api.getEventQrToken(eventId);
-    const token = String(payload.qrToken || payload.qr_token || '');
-    if (!token) throw new Error('The server did not return a QR code.');
-
-    dashboardQrToken = token;
-    dashboardQrEventId = eventId;
-    console.log('[QR] Token received — rendering QR for event', eventId);
-    if (typeof window.renderStudentQr === 'function') {
-      window.renderStudentQr('studentQrCanvas', token, 160);
-    }
-    if (button) button.hidden = false;
-
-    const hint = document.getElementById('qrCardHint');
-    if (hint) hint.textContent = 'You are checking in to: ' + (event ? event.name : 'selected event') + '.';
-  } catch (error) {
-    console.error('[QR] Token fetch failed for event', eventId, ':', error && error.message ? error.message : error, '| code:', error && error.code, '| status:', error && error.status);
-    clearQrDisplay();
-    // Surface a distinct message when the server itself rejected the request
-    // so the student (or support staff reading the screen) can tell a network
-    // failure from a "no live event" state.
-    const serverMsg = error && error.status ? error.message : null;
-    setQrCardMessage(serverMsg || (error && error.message) || 'Could not generate a QR code for this event. Please try again.');
-  } finally {
-    if (select) select.disabled = false;
-  }
-}
-
-/* ── Weather (Open-Meteo) ─────────────────────────────────────── */
 
 var weatherRefreshTimer = null;
 
@@ -1123,48 +909,6 @@ function renderSelectedDayDetails(events) {
       renderMiniCalendar(dashboardCalendarDate, getEvents());
       renderDashboardEvents(getEvents());
     });
-  }
-}
-
-/**
- * One-shot retry for the QR section when the localStorage event cache is
- * empty on page load. The dashboard's main list reads from the same cache,
- * but a student who lands on the page before hydrateFromApi() has completed
- * (or on a device with a cold cache) would otherwise see "No active events"
- * even though the server has scheduled events for them.
- */
-let qrRefreshInFlight = false;
-
-async function refreshEventsForQr() {
-  if (typeof api === 'undefined' || typeof api.listEvents !== 'function') return;
-  if (typeof isApiEnabled === 'function' && !isApiEnabled()) return;
-  // One-shot: renderQrEventOptions calls this when it finds no live events,
-  // and refreshEventsForQr() calls renderQrEventOptions() again below, so
-  // without this guard a stale cache would ping-pong until the request ends.
-  if (qrRefreshInFlight) return;
-  qrRefreshInFlight = true;
-  try {
-    const events = await api.listEvents();
-    if (Array.isArray(events) && events.length) {
-      setEvents(events);
-      const liveNow = liveQrEvents(events);
-      console.log('[QR] API refresh fetched', events.length, 'events,', liveNow.length, 'live now.');
-      if (liveNow.length === 1) {
-        const select = document.getElementById('qrEventSelect');
-        if (select) select.value = String(liveNow[0].id);
-        handleQrEventChange(liveNow[0]);
-      } else if (liveNow.length > 1) {
-        renderQrEventOptions(events);
-      }
-    } else {
-      console.log('[QR] API returned no events for this student.');
-    }
-  } catch (error) {
-    console.error('[QR] API refresh failed:', error && error.message ? error.message : error);
-  } finally {
-    // Release the guard so a later render (e.g. an event starting after this
-    // attempt) can still trigger a refresh.
-    qrRefreshInFlight = false;
   }
 }
 

@@ -35,43 +35,11 @@ function attendly_route(string $path, string $method, array $ctx): array
     $match = null;
 
     /**
-     * Server-side QR check-in.
-     *
-     * Only a signed-in officer or administrator may operate the kiosk, so
-     * the route requires a role before it accepts a token. The token is a
-     * signed HMAC carrying the student and event ids; the server verifies
-     * both the signature and the event scope before writing attendance.
-     */
-    $qrCheckIn = function () use ($repo, $auth, $ctx): array {
-        $officer = $auth->requireRole(['admin', 'ssc-officer']);
-        $ctx['limiter']->consume('qr-checkin-user', (string) $officer['id'], 300, 60);
-
-        $body = Response::body();
-        $action = strtolower(trim((string) ($body['action'] ?? 'in')));
-        if (!in_array($action, ['in', 'out'], true)) {
-            Response::fail('invalid_field', 'Field "action" must be "in" or "out".', 422);
-        }
-
-        return $repo->checkInByQr(
-            Response::requireBodyId($body, 'eventId'),
-            Response::requireString($body, 'qrToken'),
-            (string) ($ctx['config']['qr_hmac_secret'] ?? ''),
-            $action,
-            (int) ($ctx['config']['tunables']['checkin_open_minutes_before'] ?? 30),
-            (int) ($ctx['config']['tunables']['checkin_close_minutes_after'] ?? 360),
-            (string) ($ctx['config']['tunables']['timezone'] ?? 'Asia/Manila'),
-            (int) ($ctx['config']['tunables']['late_grace_minutes'] ?? 15),
-            (int) ($ctx['config']['tunables']['checkout_open_minutes_before_end'] ?? 60),
-            (int) ($ctx['config']['tunables']['checkout_close_minutes_after_end'] ?? 60)
-        );
-    };
-
-    /**
      * Kiosk fingerprint check-in.
      *
      * The browser sends one base64 PNG sample. The local matching service
      * identifies the student among the event's in-scope enrolled candidates,
-     * then the same attendance policy engine as QR check-in records the scan.
+     * then the shared attendance policy engine records the scan.
      * Only a signed-in officer or administrator may call this route.
      */
     $fingerprintCheckIn = function () use ($repo, $auth, $ctx): array {
@@ -277,17 +245,6 @@ function attendly_route(string $path, string $method, array $ctx): array
         ['GET', '/events', function () use ($repo, $auth): array {
             return $repo->listEvents($auth->currentUser());
         }],
-        ['GET', '/events/:id/qr-token', function () use ($repo, $auth, $ctx, &$match): array {
-            $student = $auth->requireRole(['student']);
-            $ctx['limiter']->consume('event-qr-user', (string) $student['id'], 120, 60);
-
-            return $repo->issueEventQrToken(
-                (int) $student['id'],
-                Response::requireId($match, 'id'),
-                (string) ($ctx['config']['qr_hmac_secret'] ?? ''),
-                (string) ($ctx['config']['tunables']['timezone'] ?? 'Asia/Manila')
-            );
-        }],
         ['POST', '/events', function () use ($repo, $auth, $ctx): array {
             // Administrators and approved SSC officers both operate the
             // Manage Events page, and events.created_by references users(id)
@@ -455,12 +412,8 @@ function attendly_route(string $path, string $method, array $ctx): array
         }],
         // ── Fingerprint check-in (the current kiosk front door) ──
         // The officer-gated route resolves an active student by fingerprint
-        // template, then applies the same attendance policy as the QR path.
+        // template, then applies the shared attendance policy.
         ['POST', '/attendance/fingerprint', $fingerprintCheckIn],
-        // ── QR check-in (kept during the fingerprint transition) ──
-        // The officer-gated QR path verifies the HMAC and event scope before
-        // resolving the active student id carried inside the token.
-        ['POST', '/attendance/qr-check-in', $qrCheckIn],
         ['POST', '/attendance/manual', function () use ($repo, $auth, $ctx): array {
             $officer = $auth->requireRole(['admin', 'ssc-officer']);
             $ctx['limiter']->consume('manual-checkin-user', (string) $officer['id'], 300, 60);

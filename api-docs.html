@@ -43,19 +43,6 @@
             "responses": { "201": { "description": "Created" } }
           }
         },
-        "/attendance/qr-check-in": {
-          "post": {
-            "summary": "QR Check-in",
-            "requestBody": {
-              "content": {
-                "application/json": {
-                  "schema": { "type": "object", "properties": { "eventId": { "type": "integer" }, "qrToken": { "type": "string" }, "action": { "type": "string" } } }
-                }
-              }
-            },
-            "responses": { "200": { "description": "OK" } }
-          }
-        },
         "/attendance": {
           "get": {
             "summary": "List Attendance",

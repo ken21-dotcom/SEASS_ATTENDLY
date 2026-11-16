@@ -16,7 +16,6 @@ use PDOException;
 
 require_once __DIR__ . '/ProgramCatalog.php';
 require_once __DIR__ . '/PublicIdGenerator.php';
-require_once __DIR__ . '/QrToken.php';
 require_once __DIR__ . '/Mailer.php';
 require_once __DIR__ . '/MatchingService.php';
 
@@ -2321,97 +2320,8 @@ final class Repository
     }
 
     /**
-     * Issue the signed, event-scoped QR token for a student.
-     *
-     * Tokens are stateless HMACs, so issuing one writes nothing to MySQL.
-     * The event must still be scheduled and not already finished; the kiosk
-     * separately enforces the check-in window.
-     *
-     * @return array<string,mixed>
-     */
-    public function issueEventQrToken(
-        int $studentId,
-        int $eventId,
-        string $secret,
-        string $timezone = 'Asia/Manila'
-    ): array {
-        if (strlen($secret) < 32) {
-            throw new \RuntimeException('The QR signing secret is not configured.');
-        }
-
-        $stmt = $this->db->prepare(
-            'SELECT id, public_id, name, event_date, start_time, end_time, status,
-                    target_department,
-                    CASE WHEN end_time <= start_time
-                         THEN DATE_ADD(TIMESTAMP(event_date, end_time), INTERVAL 1 DAY)
-                         ELSE TIMESTAMP(event_date, end_time)
-                    END AS ends_at
-             FROM events WHERE id = :id LIMIT 1'
-        );
-        $stmt->execute(['id' => $eventId]);
-        $event = $stmt->fetch();
-        if ($event === false) {
-            Response::fail('event_not_found', 'No event is registered under that ID.', 404);
-        }
-        if ((string) $event['status'] !== 'scheduled') {
-            Response::fail('event_unavailable', 'This event is not accepting check-in QR codes.', 409);
-        }
-
-        $zone  = new \DateTimeZone($timezone);
-        $endsAt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string) $event['ends_at'], $zone);
-        if ($endsAt === false) {
-            // TIMESTAMP() can be ambiguous during a DST transition. Fall back
-            // to the wall-clock date and apply the same overnight correction.
-            $endsAt = new \DateTimeImmutable(
-                (string) $event['event_date'] . ' ' . (string) $event['end_time'],
-                $zone
-            );
-            $startsAt = new \DateTimeImmutable(
-                (string) $event['event_date'] . ' ' . (string) $event['start_time'],
-                $zone
-            );
-            if ($endsAt <= $startsAt) {
-                $endsAt = $endsAt->modify('+1 day');
-            }
-        }
-        if ($endsAt <= new \DateTimeImmutable('now', $zone)) {
-            Response::fail('event_ended', 'This event has already ended.', 409);
-        }
-
-        // The student must be enrolled in the event's target department when
-        // the event is department-restricted. A token for an event the
-        // student is not enrolled in is never valid, even before time check.
-        if (!empty($event['target_department'])) {
-            $departmentStmt = $this->db->prepare(
-                'SELECT department FROM students WHERE user_id = :student_id LIMIT 1'
-            );
-            $departmentStmt->execute(['student_id' => $studentId]);
-            $student = $departmentStmt->fetch();
-            $studentDepartment = $student ? trim((string) ($student['department'] ?? '')) : '';
-
-            if ($studentDepartment !== '' && $studentDepartment !== $event['target_department']) {
-                Response::fail(
-                    'not_eligible',
-                    'This event is not open to your department.',
-                    403
-                );
-            }
-        }
-
-        return [
-            'eventId'       => (int) $event['id'],
-            'eventPublicId' => $event['public_id'] ?? null,
-            'eventName'     => (string) $event['name'],
-            'eventDate'     => (string) $event['event_date'],
-            'startTime'     => substr((string) $event['start_time'], 0, 5),
-            'endTime'       => substr((string) $event['end_time'], 0, 5),
-            'qrToken'       => QrToken::generateEventToken($studentId, $eventId, $secret),
-        ];
-    }
-
-    /**
      * Record a manual check-in or check-out by an administrator or SSC officer,
-     * routing through the same scan policy engine as QR and fingerprint.
+     * routing through the shared attendance policy engine.
      */
     public function checkInManual(
         int $eventId,
@@ -2471,101 +2381,9 @@ final class Repository
     }
 
     /**
-     * Match a live kiosk QR scan to an active student, then record a
-     * check-in or check-out. The token must be signed for the same event
-     * the kiosk is currently operating; a valid token for another event is
-     * rejected before any attendance row is written.
-     */
-    public function checkInByQr(
-        int $eventId,
-        string $qrToken,
-        string $qrSecret,
-        string $action = 'in',
-        int $openMinutesBefore = 30,
-        int $closeMinutesAfter = 360,
-        string $timezone = 'Asia/Manila',
-        int $lateGraceMinutes = 15,
-        int $checkoutOpenMinutesBeforeEnd = 60,
-        int $checkoutCloseMinutesAfterEnd = 60
-    ): array {
-        $action = strtolower(trim($action));
-        if (!in_array($action, ['in', 'out'], true)) {
-            Response::fail('invalid_field', 'Field "action" must be "in" or "out".', 422);
-        }
-
-        if (strlen($qrSecret) < 32) {
-            throw new \RuntimeException('The QR signing secret is not configured.');
-        }
-
-        // Reject malformed tokens before they reach the database so a forged
-        // or padded code can never touch the student lookup.
-        if (!QrToken::isValid($qrToken)) {
-            Response::fail('invalid_qr', 'That QR code is not a valid check-in code.', 422);
-        }
-
-        $scanned = QrToken::parseEventToken($qrToken, $qrSecret);
-        if ($scanned === null) {
-            // A well-shaped token with a bad signature is still just an
-            // invalid QR code; do not reveal which part failed.
-            Response::fail('invalid_qr', 'That QR code is not a valid check-in code.', 422);
-        }
-
-        // The signature covers the event id, so a token issued for another
-        // event cannot be replayed here even by a currently active student.
-        // Checked before the time window on purpose: scanning yesterday's code
-        // must answer "wrong event", not "check-in closed", which would tell the
-        // kiosk operator that this event is currently open.
-        if ($scanned['eventId'] !== $eventId) {
-            Response::fail('invalid_qr_event', 'Invalid QR code for this event.', 400);
-        }
-
-        if ($action === 'out') {
-            $this->assertCheckoutWindow(
-                $eventId,
-                $checkoutOpenMinutesBeforeEnd,
-                $checkoutCloseMinutesAfterEnd,
-                $timezone
-            );
-        } else {
-            $this->assertCheckInWindow($eventId, $openMinutesBefore, $closeMinutesAfter, $timezone);
-        }
-
-        $stmt = $this->db->prepare(
-            'SELECT u.id, u.role, u.status, s.first_name, s.last_name, s.department
-             FROM users u
-             JOIN students s ON s.user_id = u.id
-             WHERE u.id = :student_id
-               AND u.role = \'student\'
-               AND u.status = \'active\'
-             LIMIT 1'
-        );
-        $stmt->execute(['student_id' => $scanned['studentId']]);
-        $row = $stmt->fetch();
-
-        if ($row === false) {
-            // Do not distinguish "no such student" from "deactivated account":
-            // both are simply not a usable check-in.
-            Response::fail('invalid_qr', 'That QR code does not belong to an active student account.', 422);
-        }
-
-        return $this->recordScannedAttendance(
-            $eventId,
-            $row,
-            $action,
-            'qr',
-            $openMinutesBefore,
-            $closeMinutesAfter,
-            $timezone,
-            $lateGraceMinutes,
-            $checkoutOpenMinutesBeforeEnd,
-            $checkoutCloseMinutesAfterEnd
-        );
-    }
-
-    /**
      * Match one captured fingerprint image against the active students who
      * are eligible for the event, then record a check-in or check-out
-     * through the same policy engine the QR kiosk uses.
+     * through the shared attendance policy engine.
      */
     public function checkInByFingerprint(
         int $eventId,
@@ -2680,12 +2498,12 @@ final class Repository
 
     /**
      * Apply the event's scan policy for a student whose identity has
-     * already been verified (QR token or fingerprint template).
+     * already been identified (by fingerprint or staff selection).
      *
      * The caller resolves an active student row and passes it in; this
      * method enforces the event window, attendance type, department scope,
-     * duplicate rules, and confirmation email exactly once so the QR and
-     * fingerprint front doors cannot drift apart.
+     * duplicate rules, and confirmation email exactly once across check-in
+     * methods.
      *
      * @param array<string,mixed> $student Row with id, first_name, last_name, department
      */

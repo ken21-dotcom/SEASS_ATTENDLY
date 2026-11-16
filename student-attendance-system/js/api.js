@@ -31,7 +31,7 @@
  *     login / logout / change password ............ synced
  *     student self-registration (pending) ......... synced
  *     event create / update / delete .............. synced
- *     kiosk QR / manual check-in ................. synced; matching is server-side
+ *     kiosk fingerprint / manual check-in ................. synced; matching is server-side
  *     officer create / status change ............. synced
  *     student profile edit ....................... synced (administrator)
  *     reenrollment requests ....................... synced
@@ -481,19 +481,6 @@ var api = {
     return request('/events/' + encodeURIComponent(id), { method: 'DELETE' });
   },
 
-  /**
-   * Fetch the signed QR token for one student/event pair.
-   * The token is scoped to the event; the kiosk must be operating that
-   * same event or the server rejects the scan with invalid_qr_event.
-   */
-  getEventQrToken: function (eventId) {
-    return request('/events/' + encodeURIComponent(eventId) + '/qr-token', {
-      validate: function (data) {
-        return !!data && typeof data.qrToken === 'string' && data.qrToken !== '';
-      },
-    });
-  },
-
   listAttendance: function (eventId) {
     var query = eventId ? '?event_id=' + encodeURIComponent(eventId) : '';
     return request('/attendance' + query, { validate: Array.isArray });
@@ -627,20 +614,7 @@ var api = {
     return request('/stations/' + encodeURIComponent(id) + '/heartbeat', { method: 'POST', anonymous: true });
   },
 
-  qrCheckIn: function (eventId, qrToken, action) {
-    return request('/attendance/qr-check-in', {
-      method: 'POST',
-      anonymous: true,
-      body: {
-        eventId: eventId,
-        qrToken: qrToken,
-        action: action === 'out' ? 'out' : 'in',
-      },
-      validate: function (row) {
-        return !!row && row.studentId !== undefined && typeof row.studentName === 'string';
-      },
-    });
-  },
+
 
   /**
    * Match a captured fingerprint template at the kiosk and record the

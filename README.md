@@ -1,11 +1,11 @@
 # ATTENDLY — SEASS Student Attendance System
 
-ATTENDLY is a modern, secure web application for tracking student attendance at campus events, managing student records, disciplinary sanctions, and kiosk check-ins via **Dynamic Student QR Codes**.
+ATTENDLY is a modern, secure web application for tracking student attendance at campus events, managing student records, and disciplinary sanctions.
 
 ## Architecture
 
 - **Backend**: PHP 8 (custom front-controller architecture routing through `attendly-backend/public/index.php`), PDO with MySQL / MariaDB (`attendly_seass_db`), robust migration runner (`php db/migrate.php`), session cookie authentication with CSRF protection and rate limiting.
-- **Frontend**: Bootstrap 5.3 + vanilla JavaScript static frontend with dark/light theme support (`student-attendance-system/`). Camera-based QR scanning powered by `html5-qrcode`.
+- **Frontend**: Bootstrap 5.3 + vanilla JavaScript static frontend with dark/light theme support (`student-attendance-system/`). Kiosk attendance uses fingerprint matching or officer entry.
 - **Database**: MySQL database named `attendly_seass_db`.
 
 ## Quick Start
@@ -33,11 +33,8 @@ defects in the implemented feature set:
 - **Event edit atomicity.** `updateEvent()` writes the event row and its
   announcement rows as separate statements, so a failure between them can leave
   stale announcement text. `createEvent()` and `deleteEvent()` are transactional.
-- **Secrets.** `config/config.php` is gitignored but holds the email provider key
-  and the QR HMAC secret in plaintext. Rotate both before any demo or deployment.
-  Note that changing `qr_hmac_secret` invalidates every printed QR code; students
-  just re-open their QR page to get a new one.
+- **Secrets.** `config/config.php` is gitignored but holds the email provider key in plaintext. Rotate it before any demo or deployment.
 
 ## Tests
 
-Run `npm test` from the repository root. It executes the static/JS checks plus the PHP suites (`tools/validator.test.php` and `tools/qr-check-in.api.test.php`). Run just the PHP suites with `npm run test:php`; the QR API suite needs the database and its `attendly-backend/config/config.php` to be configured.
+Run `npm test` from the repository root. It executes the static/JS checks plus the PHP suites, including `tools/attendance-checkin.api.test.php`. The API suites require a configured database and `attendly-backend/config/config.php`.

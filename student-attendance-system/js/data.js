@@ -257,7 +257,7 @@ function purgeLegacyTags() {
  * - A missing/old data version triggers a one-time wipe.
  * - Legacy "[SEED]"/"[DEMO]" labels are stripped from cached records.
  * - Missing collection keys are created empty (never overwritten).
- * - No demo users, events or QR samples are ever injected.
+ * - No demo users or events are ever injected.
  */
 function initStorage() {
   if (localStorage.getItem(STORAGE_KEYS.dataVersion) !== DATA_VERSION) {
