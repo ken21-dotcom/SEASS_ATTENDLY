@@ -18,7 +18,8 @@ incomplete enrollment can still be checked in manually by an officer.
 2. **Backend Config**: Copy `attendly-backend/config/config.example.php` to `attendly-backend/config/config.php` and configure your database credentials.
 3. **Run Migrations**: `cd attendly-backend && php db/migrate.php`
 4. **Start Backend** (from the repository root): `php -S localhost:8000 -t attendly-backend/public attendly-backend/router.php`
-5. **Start Frontend** (from the repository root, not inside `student-attendance-system/`): `npm install` then `npm run serve`. The static server serves the repository root on <http://localhost:5173>, so open <http://localhost:5173/index.html> (or a page under `student-attendance-system/pages/`).
+5. **Start Frontend** (from the repository root): `npm install` then `npm run serve`. The static server exposes only `student-attendance-system/` on <http://localhost:5173>; open <http://localhost:5173/> and it redirects to `pages/login.html`. Pages live under `/pages/` (for example `/pages/kiosk.html`). The DigitalPersona Web SDK files are vendored under `student-attendance-system/vendor/`, so the repository root and backend config are never served.
+6. **Fingerprint matching** (required for fingerprint attendance): build once with `cd tools/matching-service && mvn -B package`, set `MATCHING_KEY`, then start `java -jar target/matching-service.jar`. Keep it running on the kiosk laptop. It defaults to threshold `40` and DPI `512`; override with `MATCHING_THRESHOLD` / `MATCHING_DPI`.
 
 ## Known Limitations (Future Work)
 

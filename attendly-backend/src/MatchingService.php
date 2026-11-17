@@ -89,16 +89,39 @@ final class MatchingService
      */
     public function identify(string $imageBase64, array $candidates): ?int
     {
+        return $this->identifyDetailed($imageBase64, $candidates)['matchedId'];
+    }
+
+    /**
+     * POST /identify with the diagnostics the kiosk shows in ?debug=1:
+     * best score, threshold, and the finger whose template produced it.
+     *
+     * @param array<int,array{id:int,templates:string[],fingers?:array<int,string|null>}> $candidates
+     * @return array{matchedId:?int,score:?float,threshold:?float,finger:?string}
+     */
+    public function identifyDetailed(string $imageBase64, array $candidates): array
+    {
         if ($candidates === []) {
-            return null;
+            return ['matchedId' => null, 'score' => null, 'threshold' => null, 'finger' => null];
         }
 
         $payload = [];
         foreach ($candidates as $candidate) {
-            $payload[] = [
+            $templates = array_values(array_map('strval', $candidate['templates'] ?? []));
+            $entry = [
                 'id' => (int) $candidate['id'],
-                'templates' => array_values(array_map('strval', $candidate['templates'])),
+                'templates' => $templates,
             ];
+            $fingers = $candidate['fingers'] ?? null;
+            if (is_array($fingers) && count($fingers) === count($templates)) {
+                $entry['fingers'] = array_values(array_map(
+                    static fn($finger): ?string => is_string($finger) && trim($finger) !== ''
+                        ? strtolower(trim($finger))
+                        : null,
+                    $fingers
+                ));
+            }
+            $payload[] = $entry;
         }
 
         $response = $this->post('/identify', [
@@ -106,14 +129,39 @@ final class MatchingService
             'candidates' => $payload,
         ]);
 
+        $threshold = isset($response['threshold']) && is_numeric($response['threshold'])
+            ? (float) $response['threshold']
+            : null;
+        $bestScore = isset($response['bestScore']) && is_numeric($response['bestScore'])
+            ? (float) $response['bestScore']
+            : null;
+
         $match = $response['match'] ?? null;
         if ($match === null) {
-            return null;
+            return [
+                'matchedId' => null,
+                'score' => $bestScore,
+                'threshold' => $threshold,
+                'finger' => null,
+            ];
         }
         if (!is_array($match) || !isset($match['id'])) {
             throw new MatchingServiceRejected('The matching service returned an invalid match.');
         }
-        return (int) $match['id'];
+
+        $score = isset($match['score']) && is_numeric($match['score'])
+            ? (float) $match['score']
+            : $bestScore;
+        $finger = isset($match['finger']) && is_string($match['finger']) && trim($match['finger']) !== ''
+            ? strtolower(trim($match['finger']))
+            : null;
+
+        return [
+            'matchedId' => (int) $match['id'],
+            'score' => $score,
+            'threshold' => $threshold,
+            'finger' => $finger,
+        ];
     }
 
     private function checkImage(string $imageBase64): string

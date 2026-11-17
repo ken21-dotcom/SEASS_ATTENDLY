@@ -85,10 +85,19 @@
 
   /* Shared type scale for cards, labels, and muted copy. Keeping these as
      tokens stops one dashboard from drifting to a different label size or
-     muted colour than another. */
-  --font-size-card-title: 1rem;
-  --font-size-label: .8125rem;
-  --font-size-muted: .8125rem;
+     muted colour than another.
+
+     Minimum readable body size is 14px. The old scale stopped at 12-13px,
+     which was the root cause of the tiny-text findings across every page.
+     Use --font-size-xs for compact metadata only; body copy, form labels,
+     table headers and table cells use --font-size-label / --font-size-body. */
+  --font-size-xs: .875rem;
+  --font-size-label: .875rem;
+  --font-size-muted: .875rem;
+  --font-size-body: .9375rem;
+  --font-size-table: .875rem;
+  --font-size-card-title: 1.0625rem;
+  --line-height-body: 1.55;
   --color-label: var(--color-text-heading);
 
   /* ── Spacing — 4px base grid ── */
@@ -164,6 +173,16 @@
   --form-spacing-md: 16px;
   --form-spacing-lg: 24px;
   --form-spacing-xl: 32px;
+
+  /* ── Controls ──
+     One control height and radius for buttons, inputs and selects so
+     toolbars line up instead of mixing 31px, 38px and 44px controls. */
+  --control-height: 44px;
+  --control-height-sm: 36px;
+  --control-radius: 10px;
+  --control-padding-x: 16px;
+  --focus-ring: 0 0 0 3px rgba(14, 159, 110, .32);
+  --focus-outline: 2px solid var(--brand-600);
 
   /* ── Card spacing ── */
   --card-padding: 20px;

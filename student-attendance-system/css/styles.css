@@ -238,7 +238,7 @@
 }
 .fingerprint-enroll-consent .form-check-label {
   margin: 0;
-  font-size: .86rem;
+  font-size: var(--font-size-xs);
   line-height: 1.5;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -262,7 +262,7 @@
 .finger-enroll-hand h6 {
   margin: 0 0 8px;
   color: var(--color-text-heading);
-  font-size: .75rem;
+  font-size: var(--font-size-xs);
   font-weight: 750;
 }
 .finger-enroll-choice {
@@ -278,7 +278,7 @@
   background: transparent;
   color: var(--color-text-primary);
   font: inherit;
-  font-size: .76rem;
+  font-size: var(--font-size-xs);
   text-align: left;
   cursor: pointer;
 }
@@ -287,11 +287,11 @@
 .finger-enroll-choice.is-selected { border-color: var(--brand-500); background: var(--color-bg-success-light); }
 .finger-enroll-choice.is-done small { color: var(--color-text-success, #0e9f6e); font-weight: 700; }
 .finger-enroll-choice:disabled { cursor: default; opacity: .72; }
-.finger-enroll-choice small { color: var(--color-text-muted); font-size: .65rem; white-space: nowrap; }
+.finger-enroll-choice small { color: var(--color-text-muted); font-size: var(--font-size-xs); white-space: nowrap; }
 .finger-enroll-count {
   margin: 10px 0 0;
   color: var(--color-text-heading);
-  font-size: .82rem;
+  font-size: .9375rem;
   font-weight: 750;
 }
 @media (max-width: 575.98px) {
@@ -305,6 +305,37 @@
   max-width: 470px;
   margin: 18px auto 8px;
   background: var(--color-bg-input);
+}
+.fingerprint-enroll-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px auto 2px;
+  padding: 10px 12px;
+  max-width: 470px;
+  border: 1px solid var(--brand-200);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-success-light);
+  color: var(--color-text-success, #0e9f6e);
+  text-align: left;
+}
+.fingerprint-enroll-success[hidden] { display: none; }
+#fingerprintEnrollClose[hidden],
+#fingerprintEnrollConfirm[hidden],
+#fingerprintEnrollStart[hidden] { display: none !important; }
+.fingerprint-enroll-success .bi {
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+.fingerprint-enroll-success span {
+  display: grid;
+  gap: 2px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+.fingerprint-enroll-success strong {
+  color: var(--color-text-success, #0e9f6e);
+  font-size: .9375rem;
 }
 .fingerprint-enroll-visual {
   display: grid;
@@ -329,7 +360,7 @@
 }
 .fingerprint-enroll-status {
   margin: 0 0 10px;
-  font-size: .82rem;
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
 }
 .fingerprint-enroll-status.is-incomplete {
@@ -345,7 +376,8 @@
 }
 .fingerprint-enroll-help {
   margin: 0;
-  font-size: .74rem;
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
   color: var(--color-text-muted);
 }
 /* ?debug=1 diagnostics: monospace counts, no sample data. */
@@ -369,7 +401,829 @@
   background: var(--color-bg-danger-light, rgba(220, 38, 38, .08));
   border: 1px solid rgba(220, 38, 38, .22);
   color: var(--color-text-danger, #b91c1c);
-  font-size: .76rem;
+  font-size: var(--font-size-xs);
   font-weight: 600;
   text-align: left;
 }
+
+/* ============================================================
+   SHARED UI SYSTEM — readable type, controls and data display
+   ------------------------------------------------------------
+   Presentation only. This layer loads after the page stylesheets
+   imported above, so it is the single place that defines the
+   minimum readable type size, control heights, focus rings and
+   the phone table layout. Colours stay token-driven so both
+   themes continue to use the existing palette.
+   ============================================================ */
+
+/* ── 1. Base type ─────────────────────────────────────────── */
+:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) small {
+  font-size: var(--font-size-xs);
+}
+
+:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
+  :is(.section-kicker, .student-breadcrumb, .topbar-date, .records-caption,
+      .stat-label, .stat-foot, .student-count-chip, .activity-time,
+      .profile-detail-label, .role-profile small, .user-dropdown-header small,
+      .search-result-group, .notification-panel-head .section-kicker) {
+  font-size: var(--font-size-xs);
+}
+
+:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
+  :is(.intro-copy, .settings-help, .form-text, .activity-text span,
+      .upcoming-event-meta, .event-meta, .role-empty-cell span) {
+  font-size: var(--font-size-xs);
+  line-height: 1.55;
+}
+
+:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
+  :is(.role-nav a, .student-nav a, .role-sidebar-action, .sidebar-action) {
+  font-size: var(--font-size-xs);
+}
+
+:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
+  .table {
+  font-size: var(--font-size-table);
+}
+
+:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
+  .table > :not(caption) > * > * {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
+  .table thead th {
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-bg-input);
+  white-space: nowrap;
+}
+
+:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
+  .table tbody td {
+  font-size: var(--font-size-table);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+/* ── 2. Buttons ───────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  min-height: 40px;
+  padding: .5rem var(--control-padding-x);
+  border-radius: var(--control-radius);
+  font-size: var(--font-size-label);
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: center;
+  transition: background-color var(--transition-fast) var(--ease),
+              border-color var(--transition-fast) var(--ease),
+              color var(--transition-fast) var(--ease),
+              box-shadow var(--transition-fast) var(--ease),
+              transform var(--transition-fast) var(--ease);
+}
+
+.btn-sm {
+  min-height: var(--control-height-sm);
+  padding: .35rem .75rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.btn:focus-visible,
+.btn-close:focus-visible,
+.icon-button:focus-visible,
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+.btn:disabled,
+.btn.disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+.table .btn {
+  margin-bottom: 2px;
+}
+
+/* Destructive/confirm buttons always read as one component. */
+.btn-danger,
+.btn-outline-danger {
+  --bs-btn-font-weight: 650;
+}
+
+/* ── 3. Forms ─────────────────────────────────────────────── */
+.form-label,
+.form-check-label,
+.form-text {
+  font-size: var(--font-size-xs);
+}
+
+.form-label {
+  margin-bottom: .4rem;
+  font-weight: 650;
+  color: var(--color-label);
+}
+
+.form-control,
+.form-select {
+  min-height: var(--control-height);
+  padding: .55rem .85rem;
+  border-radius: var(--control-radius);
+  border-color: var(--color-border-input);
+  background-color: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+}
+
+.form-control-sm,
+.form-select-sm {
+  min-height: var(--control-height-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.form-control::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.input-group-text {
+  font-size: var(--font-size-xs);
+}
+
+.invalid-feedback,
+.valid-feedback,
+.auth-form-error,
+.field-error {
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+/* ── 4. Badges, cards, alerts ─────────────────────────────── */
+.badge {
+  padding: .35em .65em;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.role-card,
+.dashboard-card,
+.settings-card,
+.records-card,
+.report-sheet,
+.dash-panel,
+.activity-panel {
+  min-width: 0;
+  max-width: 100%;
+  border-radius: var(--radius-card);
+}
+
+.role-card-header h3,
+.card-heading h2,
+.settings-card-header h2 {
+  font-size: var(--font-size-card-title);
+}
+
+.alert {
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+}
+
+/* ── 5. Data tables ────────────────────────────────────────
+   Desktop keeps normal tables. Every table that JS labels with
+   data-label turns into readable stacked cards on a phone, so no
+   page may scroll sideways to reach a status or action. */
+.data-table-wrapper,
+.table-responsive,
+.settings-stations-table,
+.report-table-wrap,
+.records-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.data-table-wrapper table,
+.table-responsive table,
+.settings-stations-table .table,
+.report-table-wrap table {
+  max-width: 100%;
+}
+
+.data-table-wrapper > table,
+.report-table-wrap > table {
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  :is(.role-main, .student-main) {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .data-table-wrapper table,
+  .table-responsive > table,
+  .settings-stations-table .table,
+  .report-table-wrap table {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .data-table-wrapper table th,
+  .data-table-wrapper table td {
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  table.responsive-stack {
+    display: block;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  table.responsive-stack > thead {
+    display: none;
+  }
+
+  table.responsive-stack > tbody {
+    display: block;
+    width: 100%;
+  }
+
+  table.responsive-stack > tbody > tr {
+    display: block;
+    width: 100%;
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-card);
+  }
+
+  table.responsive-stack > tbody > tr:last-child {
+    margin-bottom: 0;
+  }
+
+  table.responsive-stack > tbody > tr > td {
+    display: block;
+    width: auto;
+    max-width: none;
+    padding: 6px 0;
+    border: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: left;
+    font-size: var(--font-size-table);
+    color: var(--color-text-primary);
+  }
+
+  table.responsive-stack > tbody > tr > td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--color-text-muted);
+    font-size: .8125rem;
+    font-weight: 750;
+    letter-spacing: .05em;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  table.responsive-stack > tbody > tr > td:not([data-label])::before {
+    display: none;
+  }
+
+  table.responsive-stack > tbody > tr > td[data-label="Name"] {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text-heading);
+  }
+
+  table.responsive-stack > tbody > tr > td[data-label="Actions"],
+  table.responsive-stack > tbody > tr > td[data-label="Review"],
+  table.responsive-stack > tbody > tr > td[data-label="Decision"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--color-border-default);
+  }
+
+  table.responsive-stack > tbody > tr > td[data-label="Actions"]::before,
+  table.responsive-stack > tbody > tr > td[data-label="Review"]::before,
+  table.responsive-stack > tbody > tr > td[data-label="Decision"]::before {
+    flex: 0 0 100%;
+    margin-bottom: 0;
+  }
+
+  table.responsive-stack > tbody > tr > td[data-label="Actions"] .btn,
+  table.responsive-stack > tbody > tr > td[data-label="Review"] .btn,
+  table.responsive-stack > tbody > tr > td[data-label="Decision"] .btn {
+    flex: 1 1 140px;
+    margin: 0;
+  }
+
+  table.responsive-stack > tbody > tr.table-stack-empty,
+  table.responsive-stack > tbody > tr:has(> td[colspan]) {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  table.responsive-stack > tbody > tr > td.role-empty-cell {
+    display: block;
+    padding: 28px 16px;
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-card);
+  }
+
+  table.responsive-stack > tbody > tr.org-group-head {
+    margin: 18px 0 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  table.responsive-stack > tbody > tr.org-group-head > td {
+    display: block;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-success-light);
+  }
+
+  table.responsive-stack > tbody > tr.org-group-head > td::before {
+    display: none;
+  }
+
+  table.responsive-stack > tbody > tr[data-kind="student"] > td:last-child,
+  .data-table-wrapper .table > thead > tr > th:last-child,
+  .data-table-wrapper .table > tbody > tr[data-kind="student"] > td:last-child {
+    position: static;
+    width: auto;
+    max-width: none;
+    overflow: visible;
+    background: transparent;
+  }
+}
+
+/* ── 6. Empty and loading states ─────────────────────────── */
+.role-empty-cell {
+  padding: 32px 20px !important;
+  text-align: center !important;
+  white-space: normal !important;
+  color: var(--color-text-muted);
+}
+
+.role-empty-cell > i {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--brand-600);
+  font-size: 1.5rem;
+}
+
+.role-empty-cell > strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-text-heading);
+  font-size: 1rem;
+}
+
+.role-empty-cell > span {
+  display: block;
+  max-width: 420px;
+  margin: 0 auto;
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.table-loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  vertical-align: -3px;
+  border: 2px solid var(--color-border-default);
+  border-top-color: var(--brand-600);
+  border-radius: 50%;
+  animation: attendlySpin .7s linear infinite;
+}
+
+@keyframes attendlySpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-loading { animation-duration: 2s; }
+}
+
+/* ── 7. Modals ────────────────────────────────────────────── */
+.modal-dialog {
+  max-width: min(720px, calc(100vw - 24px));
+  margin: 12px auto;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 24px);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-card);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.modal-header,
+.modal-footer {
+  flex: 0 0 auto;
+  padding: 16px 20px;
+  border-color: var(--color-border-default);
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 750;
+  color: var(--color-text-heading);
+}
+
+.modal-footer {
+  flex-wrap: wrap;
+  gap: 8px;
+  background: var(--color-bg-card);
+}
+
+.modal-footer .btn {
+  flex: 1 1 auto;
+  min-width: 140px;
+}
+
+@media (max-width: 575.98px) {
+  .modal-dialog {
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+  }
+
+  .modal-content {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding: 12px 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-footer .btn {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .fingerprint-enroll-visual {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 10px;
+  }
+
+  .fingerprint-enroll-visual .bi {
+    font-size: 2.35rem;
+  }
+
+  .finger-enroll-picker {
+    gap: 8px;
+  }
+
+  .finger-enroll-hand {
+    padding: 10px;
+  }
+
+  .finger-enroll-choice {
+    min-height: 42px;
+    padding: 5px 6px;
+  }
+}
+
+/* ── 8. Dashboard density ─────────────────────────────────── */
+@media (max-width: 650px) {
+  .stat-grid,
+  .stat-grid--five {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .stat-grid--five > :nth-child(4),
+  .stat-grid--five > :nth-child(5) {
+    grid-column: auto;
+  }
+
+  .stat-card {
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: 1.65rem;
+  }
+
+  .dash-panels,
+  .role-dashboard-page .row,
+  .student-dashboard-page .row {
+    --bs-gutter-x: 1rem;
+  }
+
+  .role-intro,
+  .dashboard-intro,
+  .subpage-intro {
+    padding-top: 22px;
+  }
+
+  .role-intro h1,
+  .dashboard-intro h1,
+  .subpage-intro h1 {
+    font-size: clamp(1.7rem, 8vw, 2.15rem);
+    line-height: 1.12;
+  }
+}
+
+@media (max-width: 380px) {
+  .stat-grid,
+  .stat-grid--five {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 9. Theme-safe surfaces ───────────────────────────────── */
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-footer,
+[data-theme="dark"] table.responsive-stack > tbody > tr,
+[data-theme="dark"] table.responsive-stack > tbody > tr > td.role-empty-cell {
+  background: var(--color-bg-card);
+  border-color: var(--color-border-default);
+}
+
+[data-theme="dark"] table.responsive-stack > tbody > tr.org-group-head > td {
+  background: rgba(14, 159, 110, .12);
+}
+
+/* ============================================================
+   KIOSK READABILITY AND PHONE LAYOUT
+   ------------------------------------------------------------
+   The kiosk is its own surface, but it still uses the shared
+   tokens. These rules fix the 43px manual-entry control, the
+   wrapped brand tagline and the sub-14px helper copy.
+   ============================================================ */
+
+.kiosk-page {
+  font-size: var(--font-size-body);
+}
+
+.kiosk-brand-name {
+  font-size: 1.05rem;
+}
+
+.kiosk-brand-name small {
+  margin-top: 2px;
+  font-size: .75rem;
+  letter-spacing: .08em;
+  line-height: 1.25;
+}
+
+.kiosk-station-state small,
+.kiosk-event-label,
+.kiosk-section-kicker,
+.kiosk-live-pulse,
+.kiosk-count-label,
+.kiosk-status-badge,
+.kiosk-lock-eyebrow {
+  font-size: var(--font-size-xs);
+}
+
+.kiosk-event-copy p,
+.kiosk-subtitle,
+.kiosk-scan-cta small,
+.kiosk-status-hint,
+.kiosk-steps small,
+.kiosk-privacy-note,
+.kiosk-manual-note,
+.kiosk-manual-toggle small,
+.kiosk-help-card small,
+.kiosk-footer-note,
+.kiosk-lock-copy,
+.kiosk-lock-note,
+.kiosk-student-id-wrap small,
+.kiosk-lock-error {
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.kiosk-student-id-wrap > label,
+.kiosk-lock-form label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.kiosk-student-id-input:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.kiosk-student-id-wrap:has(.kiosk-student-id-input:disabled) > label {
+  color: var(--color-text-muted);
+}
+
+.kiosk-student-id-input:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: 2px;
+}
+
+.kiosk-event-select {
+  min-height: 52px;
+  font-size: var(--font-size-body);
+}
+
+.kiosk-status-text {
+  font-size: .9375rem;
+  font-weight: 700;
+}
+
+.kiosk-scan-cta strong {
+  line-height: 1.25;
+}
+
+/* The manual submit used to inherit a 43x43 icon-button rule from the
+   legacy layer, which broke its label into two clipped lines. It is a
+   sentence-length action, so give it the full rail width. */
+.kiosk-page .kiosk-manual-submit {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: .7rem 1rem;
+  border-radius: var(--control-radius);
+  font-size: var(--font-size-body);
+  white-space: nowrap;
+}
+
+.kiosk-page .kiosk-manual-form {
+  display: grid;
+  gap: 10px;
+}
+
+.kiosk-page .kiosk-manual-toggle strong {
+  font-size: var(--font-size-body);
+}
+
+.kiosk-help-card strong {
+  font-size: var(--font-size-body);
+}
+
+.kiosk-lock {
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.kiosk-lock-card {
+  margin: auto;
+}
+
+.kiosk-lock-form input {
+  font-size: var(--font-size-body);
+}
+
+.kiosk-lock-submit {
+  font-size: var(--font-size-body);
+  font-weight: 700;
+}
+
+/* Stop the page behind the station lock from scrolling while it is up. */
+body.kiosk-page:has(.kiosk-lock:not([hidden])) {
+  overflow: hidden;
+}
+
+@media (max-width: 720px) {
+  .kiosk-brand-name small {
+    display: none;
+  }
+
+  .kiosk-topbar-right {
+    gap: .5rem;
+  }
+
+  .kiosk-scan-button {
+    max-width: 300px;
+    padding-inline: 0;
+    margin-inline: auto;
+  }
+
+  .kiosk-scan-layout {
+    gap: .9rem;
+    padding-top: .4rem;
+  }
+
+  .kiosk-scan-cta small {
+    max-width: 38ch;
+  }
+
+  .kiosk-rail {
+    gap: .8rem;
+  }
+
+  .kiosk-manual {
+    order: -1;
+  }
+
+  .kiosk-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kiosk-steps li:nth-child(3) {
+    grid-column: 1;
+  }
+
+  .kiosk-steps li:nth-child(4) {
+    grid-column: 2;
+  }
+
+  .kiosk-steps strong {
+    font-size: var(--font-size-xs);
+  }
+
+  .kiosk-event-copy p {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .kiosk-brand-mark {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .kiosk-brand-name {
+    font-size: .92rem;
+  }
+
+  .kiosk-topbar {
+    padding-inline: .75rem;
+  }
+
+  .kiosk-scan-button {
+    max-width: 100%;
+  }
+
+  .kiosk-fingerprint-frame {
+    width: min(220px, 68vw);
+  }
+
+  .kiosk-count-label {
+    line-height: 1.25;
+  }
+}
+
+

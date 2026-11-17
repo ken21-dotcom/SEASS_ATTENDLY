@@ -94,7 +94,15 @@ async function main() {
     ok('service starts and answers GET /health', up, output.trim().split('\n').slice(-3).join(' | '));
     if (!up) return;
 
-    let response = await call('POST', '/template', { image: 'AAAA' });
+    let response = await call('GET', '/health');
+    ok('health reports the 512 dpi default',
+      response.status === 200 && response.json && response.json.dpi === 512,
+      response.text);
+    ok('health reports the threshold',
+      response.status === 200 && response.json && response.json.threshold === 40,
+      response.text);
+
+    response = await call('POST', '/template', { image: 'AAAA' });
     ok('missing key is rejected with 401', response.status === 401, response.status);
 
     response = await call('POST', '/template', { image: 'AAAA' }, { 'X-Matching-Key': 'wrong' });
@@ -135,18 +143,25 @@ async function main() {
       const same = await call('POST', '/identify', {
         image: sameB,
         candidates: [
-          { id: 7, templates: [templateA.json.template] },
-          { id: 9, templates: [templateOther.json.template] },
+          { id: 7, templates: [templateA.json.template], fingers: ['left-thumb'] },
+          { id: 9, templates: [templateOther.json.template], fingers: ['right-index'] },
         ],
       }, { 'X-Matching-Key': KEY });
       ok('same finger matches the enrolled student', same.json && same.json.match && same.json.match.id === 7, same.text);
       ok('same-finger score clears the 40 threshold', same.json && same.json.match && same.json.match.score >= 40, same.text);
+      ok('identify reports the matched finger', same.json && same.json.match && same.json.match.finger === 'left-thumb', same.text);
+      ok('identify always reports bestScore and threshold',
+        same.json && typeof same.json.bestScore === 'number' && same.json.threshold === 40,
+        same.text);
 
       const impostor = await call('POST', '/identify', {
         image: other,
-        candidates: [{ id: 7, templates: [templateA.json.template] }],
+        candidates: [{ id: 7, templates: [templateA.json.template], fingers: ['left-thumb'] }],
       }, { 'X-Matching-Key': KEY });
       ok('different finger stays below the threshold', impostor.json && impostor.json.match === null && impostor.json.bestScore < 40, impostor.text);
+      ok('no-match response keeps the threshold for debug mode',
+        impostor.json && impostor.json.threshold === 40,
+        impostor.text);
       ok('same finger scores higher than a different finger',
         same.json.match.score > (impostor.json.bestScore || 0),
         same.json.match.score + ' vs ' + impostor.json.bestScore);

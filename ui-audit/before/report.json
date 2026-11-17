@@ -1,0 +1,6602 @@
+[
+  {
+    "role": "admin",
+    "name": "admin-dashboard",
+    "route": "/pages/administrator/admin-dashboard.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Admin Dashboard | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "AD",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "Administrator",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "System Admin",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Admin dashboard",
+          "px": 12.48
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "span",
+          "text": "Administrator",
+          "px": 12.48
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "System overview",
+          "px": 11.52
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Students",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Events",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "System Attendance Rate",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Flagged Students",
+          "px": 12.8
+        },
+        {
+          "el": "th",
+          "text": "Event Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Date",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Everything in view.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-dashboard",
+    "route": "/pages/administrator/admin-dashboard.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Admin Dashboard | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.table-hover",
+          "text": "Event Name Date Status Flag CeremonyAug 23, 2026PastIntramurals 2026Sep 14, 2026",
+          "left": 29,
+          "right": 441,
+          "w": 412
+        },
+        {
+          "el": "thead",
+          "text": "Event Name Date Status",
+          "left": 29,
+          "right": 441,
+          "w": 412
+        },
+        {
+          "el": "tr",
+          "text": "Event Name Date Status",
+          "left": 29,
+          "right": 441,
+          "w": 412
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "left": 335,
+          "right": 441,
+          "w": 106
+        },
+        {
+          "el": "tbody#eventsTableBody",
+          "text": "Flag CeremonyAug 23, 2026PastIntramurals 2026Sep 14, 2026PastFoundation DaySep 3",
+          "left": 29,
+          "right": 441,
+          "w": 412
+        },
+        {
+          "el": "tr",
+          "text": "Flag CeremonyAug 23, 2026Past",
+          "left": 29,
+          "right": 441,
+          "w": 412
+        },
+        {
+          "el": "td",
+          "text": "Past",
+          "left": 335,
+          "right": 441,
+          "w": 106
+        },
+        {
+          "el": "tr",
+          "text": "Intramurals 2026Sep 14, 2026Past",
+          "left": 29,
+          "right": 441,
+          "w": 412
+        },
+        {
+          "el": "td",
+          "text": "Past",
+          "left": 335,
+          "right": 441,
+          "w": 106
+        },
+        {
+          "el": "tr",
+          "text": "Foundation DaySep 30, 2026Past",
+          "left": 29,
+          "right": 441,
+          "w": 412
+        },
+        {
+          "el": "td",
+          "text": "Past",
+          "left": 335,
+          "right": 441,
+          "w": 106
+        },
+        {
+          "el": "tr",
+          "text": "IT WeekOct 19, 2026Past",
+          "left": 29,
+          "right": 441,
+          "w": 412
+        }
+      ],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Admin dashboard",
+          "px": 12.8
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "System overview",
+          "px": 11.52
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Students",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Events",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "System Attendance Rate",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Flagged Students",
+          "px": 12.8
+        },
+        {
+          "el": "th",
+          "text": "Event Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Date",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "Past",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-primary",
+          "text": "Upcoming",
+          "px": 12
+        },
+        {
+          "el": "span.activity-time",
+          "text": "5m ago",
+          "px": 10.4
+        },
+        {
+          "el": "span.activity-time",
+          "text": "5m ago",
+          "px": 10.4
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.table-hover",
+          "tableW": 412,
+          "wrapW": 332,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 51
+        }
+      ],
+      "h1": "Everything in view.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-events",
+    "route": "/pages/administrator/admin-manage-events.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Events | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.admin-avatar",
+          "text": "ADMIN",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "Administrator",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "System Admin",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Manage events",
+          "px": 12.48
+        },
+        {
+          "el": "span.topbar-date",
+          "text": "Administrator",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Event management",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Event list",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Date",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Location",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Details",
+          "px": 11.52
+        },
+        {
+          "el": "th.text-end",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "strong",
+          "text": "Flag Ceremony",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Aug 23, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "07:00",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Main Quadrangle",
+          "px": 13.44
+        },
+        {
+          "el": "span.event-type-badge.minor",
+          "text": "Minor",
+          "px": 10.4
+        },
+        {
+          "el": "span.mandatory-badge.yes",
+          "text": "Mandatory",
+          "px": 9.92
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Create and manage events.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-events",
+    "route": "/pages/administrator/admin-manage-events.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Events | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.student-table",
+          "text": "Name Date Time Location Details Actions Flag CeremonyAug 23, 202607:00Main Quadr",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "thead",
+          "text": "Name Date Time Location Details Actions",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "tr",
+          "text": "Name Date Time Location Details Actions",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "th",
+          "text": "Details",
+          "left": 389,
+          "right": 497,
+          "w": 108
+        },
+        {
+          "el": "th.text-end",
+          "text": "Actions",
+          "left": 497,
+          "right": 635,
+          "w": 138
+        },
+        {
+          "el": "tbody#eventTableBody",
+          "text": "Flag CeremonyAug 23, 202607:00Main QuadrangleMinorMandatory1 Scan Edit DeleteInt",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "tr",
+          "text": "Flag CeremonyAug 23, 202607:00Main QuadrangleMinorMandatory1 Scan Edit Delete",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "td",
+          "text": "MinorMandatory1 Scan",
+          "left": 389,
+          "right": 497,
+          "w": 108
+        },
+        {
+          "el": "div.event-badges",
+          "text": "MinorMandatory1 Scan",
+          "left": 405,
+          "right": 481,
+          "w": 76
+        },
+        {
+          "el": "span.event-type-badge.minor",
+          "text": "Minor",
+          "left": 405,
+          "right": 462,
+          "w": 57
+        },
+        {
+          "el": "span.mandatory-badge.yes",
+          "text": "Mandatory",
+          "left": 405,
+          "right": 474,
+          "w": 69
+        },
+        {
+          "el": "span.badge.bg-info",
+          "text": "1 Scan",
+          "left": 405,
+          "right": 456,
+          "w": 51
+        }
+      ],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Manage events",
+          "px": 12.8
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Event management",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Event list",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Date",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Location",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Details",
+          "px": 11.52
+        },
+        {
+          "el": "th.text-end",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "strong",
+          "text": "Flag Ceremony",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Aug 23, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "07:00",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Main Quadrangle",
+          "px": 13.44
+        },
+        {
+          "el": "span.event-type-badge.minor",
+          "text": "Minor",
+          "px": 10.4
+        },
+        {
+          "el": "span.mandatory-badge.yes",
+          "text": "Mandatory",
+          "px": 9.92
+        },
+        {
+          "el": "span.badge.bg-info",
+          "text": "1 Scan",
+          "px": 9.92
+        },
+        {
+          "el": "strong",
+          "text": "Intramurals 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Sep 14, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "08:00",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "University Gymnasium",
+          "px": 13.44
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.student-table",
+          "tableW": 600,
+          "wrapW": 320,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 245
+        }
+      ],
+      "h1": "Create and manage events.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-officers",
+    "route": "/pages/administrator/admin-manage-officers.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Officers | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "AD",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "Administrator",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "System Admin",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Manage officers",
+          "px": 12.48
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "span",
+          "text": "Administrator",
+          "px": 12.48
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Officer management",
+          "px": 11.52
+        },
+        {
+          "el": "h3",
+          "text": "All Officers",
+          "px": 13.6
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Email",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Position",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "td",
+          "text": "SSC Officer",
+          "px": 13.12
+        },
+        {
+          "el": "td",
+          "text": "officer@example.com",
+          "px": 13.12
+        },
+        {
+          "el": "td",
+          "text": "Secretary",
+          "px": 13.12
+        },
+        {
+          "el": "span.badge.bg-success",
+          "text": "Active",
+          "px": 9.84
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Create and manage officer accounts.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-officers",
+    "route": "/pages/administrator/admin-manage-officers.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Officers | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.mb-0",
+          "text": "NameEmailPositionStatusActions SSC Officerofficer@example.comSecretaryActive Dea",
+          "left": 17,
+          "right": 495,
+          "w": 478
+        },
+        {
+          "el": "thead",
+          "text": "NameEmailPositionStatusActions",
+          "left": 17,
+          "right": 495,
+          "w": 478
+        },
+        {
+          "el": "tr",
+          "text": "NameEmailPositionStatusActions",
+          "left": 17,
+          "right": 495,
+          "w": 478
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "left": 373,
+          "right": 495,
+          "w": 123
+        },
+        {
+          "el": "tbody#officerTableBody",
+          "text": "SSC Officerofficer@example.comSecretaryActive Deactivate",
+          "left": 17,
+          "right": 495,
+          "w": 478
+        },
+        {
+          "el": "tr",
+          "text": "SSC Officerofficer@example.comSecretaryActive Deactivate",
+          "left": 17,
+          "right": 495,
+          "w": 478
+        },
+        {
+          "el": "td",
+          "text": "Deactivate",
+          "left": 373,
+          "right": 495,
+          "w": 123
+        },
+        {
+          "el": "button.btn.btn-sm",
+          "text": "Deactivate",
+          "left": 381,
+          "right": 487,
+          "w": 107
+        },
+        {
+          "el": "i.bi.bi-pause",
+          "text": "",
+          "left": 394,
+          "right": 406,
+          "w": 12
+        }
+      ],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Manage officers",
+          "px": 12.8
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Officer management",
+          "px": 11.52
+        },
+        {
+          "el": "h3",
+          "text": "All Officers",
+          "px": 13.6
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Email",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Position",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "td",
+          "text": "SSC Officer",
+          "px": 13.12
+        },
+        {
+          "el": "td",
+          "text": "officer@example.com",
+          "px": 13.12
+        },
+        {
+          "el": "td",
+          "text": "Secretary",
+          "px": 13.12
+        },
+        {
+          "el": "span.badge.bg-success",
+          "text": "Active",
+          "px": 9.84
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.mb-0",
+          "tableW": 478,
+          "wrapW": 356,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 105
+        }
+      ],
+      "h1": "Create and manage officer accounts.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-students",
+    "route": "/pages/administrator/admin-manage-students.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Students | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [
+        {
+          "el": "table.table.mb-0",
+          "text": "NameStudent IDEmailYear LevelBlockStatusActions School of Business Management3 c",
+          "left": 293,
+          "right": 1551,
+          "w": 1258
+        },
+        {
+          "el": "thead",
+          "text": "NameStudent IDEmailYear LevelBlockStatusActions",
+          "left": 293,
+          "right": 1551,
+          "w": 1258
+        },
+        {
+          "el": "tr",
+          "text": "NameStudent IDEmailYear LevelBlockStatusActions",
+          "left": 293,
+          "right": 1551,
+          "w": 1258
+        },
+        {
+          "el": "tbody#studentTableBody",
+          "text": "School of Business Management3 courses · 12 studentsBSEntrep4 studentsJose Rizal",
+          "left": 293,
+          "right": 1551,
+          "w": 1258
+        },
+        {
+          "el": "tr.org-group-head.org-group-head-dept",
+          "text": "School of Business Management3 courses · 12 students",
+          "left": 293,
+          "right": 1551,
+          "w": 1258
+        },
+        {
+          "el": "td",
+          "text": "School of Business Management3 courses · 12 students",
+          "left": 293,
+          "right": 1551,
+          "w": 1258
+        },
+        {
+          "el": "div.org-group-label",
+          "text": "School of Business Management3 courses · 12 students",
+          "left": 309,
+          "right": 1535,
+          "w": 1226
+        },
+        {
+          "el": "span.org-group-pill",
+          "text": "3 courses · 12 students",
+          "left": 1387,
+          "right": 1535,
+          "w": 148
+        },
+        {
+          "el": "tr.org-group-head.org-group-head-course",
+          "text": "BSEntrep4 students",
+          "left": 293,
+          "right": 1551,
+          "w": 1258
+        },
+        {
+          "el": "td",
+          "text": "BSEntrep4 students",
+          "left": 293,
+          "right": 1551,
+          "w": 1258
+        },
+        {
+          "el": "div.org-group-label",
+          "text": "BSEntrep4 students",
+          "left": 309,
+          "right": 1535,
+          "w": 1226
+        },
+        {
+          "el": "span.org-group-pill",
+          "text": "4 students",
+          "left": 1455,
+          "right": 1535,
+          "w": 80
+        }
+      ],
+      "clipped": [
+        {
+          "el": "td",
+          "text": "melchora.aquino@example.com",
+          "client": 200,
+          "scroll": 230
+        },
+        {
+          "el": "td",
+          "text": "ramon.magsaysay@example.com",
+          "client": 200,
+          "scroll": 238
+        },
+        {
+          "el": "td",
+          "text": "trinidad.tecson@example.com",
+          "client": 200,
+          "scroll": 219
+        },
+        {
+          "el": "td",
+          "text": "corazon.aquino@example.com",
+          "client": 200,
+          "scroll": 223
+        },
+        {
+          "el": "td",
+          "text": "gabriela.silang@example.com",
+          "client": 200,
+          "scroll": 216
+        },
+        {
+          "el": "td",
+          "text": "graciano.lopezjaena@example.com",
+          "client": 200,
+          "scroll": 251
+        },
+        {
+          "el": "td",
+          "text": "gregoria.dejesus@example.com",
+          "client": 200,
+          "scroll": 232
+        },
+        {
+          "el": "td",
+          "text": "antonio.luna@example.com",
+          "client": 200,
+          "scroll": 203
+        },
+        {
+          "el": "td",
+          "text": "apolinario.mabini@example.com",
+          "client": 200,
+          "scroll": 231
+        },
+        {
+          "el": "td",
+          "text": "josefa.llanesescoda@example.com",
+          "client": 200,
+          "scroll": 250
+        },
+        {
+          "el": "td",
+          "text": "alpha.bec79555@example.test",
+          "client": 200,
+          "scroll": 223
+        },
+        {
+          "el": "td",
+          "text": "andres.bonifacio@example.com",
+          "client": 200,
+          "scroll": 231
+        }
+      ],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "AD",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "Administrator",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "System Admin",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Manage students",
+          "px": 12.48
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "span",
+          "text": "Administrator",
+          "px": 12.48
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student management",
+          "px": 11.52
+        },
+        {
+          "el": "span#pendingRegistrationsCount.badge.bg-warning",
+          "text": "0",
+          "px": 12
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Student ID",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Email",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Program / Year",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "span",
+          "text": "New student sign-ups will appear here.",
+          "px": 12.48
+        },
+        {
+          "el": "span#studentCount.student-count-chip",
+          "text": "24 of 24 students",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Student ID",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Email",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Year Level",
+          "px": 11.52
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.mb-0",
+          "tableW": 1258,
+          "wrapW": 1024,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 185
+        }
+      ],
+      "h1": "Review and manage student accounts.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": true
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-students",
+    "route": "/pages/administrator/admin-manage-students.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Students | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.mb-0",
+          "text": "NameStudent IDEmailProgram / YearActions No pending registrationsNew student sig",
+          "left": 17,
+          "right": 517,
+          "w": 500
+        },
+        {
+          "el": "thead",
+          "text": "NameStudent IDEmailProgram / YearActions",
+          "left": 17,
+          "right": 517,
+          "w": 500
+        },
+        {
+          "el": "tr",
+          "text": "NameStudent IDEmailProgram / YearActions",
+          "left": 17,
+          "right": 517,
+          "w": 500
+        },
+        {
+          "el": "th",
+          "text": "Program / Year",
+          "left": 276,
+          "right": 425,
+          "w": 150
+        },
+        {
+          "el": "tbody#pendingRegistrationsBody",
+          "text": "No pending registrationsNew student sign-ups will appear here.",
+          "left": 17,
+          "right": 517,
+          "w": 500
+        },
+        {
+          "el": "tr",
+          "text": "No pending registrationsNew student sign-ups will appear here.",
+          "left": 17,
+          "right": 517,
+          "w": 500
+        },
+        {
+          "el": "td.role-empty-cell",
+          "text": "No pending registrationsNew student sign-ups will appear here.",
+          "left": 17,
+          "right": 517,
+          "w": 500
+        },
+        {
+          "el": "i.bi.bi-person-check",
+          "text": "",
+          "left": 35,
+          "right": 499,
+          "w": 464
+        },
+        {
+          "el": "strong",
+          "text": "No pending registrations",
+          "left": 35,
+          "right": 499,
+          "w": 464
+        },
+        {
+          "el": "span",
+          "text": "New student sign-ups will appear here.",
+          "left": 35,
+          "right": 499,
+          "w": 464
+        },
+        {
+          "el": "table.table.mb-0",
+          "text": "NameStudent IDEmailYear LevelBlockStatusActions School of Business Management3 c",
+          "left": 17,
+          "right": 1275,
+          "w": 1258
+        },
+        {
+          "el": "thead",
+          "text": "NameStudent IDEmailYear LevelBlockStatusActions",
+          "left": 17,
+          "right": 1275,
+          "w": 1258
+        }
+      ],
+      "clipped": [
+        {
+          "el": "td",
+          "text": "melchora.aquino@example.com",
+          "client": 200,
+          "scroll": 230
+        },
+        {
+          "el": "td",
+          "text": "ramon.magsaysay@example.com",
+          "client": 200,
+          "scroll": 238
+        },
+        {
+          "el": "td",
+          "text": "trinidad.tecson@example.com",
+          "client": 200,
+          "scroll": 219
+        },
+        {
+          "el": "td",
+          "text": "corazon.aquino@example.com",
+          "client": 200,
+          "scroll": 223
+        },
+        {
+          "el": "td",
+          "text": "gabriela.silang@example.com",
+          "client": 200,
+          "scroll": 216
+        },
+        {
+          "el": "td",
+          "text": "graciano.lopezjaena@example.com",
+          "client": 200,
+          "scroll": 251
+        },
+        {
+          "el": "td",
+          "text": "gregoria.dejesus@example.com",
+          "client": 200,
+          "scroll": 232
+        },
+        {
+          "el": "td",
+          "text": "antonio.luna@example.com",
+          "client": 200,
+          "scroll": 203
+        },
+        {
+          "el": "td",
+          "text": "apolinario.mabini@example.com",
+          "client": 200,
+          "scroll": 231
+        },
+        {
+          "el": "td",
+          "text": "josefa.llanesescoda@example.com",
+          "client": 200,
+          "scroll": 250
+        },
+        {
+          "el": "td",
+          "text": "alpha.bec79555@example.test",
+          "client": 200,
+          "scroll": 223
+        },
+        {
+          "el": "td",
+          "text": "andres.bonifacio@example.com",
+          "client": 200,
+          "scroll": 231
+        }
+      ],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Manage students",
+          "px": 12.8
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student management",
+          "px": 11.52
+        },
+        {
+          "el": "span#pendingRegistrationsCount.badge.bg-warning",
+          "text": "0",
+          "px": 12
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Student ID",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Email",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Program / Year",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "span",
+          "text": "New student sign-ups will appear here.",
+          "px": 12.48
+        },
+        {
+          "el": "span#studentCount.student-count-chip",
+          "text": "24 of 24 students",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Student ID",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Email",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Year Level",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Block",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "span.org-group-title",
+          "text": "School of Business Management",
+          "px": 13.12
+        },
+        {
+          "el": "span.org-group-pill",
+          "text": "3 courses · 12 students",
+          "px": 10.56
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.mb-0",
+          "tableW": 500,
+          "wrapW": 356,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 127
+        },
+        {
+          "el": "table.table.mb-0",
+          "tableW": 1258,
+          "wrapW": 356,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 885
+        }
+      ],
+      "h1": "Review and manage student accounts.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": true
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-reports",
+    "route": "/pages/administrator/admin-reports.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reports | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "AD",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "Administrator",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "System Admin",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Reports",
+          "px": 12.48
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "span",
+          "text": "Administrator",
+          "px": 12.48
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Analytics",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student requests",
+          "px": 11.52
+        },
+        {
+          "el": "p.records-caption",
+          "text": "Approving a request updates the attendance record and marks it as manually verif",
+          "px": 13
+        },
+        {
+          "el": "th",
+          "text": "Student",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Event",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Requested time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Reason",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Proof",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Review",
+          "px": 11.52
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "pending",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "pending",
+          "px": 12
+        },
+        {
+          "el": "label.form-label",
+          "text": "Event",
+          "px": 13
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "System-wide reports.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": true
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-reports",
+    "route": "/pages/administrator/admin-reports.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reports | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.correction-review-table",
+          "text": "Attendance correction requests awaiting or completed reviewStudentEventRequested",
+          "left": 35,
+          "right": 977,
+          "w": 942
+        },
+        {
+          "el": "thead",
+          "text": "StudentEventRequested timeReasonProofStatusReview",
+          "left": 35,
+          "right": 977,
+          "w": 942
+        },
+        {
+          "el": "tr",
+          "text": "StudentEventRequested timeReasonProofStatusReview",
+          "left": 35,
+          "right": 977,
+          "w": 942
+        },
+        {
+          "el": "th",
+          "text": "Reason",
+          "left": 363,
+          "right": 458,
+          "w": 95
+        },
+        {
+          "el": "th",
+          "text": "Proof",
+          "left": 458,
+          "right": 601,
+          "w": 143
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "left": 601,
+          "right": 698,
+          "w": 97
+        },
+        {
+          "el": "th",
+          "text": "Review",
+          "left": 698,
+          "right": 977,
+          "w": 279
+        },
+        {
+          "el": "tbody#attendanceCorrectionsBody",
+          "text": "Andres Bonifacio2024-0003IT WeekOct 19, 20262026-10-19 08:20Current: 2026-10-19 ",
+          "left": 35,
+          "right": 977,
+          "w": 942
+        },
+        {
+          "el": "tr",
+          "text": "Andres Bonifacio2024-0003IT WeekOct 19, 20262026-10-19 08:20Current: 2026-10-19 ",
+          "left": 35,
+          "right": 977,
+          "w": 942
+        },
+        {
+          "el": "td",
+          "text": "Arrived late because of traffic, security guard can verify.",
+          "left": 363,
+          "right": 458,
+          "w": 95
+        },
+        {
+          "el": "td",
+          "text": "View proof",
+          "left": 458,
+          "right": 601,
+          "w": 143
+        },
+        {
+          "el": "button.btn.btn-sm",
+          "text": "View proof",
+          "left": 474,
+          "right": 585,
+          "w": 111
+        }
+      ],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Reports",
+          "px": 12.8
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Analytics",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student requests",
+          "px": 11.52
+        },
+        {
+          "el": "p.records-caption",
+          "text": "Approving a request updates the attendance record and marks it as manually verif",
+          "px": 13
+        },
+        {
+          "el": "th",
+          "text": "Student",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Event",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Requested time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Reason",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Proof",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Review",
+          "px": 11.52
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "pending",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "pending",
+          "px": 12
+        },
+        {
+          "el": "label.form-label",
+          "text": "Event",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Department",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Course / Program",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Year Level",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Semester",
+          "px": 13
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Events",
+          "px": 12.8
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.correction-review-table",
+          "tableW": 942,
+          "wrapW": 320,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 587
+        },
+        {
+          "el": "table.table.attendance-summary-table",
+          "tableW": 560,
+          "wrapW": 324,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 204
+        },
+        {
+          "el": "table.table.attendance-dept-table",
+          "tableW": 560,
+          "wrapW": 324,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 203
+        }
+      ],
+      "h1": "System-wide reports.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": true
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-settings",
+    "route": "/pages/administrator/admin-settings.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Settings | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "AD",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "Administrator",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "System Admin",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Settings",
+          "px": 12.48
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "span",
+          "text": "Administrator",
+          "px": 12.48
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Configuration",
+          "px": 11.52
+        },
+        {
+          "el": "label.form-label",
+          "text": "School Year",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Term",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Start date",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "End date",
+          "px": 13
+        },
+        {
+          "el": "code",
+          "text": "?station=ID",
+          "px": 11.375
+        },
+        {
+          "el": "th",
+          "text": "Station",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Device",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Location",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Health",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Station ID",
+          "px": 11.52
+        },
+        {
+          "el": "span",
+          "text": "Register a station to start tracking check-ins.",
+          "px": 12.48
+        },
+        {
+          "el": "label.form-label",
+          "text": "Name",
+          "px": 13
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "System settings.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": true
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-settings",
+    "route": "/pages/administrator/admin-settings.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Settings | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 268,
+      "scroll": {
+        "docW": 658,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.mb-0",
+          "text": "StationDeviceLocationHealthStation IDActionsNo kiosk stationsRegister a station ",
+          "left": 17,
+          "right": 677,
+          "w": 660
+        },
+        {
+          "el": "thead",
+          "text": "StationDeviceLocationHealthStation IDActions",
+          "left": 17,
+          "right": 677,
+          "w": 660
+        },
+        {
+          "el": "tr",
+          "text": "StationDeviceLocationHealthStation IDActions",
+          "left": 17,
+          "right": 677,
+          "w": 660
+        },
+        {
+          "el": "th",
+          "text": "Health",
+          "left": 386,
+          "right": 500,
+          "w": 114
+        },
+        {
+          "el": "th",
+          "text": "Station ID",
+          "left": 500,
+          "right": 650,
+          "w": 150
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "left": 650,
+          "right": 677,
+          "w": 27
+        },
+        {
+          "el": "tbody#stationTableBody",
+          "text": "No kiosk stationsRegister a station to start tracking check-ins.",
+          "left": 17,
+          "right": 677,
+          "w": 660
+        },
+        {
+          "el": "tr",
+          "text": "No kiosk stationsRegister a station to start tracking check-ins.",
+          "left": 17,
+          "right": 677,
+          "w": 660
+        },
+        {
+          "el": "td.role-empty-cell",
+          "text": "No kiosk stationsRegister a station to start tracking check-ins.",
+          "left": 17,
+          "right": 677,
+          "w": 660
+        },
+        {
+          "el": "i.bi.bi-display",
+          "text": "",
+          "left": 35,
+          "right": 659,
+          "w": 624
+        },
+        {
+          "el": "strong",
+          "text": "No kiosk stations",
+          "left": 35,
+          "right": 659,
+          "w": 624
+        },
+        {
+          "el": "span",
+          "text": "Register a station to start tracking check-ins.",
+          "left": 35,
+          "right": 659,
+          "w": 624
+        }
+      ],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Settings",
+          "px": 12.8
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "AD",
+          "px": 10.4
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Configuration",
+          "px": 11.52
+        },
+        {
+          "el": "label.form-label",
+          "text": "School Year",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Term",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Start date",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "End date",
+          "px": 13
+        },
+        {
+          "el": "code",
+          "text": "?station=ID",
+          "px": 11.375
+        },
+        {
+          "el": "th",
+          "text": "Station",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Device",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Location",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Health",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Station ID",
+          "px": 11.52
+        },
+        {
+          "el": "span",
+          "text": "Register a station to start tracking check-ins.",
+          "px": 12.48
+        },
+        {
+          "el": "label.form-label",
+          "text": "Name",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Device",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Location",
+          "px": 13
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.mb-0",
+          "tableW": 660,
+          "wrapW": 356,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 287
+        }
+      ],
+      "h1": "System settings.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": true
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-dashboard",
+    "route": "/pages/ssc-officer/ssc-dashboard.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "SSC Dashboard | Attendance System",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "SSC",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "SSC Officer",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "Supreme Student Council",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "SSC dashboard",
+          "px": 12.48
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "SSC",
+          "px": 10.4
+        },
+        {
+          "el": "span",
+          "text": "SSC Officer",
+          "px": 12.48
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "System overview",
+          "px": 11.52
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Events",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Active Events",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Attendance",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Flagged Students",
+          "px": 12.8
+        },
+        {
+          "el": "a",
+          "text": "View all →",
+          "px": 11.52
+        },
+        {
+          "el": "span.ev-month",
+          "text": "Nov",
+          "px": 8.8
+        },
+        {
+          "el": "span.ev-dow",
+          "text": "Wed",
+          "px": 8
+        },
+        {
+          "el": "strong",
+          "text": "eyyyy",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "ambot aha · EVNT_026",
+          "px": 11.2
+        },
+        {
+          "el": "strong",
+          "text": "Test Student",
+          "px": 12.48
+        },
+        {
+          "el": "span",
+          "text": "checked in to EVNT_026 · eyyyy",
+          "px": 11.52
+        },
+        {
+          "el": "span.activity-time",
+          "text": "34m ago",
+          "px": 10.4
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Everything in view.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-dashboard",
+    "route": "/pages/ssc-officer/ssc-dashboard.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "SSC Dashboard | Attendance System",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "SSC dashboard",
+          "px": 12.8
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "SSC",
+          "px": 10.4
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "System overview",
+          "px": 11.52
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Events",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Active Events",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Attendance",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Flagged Students",
+          "px": 12.8
+        },
+        {
+          "el": "a",
+          "text": "View all →",
+          "px": 11.52
+        },
+        {
+          "el": "span.ev-month",
+          "text": "Nov",
+          "px": 8.8
+        },
+        {
+          "el": "span.ev-dow",
+          "text": "Wed",
+          "px": 8
+        },
+        {
+          "el": "strong",
+          "text": "eyyyy",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "ambot aha · EVNT_026",
+          "px": 11.2
+        },
+        {
+          "el": "strong",
+          "text": "Test Student",
+          "px": 12.48
+        },
+        {
+          "el": "span",
+          "text": "checked in to EVNT_026 · eyyyy",
+          "px": 11.52
+        },
+        {
+          "el": "span.activity-time",
+          "text": "34m ago",
+          "px": 10.4
+        },
+        {
+          "el": "strong",
+          "text": "Nicole Jansol",
+          "px": 12.48
+        },
+        {
+          "el": "span",
+          "text": "checked in to EVNT_012 · testing 1",
+          "px": 11.52
+        },
+        {
+          "el": "span.activity-time",
+          "text": "6d ago",
+          "px": 10.4
+        },
+        {
+          "el": "strong",
+          "text": "Gracy ann Navaluna",
+          "px": 12.48
+        },
+        {
+          "el": "span",
+          "text": "checked in to EVNT_012 · testing 1",
+          "px": 11.52
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Everything in view.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-manage-events",
+    "route": "/pages/ssc-officer/ssc-manage-events.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Events | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "SSC",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "SSC Officer",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "Supreme Student Council",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Manage events",
+          "px": 12.48
+        },
+        {
+          "el": "span.topbar-date",
+          "text": "SSC Officer",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Event management",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Event list",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Date",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Location",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Details",
+          "px": 11.52
+        },
+        {
+          "el": "th.text-end",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "td",
+          "text": "Flag Ceremony",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Aug 23, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "07:00",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Main Quadrangle",
+          "px": 13.44
+        },
+        {
+          "el": "button.btn.btn-sm",
+          "text": "Edit",
+          "px": 12
+        },
+        {
+          "el": "button.btn.btn-sm",
+          "text": "Delete",
+          "px": 12
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Create and manage events.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-manage-events",
+    "route": "/pages/ssc-officer/ssc-manage-events.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Events | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.student-table",
+          "text": "Name Date Time Location Details Actions Flag Ceremony Aug 23, 2026 07:00 Main Qu",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "thead",
+          "text": "Name Date Time Location Details Actions",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "tr",
+          "text": "Name Date Time Location Details Actions",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "th",
+          "text": "Details",
+          "left": 381,
+          "right": 499,
+          "w": 117
+        },
+        {
+          "el": "th.text-end",
+          "text": "Actions",
+          "left": 499,
+          "right": 635,
+          "w": 136
+        },
+        {
+          "el": "tbody#eventTableBody",
+          "text": "Flag Ceremony Aug 23, 2026 07:00 Main Quadrangle minor Mandatory Edit Delete Int",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "tr",
+          "text": "Flag Ceremony Aug 23, 2026 07:00 Main Quadrangle minor Mandatory Edit Delete",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "td",
+          "text": "minor Mandatory",
+          "left": 381,
+          "right": 499,
+          "w": 117
+        },
+        {
+          "el": "div.event-badges",
+          "text": "minor Mandatory",
+          "left": 397,
+          "right": 483,
+          "w": 85
+        },
+        {
+          "el": "span.event-type-badge.minor",
+          "text": "minor",
+          "left": 397,
+          "right": 469,
+          "w": 72
+        },
+        {
+          "el": "i.bi.bi-circle",
+          "text": "",
+          "left": 407,
+          "right": 418,
+          "w": 10
+        },
+        {
+          "el": "span.mandatory-badge.yes",
+          "text": "Mandatory",
+          "left": 397,
+          "right": 479,
+          "w": 82
+        }
+      ],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Manage events",
+          "px": 12.8
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Event management",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Event list",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Date",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Location",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Details",
+          "px": 11.52
+        },
+        {
+          "el": "th.text-end",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "td",
+          "text": "Flag Ceremony",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Aug 23, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "07:00",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Main Quadrangle",
+          "px": 13.44
+        },
+        {
+          "el": "button.btn.btn-sm",
+          "text": "Edit",
+          "px": 12
+        },
+        {
+          "el": "button.btn.btn-sm",
+          "text": "Delete",
+          "px": 12
+        },
+        {
+          "el": "td",
+          "text": "Intramurals 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Sep 14, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "08:00",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "University Gymnasium",
+          "px": 13.44
+        },
+        {
+          "el": "button.btn.btn-sm",
+          "text": "Edit",
+          "px": 12
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.student-table",
+          "tableW": 600,
+          "wrapW": 320,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 245
+        }
+      ],
+      "h1": "Create and manage events.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-manage-students",
+    "route": "/pages/ssc-officer/ssc-manage-students.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Students | Attendance System",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "SSC",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "SSC Officer",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "Supreme Student Council",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Manage students",
+          "px": 12.48
+        },
+        {
+          "el": "span.topbar-date",
+          "text": "SSC Officer",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student records",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student list",
+          "px": 11.52
+        },
+        {
+          "el": "span#studentCount.student-count-chip",
+          "text": "24 of 24 students",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Student ID",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Email",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Year Level",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Block",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "span.org-group-title",
+          "text": "School of Business Management",
+          "px": 13.12
+        },
+        {
+          "el": "span.org-group-pill",
+          "text": "3 courses · 12 students",
+          "px": 10.56
+        },
+        {
+          "el": "span.org-group-title",
+          "text": "BSEntrep",
+          "px": 12.48
+        },
+        {
+          "el": "span.org-group-pill",
+          "text": "4 students",
+          "px": 10.56
+        },
+        {
+          "el": "td",
+          "text": "Jose Rizal",
+          "px": 13.44
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "View student records.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": true
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-manage-students",
+    "route": "/pages/ssc-officer/ssc-manage-students.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Students | Attendance System",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.student-table",
+          "text": "Name Student ID Email Year Level Block Actions School of Business Management3 co",
+          "left": 35,
+          "right": 834,
+          "w": 799
+        },
+        {
+          "el": "thead",
+          "text": "Name Student ID Email Year Level Block Actions",
+          "left": 35,
+          "right": 834,
+          "w": 799
+        },
+        {
+          "el": "tr",
+          "text": "Name Student ID Email Year Level Block Actions",
+          "left": 35,
+          "right": 834,
+          "w": 799
+        },
+        {
+          "el": "th",
+          "text": "Email",
+          "left": 231,
+          "right": 482,
+          "w": 251
+        },
+        {
+          "el": "th",
+          "text": "Year Level",
+          "left": 482,
+          "right": 558,
+          "w": 76
+        },
+        {
+          "el": "th",
+          "text": "Block",
+          "left": 558,
+          "right": 635,
+          "w": 77
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "left": 635,
+          "right": 834,
+          "w": 198
+        },
+        {
+          "el": "tbody#studentTableBody",
+          "text": "School of Business Management3 courses · 12 studentsBSEntrep4 studentsJose Rizal",
+          "left": 35,
+          "right": 834,
+          "w": 799
+        },
+        {
+          "el": "tr.org-group-head.org-group-head-dept",
+          "text": "School of Business Management3 courses · 12 students",
+          "left": 35,
+          "right": 834,
+          "w": 799
+        },
+        {
+          "el": "td",
+          "text": "School of Business Management3 courses · 12 students",
+          "left": 35,
+          "right": 834,
+          "w": 799
+        },
+        {
+          "el": "div.org-group-label",
+          "text": "School of Business Management3 courses · 12 students",
+          "left": 51,
+          "right": 818,
+          "w": 767
+        },
+        {
+          "el": "span.org-group-pill",
+          "text": "3 courses · 12 students",
+          "left": 670,
+          "right": 818,
+          "w": 148
+        }
+      ],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Manage students",
+          "px": 12.8
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student records",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student list",
+          "px": 11.52
+        },
+        {
+          "el": "span#studentCount.student-count-chip",
+          "text": "24 of 24 students",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Name",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Student ID",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Email",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Year Level",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Block",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Actions",
+          "px": 11.52
+        },
+        {
+          "el": "span.org-group-title",
+          "text": "School of Business Management",
+          "px": 13.12
+        },
+        {
+          "el": "span.org-group-pill",
+          "text": "3 courses · 12 students",
+          "px": 10.56
+        },
+        {
+          "el": "span.org-group-title",
+          "text": "BSEntrep",
+          "px": 12.48
+        },
+        {
+          "el": "span.org-group-pill",
+          "text": "4 students",
+          "px": 10.56
+        },
+        {
+          "el": "td",
+          "text": "Jose Rizal",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "2024-0006",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "jose.rizal@example.com",
+          "px": 13.44
+        },
+        {
+          "el": "span.year-badge",
+          "text": "1st Year",
+          "px": 10.88
+        },
+        {
+          "el": "td",
+          "text": "A",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Melchora Aquino",
+          "px": 13.44
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.student-table",
+          "tableW": 799,
+          "wrapW": 320,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 444
+        }
+      ],
+      "h1": "View student records.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": true
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-reports",
+    "route": "/pages/ssc-officer/ssc-reports.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reports | Attendance System",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "SSC",
+          "px": 11.84
+        },
+        {
+          "el": "strong",
+          "text": "SSC Officer",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "Supreme Student Council",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Reports",
+          "px": 12.48
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "SSC",
+          "px": 10.4
+        },
+        {
+          "el": "span",
+          "text": "SSC Officer",
+          "px": 12.48
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Analytics",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student requests",
+          "px": 11.52
+        },
+        {
+          "el": "p.records-caption",
+          "text": "Approving a request updates the attendance record and marks it as manually verif",
+          "px": 13
+        },
+        {
+          "el": "th",
+          "text": "Student",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Event",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Requested time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Reason",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Proof",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Review",
+          "px": 11.52
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "pending",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "pending",
+          "px": 12
+        },
+        {
+          "el": "label.form-label",
+          "text": "Event",
+          "px": 13
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "System-wide reports.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": true
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-reports",
+    "route": "/pages/ssc-officer/ssc-reports.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reports | Attendance System",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.correction-review-table",
+          "text": "Attendance correction requests awaiting or completed reviewStudentEventRequested",
+          "left": 35,
+          "right": 975,
+          "w": 940
+        },
+        {
+          "el": "thead",
+          "text": "StudentEventRequested timeReasonProofStatusReview",
+          "left": 35,
+          "right": 975,
+          "w": 940
+        },
+        {
+          "el": "tr",
+          "text": "StudentEventRequested timeReasonProofStatusReview",
+          "left": 35,
+          "right": 975,
+          "w": 940
+        },
+        {
+          "el": "th",
+          "text": "Reason",
+          "left": 363,
+          "right": 458,
+          "w": 95
+        },
+        {
+          "el": "th",
+          "text": "Proof",
+          "left": 458,
+          "right": 601,
+          "w": 143
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "left": 601,
+          "right": 696,
+          "w": 95
+        },
+        {
+          "el": "th",
+          "text": "Review",
+          "left": 696,
+          "right": 975,
+          "w": 279
+        },
+        {
+          "el": "tbody#attendanceCorrectionsBody",
+          "text": "Andres Bonifacio2024-0003IT WeekEVNT_002Oct 19, 20262026-10-19 08:20Current: 202",
+          "left": 35,
+          "right": 975,
+          "w": 940
+        },
+        {
+          "el": "tr",
+          "text": "Andres Bonifacio2024-0003IT WeekEVNT_002Oct 19, 20262026-10-19 08:20Current: 202",
+          "left": 35,
+          "right": 975,
+          "w": 940
+        },
+        {
+          "el": "td",
+          "text": "Arrived late because of traffic, security guard can verify.",
+          "left": 363,
+          "right": 458,
+          "w": 95
+        },
+        {
+          "el": "td",
+          "text": "View proof",
+          "left": 458,
+          "right": 601,
+          "w": 143
+        },
+        {
+          "el": "button.btn.btn-sm",
+          "text": "View proof",
+          "left": 474,
+          "right": 585,
+          "w": 111
+        }
+      ],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Reports",
+          "px": 12.8
+        },
+        {
+          "el": "div.user-dropdown-avatar",
+          "text": "SSC",
+          "px": 10.4
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Analytics",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Student requests",
+          "px": 11.52
+        },
+        {
+          "el": "p.records-caption",
+          "text": "Approving a request updates the attendance record and marks it as manually verif",
+          "px": 13
+        },
+        {
+          "el": "th",
+          "text": "Student",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Event",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Requested time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Reason",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Proof",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Review",
+          "px": 11.52
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "pending",
+          "px": 12
+        },
+        {
+          "el": "span.badge.bg-secondary",
+          "text": "pending",
+          "px": 12
+        },
+        {
+          "el": "label.form-label",
+          "text": "Event",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Department",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Course / Program",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Year Level",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Semester",
+          "px": 13
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Total Events",
+          "px": 12.8
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.correction-review-table",
+          "tableW": 940,
+          "wrapW": 320,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 585
+        },
+        {
+          "el": "table.table.attendance-summary-table",
+          "tableW": 560,
+          "wrapW": 324,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 204
+        },
+        {
+          "el": "table.table.attendance-dept-table",
+          "tableW": 560,
+          "wrapW": 324,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 203
+        }
+      ],
+      "h1": "System-wide reports.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": true
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-dashboard",
+    "route": "/pages/student/student-dashboard.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Student Dashboard | Attendance System",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "TS",
+          "px": 11.84
+        },
+        {
+          "el": "strong#studentName",
+          "text": "Test Student",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "Student",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Dashboard",
+          "px": 12.48
+        },
+        {
+          "el": "span#notificationBadge.notification-badge",
+          "text": "3",
+          "px": 9.6
+        },
+        {
+          "el": "span#todayLabel.topbar-date",
+          "text": "Nov 18, 2026",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Good morning",
+          "px": 11.52
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Attendance rate",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Present",
+          "px": 12.8
+        },
+        {
+          "el": "div.stat-foot",
+          "text": "Events attended",
+          "px": 12
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Sanctions",
+          "px": 12.8
+        },
+        {
+          "el": "div.stat-foot",
+          "text": "Active records",
+          "px": 12
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Your activity",
+          "px": 11.52
+        },
+        {
+          "el": "small",
+          "text": "present",
+          "px": 11.2
+        },
+        {
+          "el": "span",
+          "text": "Present",
+          "px": 12.48
+        },
+        {
+          "el": "strong#presentLegend",
+          "text": "43%",
+          "px": 12.48
+        },
+        {
+          "el": "span",
+          "text": "Absent",
+          "px": 12.48
+        },
+        {
+          "el": "strong#absentLegend",
+          "text": "57%",
+          "px": 12.48
+        },
+        {
+          "el": "p.chart-caption",
+          "text": "Attendance is recorded by the event kiosk.",
+          "px": 10.88
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Welcome back, Test.",
+      "bodyClass": "student-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-dashboard",
+    "route": "/pages/student/student-dashboard.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Student Dashboard | Attendance System",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Dashboard",
+          "px": 12.8
+        },
+        {
+          "el": "span#notificationBadge.notification-badge",
+          "text": "3",
+          "px": 9.6
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Good morning",
+          "px": 11.52
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Attendance rate",
+          "px": 12.8
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Present",
+          "px": 12.8
+        },
+        {
+          "el": "div.stat-foot",
+          "text": "Events attended",
+          "px": 12
+        },
+        {
+          "el": "span.stat-label",
+          "text": "Sanctions",
+          "px": 12.8
+        },
+        {
+          "el": "div.stat-foot",
+          "text": "Active records",
+          "px": 12
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Your activity",
+          "px": 11.52
+        },
+        {
+          "el": "small",
+          "text": "present",
+          "px": 11.2
+        },
+        {
+          "el": "span",
+          "text": "Present",
+          "px": 12.48
+        },
+        {
+          "el": "strong#presentLegend",
+          "text": "43%",
+          "px": 12.48
+        },
+        {
+          "el": "span",
+          "text": "Absent",
+          "px": 12.48
+        },
+        {
+          "el": "strong#absentLegend",
+          "text": "57%",
+          "px": 12.48
+        },
+        {
+          "el": "p.chart-caption",
+          "text": "Attendance is recorded by the event kiosk.",
+          "px": 10.88
+        },
+        {
+          "el": "strong",
+          "text": "eyyyy has been announced",
+          "px": 12.48
+        },
+        {
+          "el": "small",
+          "text": "ambot aha - 2026-11-18 at 03:52",
+          "px": 10.88
+        },
+        {
+          "el": "strong",
+          "text": "anoyyy has been announced",
+          "px": 12.48
+        },
+        {
+          "el": "small",
+          "text": "JHCSC GROUNDS - 2026-11-16 at 01:58",
+          "px": 10.88
+        },
+        {
+          "el": "strong",
+          "text": "testing 1 has been announced",
+          "px": 12.48
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Welcome back, Test.",
+      "bodyClass": "student-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-attendance",
+    "route": "/pages/student/student-attendance.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "My Attendance | Attendance System",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "TS",
+          "px": 11.84
+        },
+        {
+          "el": "strong#studentName",
+          "text": "Test Student",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "Student",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "My attendance",
+          "px": 12.48
+        },
+        {
+          "el": "span#todayLabel.topbar-date",
+          "text": "Nov 18, 2026",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Your records",
+          "px": 11.2
+        },
+        {
+          "el": "p.records-caption",
+          "text": "Your event check-ins.",
+          "px": 13
+        },
+        {
+          "el": "th",
+          "text": "Date",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Event",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "td",
+          "text": "Nov 18, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "eyyyy",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "03:53",
+          "px": 13.44
+        },
+        {
+          "el": "span.status-badge.present",
+          "text": "present",
+          "px": 11.52
+        },
+        {
+          "el": "td",
+          "text": "Oct 19, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "IT Week",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "08:08",
+          "px": 13.44
+        },
+        {
+          "el": "span.status-badge.present",
+          "text": "present",
+          "px": 11.52
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Attendance history",
+      "bodyClass": "student-subpage-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": true
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-attendance",
+    "route": "/pages/student/student-attendance.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "My Attendance | Attendance System",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "table.table.student-table",
+          "text": "Attendance records with event date, event name and ID, check-in time, and status",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "thead",
+          "text": "DateEventTimeStatus",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "tr",
+          "text": "DateEventTimeStatus",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "th",
+          "text": "Time",
+          "left": 391,
+          "right": 488,
+          "w": 97
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "left": 488,
+          "right": 635,
+          "w": 147
+        },
+        {
+          "el": "tbody#attendanceTableBody",
+          "text": "Nov 18, 2026 eyyyy 03:53 present Oct 19, 2026 IT Week 08:08 present Sep 14, 2026",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "tr",
+          "text": "Nov 18, 2026 eyyyy 03:53 present",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "td",
+          "text": "03:53",
+          "left": 391,
+          "right": 488,
+          "w": 97
+        },
+        {
+          "el": "td",
+          "text": "present",
+          "left": 488,
+          "right": 635,
+          "w": 147
+        },
+        {
+          "el": "span.status-badge.present",
+          "text": "present",
+          "left": 504,
+          "right": 575,
+          "w": 71
+        },
+        {
+          "el": "tr",
+          "text": "Oct 19, 2026 IT Week 08:08 present",
+          "left": 35,
+          "right": 635,
+          "w": 600
+        },
+        {
+          "el": "td",
+          "text": "08:08",
+          "left": 391,
+          "right": 488,
+          "w": 97
+        }
+      ],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "My attendance",
+          "px": 12.8
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Your records",
+          "px": 11.2
+        },
+        {
+          "el": "p.records-caption",
+          "text": "Your event check-ins.",
+          "px": 13
+        },
+        {
+          "el": "th",
+          "text": "Date",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Event",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Time",
+          "px": 11.52
+        },
+        {
+          "el": "th",
+          "text": "Status",
+          "px": 11.52
+        },
+        {
+          "el": "td",
+          "text": "Nov 18, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "eyyyy",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "03:53",
+          "px": 13.44
+        },
+        {
+          "el": "span.status-badge.present",
+          "text": "present",
+          "px": 11.52
+        },
+        {
+          "el": "td",
+          "text": "Oct 19, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "IT Week",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "08:08",
+          "px": 13.44
+        },
+        {
+          "el": "span.status-badge.present",
+          "text": "present",
+          "px": 11.52
+        },
+        {
+          "el": "td",
+          "text": "Sep 14, 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "Intramurals 2026",
+          "px": 13.44
+        },
+        {
+          "el": "td",
+          "text": "08:08",
+          "px": 13.44
+        },
+        {
+          "el": "span.status-badge.present",
+          "text": "present",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Need a correction?",
+          "px": 11.52
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [
+        {
+          "el": "table.table.student-table",
+          "tableW": 600,
+          "wrapW": 320,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 245
+        },
+        {
+          "el": "table.table.student-table",
+          "tableW": 620,
+          "wrapW": 324,
+          "wrapOverflowX": "auto",
+          "pageOverflow": 263
+        }
+      ],
+      "h1": "Attendance history",
+      "bodyClass": "student-subpage-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": true
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-profile",
+    "route": "/pages/student/student-profile.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Profile Settings | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div#sidebarAvatar.role-avatar.ssc-avatar",
+          "text": "TS",
+          "px": 11.84
+        },
+        {
+          "el": "strong#studentName",
+          "text": "Test Student",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "Student",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Profile settings",
+          "px": 12.48
+        },
+        {
+          "el": "span#todayLabel.topbar-date",
+          "text": "Nov 18, 2026",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Your account",
+          "px": 11.2
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Profile",
+          "px": 11.52
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Academic Information",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Full Name",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Student ID Number",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Program / Course",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Year Level",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Block",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Account Information",
+          "px": 13
+        },
+        {
+          "el": "span.text-danger",
+          "text": "*",
+          "px": 13
+        },
+        {
+          "el": "div#emailHelp.form-text",
+          "text": "Used to sign in. This address cannot be changed here.",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Contact Number",
+          "px": 13
+        },
+        {
+          "el": "div#contactHelp.form-text",
+          "text": "Optional. Used for attendance and account updates.",
+          "px": 13
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Security",
+          "px": 11.52
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Profile settings",
+      "bodyClass": "student-subpage-page dashboard-hover-accent profile-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": true
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-profile",
+    "route": "/pages/student/student-profile.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Profile Settings | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Profile settings",
+          "px": 12.8
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Your account",
+          "px": 11.2
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Profile",
+          "px": 11.52
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Academic Information",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Full Name",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Student ID Number",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Program / Course",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Year Level",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Block",
+          "px": 13
+        },
+        {
+          "el": "span.profile-detail-label",
+          "text": "Account Information",
+          "px": 13
+        },
+        {
+          "el": "span.text-danger",
+          "text": "*",
+          "px": 13
+        },
+        {
+          "el": "div#emailHelp.form-text",
+          "text": "Used to sign in. This address cannot be changed here.",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Contact Number",
+          "px": 13
+        },
+        {
+          "el": "div#contactHelp.form-text",
+          "text": "Optional. Used for attendance and account updates.",
+          "px": 13
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Security",
+          "px": 11.52
+        },
+        {
+          "el": "label.form-label",
+          "text": "Current Password",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "New Password",
+          "px": 13
+        },
+        {
+          "el": "label.form-label",
+          "text": "Confirm New Password",
+          "px": 13
+        },
+        {
+          "el": "span#lastPasswordChangeDate",
+          "text": "—",
+          "px": 13
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Account",
+          "px": 11.52
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Profile settings",
+      "bodyClass": "student-subpage-page dashboard-hover-accent profile-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": true
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-sanctions",
+    "route": "/pages/student/student-sanctions.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "My Sanctions | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "div.role-avatar.ssc-avatar",
+          "text": "TS",
+          "px": 11.84
+        },
+        {
+          "el": "strong#studentName",
+          "text": "Test Student",
+          "px": 12.8
+        },
+        {
+          "el": "small",
+          "text": "Student",
+          "px": 10.88
+        },
+        {
+          "el": "span.student-breadcrumb",
+          "text": "Workspace /",
+          "px": 12.48
+        },
+        {
+          "el": "strong",
+          "text": "Sanctions",
+          "px": 12.48
+        },
+        {
+          "el": "span#todayLabel.topbar-date",
+          "text": "Nov 18, 2026",
+          "px": 11.52
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Sanction history",
+          "px": 11.2
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "My sanctions",
+      "bodyClass": "student-subpage-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": true
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-sanctions",
+    "route": "/pages/student/student-sanctions.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "My Sanctions | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "strong",
+          "text": "Sanctions",
+          "px": 12.8
+        },
+        {
+          "el": "p.section-kicker",
+          "text": "Sanction history",
+          "px": 11.2
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "My sanctions",
+      "bodyClass": "student-subpage-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": true
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "public",
+    "name": "login",
+    "route": "/pages/login.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Login | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [
+        {
+          "el": "div.auth-hero",
+          "text": "Track attendancewith a single scan. Fast, reliable attendance tracking for campu",
+          "client": 706,
+          "scroll": 713
+        }
+      ],
+      "tiny": [
+        {
+          "el": "span.auth-hero-slide-num-inner.current",
+          "text": "01",
+          "px": 11.52
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "EMAIL ADDRESS",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "a.auth-forgot",
+          "text": "Forgot password?",
+          "px": 12.8
+        },
+        {
+          "el": "a",
+          "text": "Create an account",
+          "px": 13.6
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "login",
+    "route": "/pages/login.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Login | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "EMAIL ADDRESS",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "a.auth-forgot",
+          "text": "Forgot password?",
+          "px": 12.8
+        },
+        {
+          "el": "a",
+          "text": "Create an account",
+          "px": 13.6
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "signup",
+    "route": "/pages/signup.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Create account | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [
+        {
+          "el": "div.auth-hero",
+          "text": "Track attendancewith a single scan. Fast, reliable attendance tracking for campu",
+          "client": 706,
+          "scroll": 713
+        }
+      ],
+      "tiny": [
+        {
+          "el": "span.auth-hero-slide-num-inner.current",
+          "text": "01",
+          "px": 11.52
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "FIRST NAME",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "LAST NAME",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "SCHOOL EMAIL",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "DEPARTMENT",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "COURSE / PROGRAM",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "YEAR LEVEL",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "STUDENT ID NUMBER",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "BLOCK",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "CONFIRM PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "label.auth-terms-label",
+          "text": "I agree to the college's attendance rules.",
+          "px": 12.8
+        },
+        {
+          "el": "a",
+          "text": "Sign in",
+          "px": 13.6
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "signup",
+    "route": "/pages/signup.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Create account | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "FIRST NAME",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "LAST NAME",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "SCHOOL EMAIL",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "DEPARTMENT",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "COURSE / PROGRAM",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "YEAR LEVEL",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "STUDENT ID NUMBER",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "BLOCK",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "CONFIRM PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "label.auth-terms-label",
+          "text": "I agree to the college's attendance rules.",
+          "px": 12.8
+        },
+        {
+          "el": "a",
+          "text": "Sign in",
+          "px": 13.6
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "reset-password",
+    "route": "/pages/reset-password.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reset password | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "p#resetPasswordError.auth-form-error",
+          "text": "Missing or invalid password reset link. Please request a new one.",
+          "px": 13.12
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "6-DIGIT OTP",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "NEW PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "CONFIRM NEW PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "a",
+          "text": "Back to Sign in",
+          "px": 13.6
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "",
+      "bodyClass": "auth-page auth-page--single",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "reset-password",
+    "route": "/pages/reset-password.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reset password | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "p#resetPasswordError.auth-form-error",
+          "text": "Missing or invalid password reset link. Please request a new one.",
+          "px": 13.12
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "6-DIGIT OTP",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "NEW PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "CONFIRM NEW PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "a",
+          "text": "Back to Sign in",
+          "px": 13.6
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "",
+      "bodyClass": "auth-page auth-page--single",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "change-password",
+    "route": "/pages/change-password.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Login | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [
+        {
+          "el": "div.auth-hero",
+          "text": "Track attendancewith a single scan. Fast, reliable attendance tracking for campu",
+          "client": 706,
+          "scroll": 712
+        }
+      ],
+      "tiny": [
+        {
+          "el": "span.auth-hero-slide-num-inner.current",
+          "text": "01",
+          "px": 11.52
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "EMAIL ADDRESS",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "a.auth-forgot",
+          "text": "Forgot password?",
+          "px": 12.8
+        },
+        {
+          "el": "a",
+          "text": "Create an account",
+          "px": 13.6
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "change-password",
+    "route": "/pages/change-password.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Login | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "EMAIL ADDRESS",
+          "px": 11.2
+        },
+        {
+          "el": "label.form-label.auth-label-uppercase",
+          "text": "PASSWORD",
+          "px": 11.2
+        },
+        {
+          "el": "a.auth-forgot",
+          "text": "Forgot password?",
+          "px": 12.8
+        },
+        {
+          "el": "a",
+          "text": "Create an account",
+          "px": 13.6
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "kiosk",
+    "route": "/pages/kiosk.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Check-in Kiosk | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [
+        {
+          "el": "a.kiosk-skip-link",
+          "text": "Skip to fingerprint scanner",
+          "px": 13.12
+        },
+        {
+          "el": "small",
+          "text": "Fingerprint event check-in",
+          "px": 9.76
+        },
+        {
+          "el": "strong",
+          "text": "Station 01",
+          "px": 11.68
+        },
+        {
+          "el": "small#kioskStationState",
+          "text": "Station locked",
+          "px": 9.92
+        },
+        {
+          "el": "span#kioskClockDate",
+          "text": "Wed, Nov 18",
+          "px": 10.88
+        },
+        {
+          "el": "span.kiosk-event-label",
+          "text": "Active event",
+          "px": 11.04
+        },
+        {
+          "el": "p",
+          "text": "Choose the event, then pick check-in or check-out.",
+          "px": 11.52
+        },
+        {
+          "el": "span#kioskStatusBadge.kiosk-status-badge.is-closed",
+          "text": "Locked",
+          "px": 9.92
+        },
+        {
+          "el": "small",
+          "text": "Arrivals",
+          "px": 11.2
+        },
+        {
+          "el": "small",
+          "text": "Departures",
+          "px": 11.2
+        },
+        {
+          "el": "label",
+          "text": "Student ID",
+          "px": 13.12
+        },
+        {
+          "el": "span#kioskFingerprintState",
+          "text": "Scanner ready",
+          "px": 9.92
+        },
+        {
+          "el": "small#kioskScanCtaDetail",
+          "text": "Sign in to unlock the fingerprint scanner.",
+          "px": 12.48
+        },
+        {
+          "el": "span#kioskStatusText.kiosk-status-text",
+          "text": "Station locked",
+          "px": 12.48
+        },
+        {
+          "el": "span#kioskScanHint.kiosk-status-hint",
+          "text": "Sign in to unlock the scanner.",
+          "px": 10.88
+        },
+        {
+          "el": "span",
+          "text": "1",
+          "px": 11.52
+        },
+        {
+          "el": "strong",
+          "text": "Select your event",
+          "px": 12.16
+        },
+        {
+          "el": "small",
+          "text": "Confirm the event and scan mode above.",
+          "px": 10.56
+        },
+        {
+          "el": "span",
+          "text": "2",
+          "px": 11.52
+        },
+        {
+          "el": "strong",
+          "text": "Enter your ID",
+          "px": 12.16
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Station locked",
+      "bodyClass": "kiosk-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "kiosk",
+    "route": "/pages/kiosk.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Check-in Kiosk | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [
+        {
+          "el": "div.kiosk-card-vignette",
+          "text": "",
+          "left": 68,
+          "right": 528,
+          "w": 460
+        }
+      ],
+      "clipped": [
+        {
+          "el": "section#scanPanel.kiosk-scan",
+          "text": "Fast fingerprint attendance Station locked Sign in to choose an event and start ",
+          "client": 364,
+          "scroll": 515
+        }
+      ],
+      "tiny": [
+        {
+          "el": "a.kiosk-skip-link",
+          "text": "Skip to fingerprint scanner",
+          "px": 13.12
+        },
+        {
+          "el": "small",
+          "text": "Fingerprint event check-in",
+          "px": 8.8
+        },
+        {
+          "el": "span.kiosk-event-label",
+          "text": "Active event",
+          "px": 11.04
+        },
+        {
+          "el": "p#kioskEventMeta.kiosk-subtitle",
+          "text": "Sign in to choose an event and start recording attendance.",
+          "px": 12.8
+        },
+        {
+          "el": "span#kioskStatusBadge.kiosk-status-badge.is-closed",
+          "text": "Locked",
+          "px": 9.92
+        },
+        {
+          "el": "strong",
+          "text": "Check-In",
+          "px": 12.48
+        },
+        {
+          "el": "small",
+          "text": "Arrivals",
+          "px": 10.24
+        },
+        {
+          "el": "strong",
+          "text": "Check-Out",
+          "px": 12.48
+        },
+        {
+          "el": "small",
+          "text": "Departures",
+          "px": 10.24
+        },
+        {
+          "el": "label",
+          "text": "Student ID",
+          "px": 13.12
+        },
+        {
+          "el": "span#kioskFingerprintState",
+          "text": "Scanner ready",
+          "px": 9.92
+        },
+        {
+          "el": "small#kioskScanCtaDetail",
+          "text": "Sign in to unlock the fingerprint scanner.",
+          "px": 12.48
+        },
+        {
+          "el": "span#kioskStatusText.kiosk-status-text",
+          "text": "Station locked",
+          "px": 12.48
+        },
+        {
+          "el": "span#kioskScanHint.kiosk-status-hint",
+          "text": "Sign in to unlock the scanner.",
+          "px": 10.88
+        },
+        {
+          "el": "span",
+          "text": "1",
+          "px": 11.52
+        },
+        {
+          "el": "strong",
+          "text": "Select your event",
+          "px": 10.08
+        },
+        {
+          "el": "span",
+          "text": "2",
+          "px": 11.52
+        },
+        {
+          "el": "strong",
+          "text": "Enter your ID",
+          "px": 10.08
+        },
+        {
+          "el": "span",
+          "text": "3",
+          "px": 11.52
+        },
+        {
+          "el": "strong",
+          "text": "Scan your fingerprint",
+          "px": 10.08
+        }
+      ],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Station locked",
+      "bodyClass": "kiosk-page",
+      "navLinks": []
+    }
+  }
+]

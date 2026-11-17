@@ -783,3 +783,140 @@
     color: var(--color-text-danger);
   }
 }
+
+/* ============================================================
+   ROLE WORKSPACE POLISH
+   ------------------------------------------------------------
+   Shared admin/SSC layout corrections that belong to the role
+   shell rather than the generic component layer in styles.css.
+   ============================================================ */
+
+.role-main {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.role-shell {
+  min-width: 0;
+}
+
+/* Grid/flex children default to min-width:auto, which is what let the
+   kiosk-stations table push the settings page 268px wider than the
+   viewport. Every card and table wrapper must be allowed to shrink. */
+.role-dashboard-page :is(.settings-stack, .settings-card, .role-card,
+  .dashboard-card, .card, .card-body, .data-table-wrapper,
+  .table-responsive, .settings-stations-table) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.role-dashboard-page .settings-stack {
+  width: 100%;
+}
+
+/* The roster's desktop sticky Actions column was useful, but its 200px
+   cap clipped long emails. Keep actions readable and let status text use
+   the remaining width. */
+.data-table-wrapper .table > tbody > tr[data-kind="student"] > td:last-child {
+  white-space: normal;
+}
+
+.data-table-wrapper .table > tbody > tr[data-kind="student"] > td:last-child .btn {
+  white-space: nowrap;
+}
+
+/* Filter toolbars: consistent gaps and a sensible two-up phone layout
+   instead of six full-width stacked selects. */
+.student-filter-bar {
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.student-filter-bar :is(.form-select, .form-control) {
+  min-height: 42px;
+}
+
+@media (max-width: 700px) {
+  .student-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 12px;
+  }
+
+  .student-filter-bar .form-select,
+  .student-filter-bar .student-filter-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .student-filter-bar .student-filter-search {
+    grid-column: 1 / -1;
+  }
+
+  .student-filter-bar .student-count-chip {
+    grid-column: 1 / -1;
+    margin-left: 0;
+    text-align: right;
+  }
+
+  .settings-station-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .settings-station-form .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .student-filter-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Report and settings metadata must remain readable; dense tabular values
+   can still use the shared 12px metadata floor where space is genuinely
+   constrained. */
+.role-dashboard-page .field-group .form-label,
+.role-dashboard-page .report-actions .btn,
+.role-dashboard-page .nav-tabs.role-tabs .nav-link,
+.role-dashboard-page .student-table .badge,
+.role-dashboard-page .data-table-wrapper table,
+.role-dashboard-page .table-responsive th,
+.role-dashboard-page .table-responsive td {
+  font-size: 0.875rem;
+}
+
+.role-dashboard-page :is(.table-responsive, .data-table-wrapper) {
+  min-width: 0;
+}
+
+/* One consistent card rhythm on phone. */
+@media (max-width: 700px) {
+  .role-dashboard-page :is(.role-card, .dashboard-card, .settings-card) {
+    border-radius: var(--radius-md);
+  }
+
+  .role-card-header,
+  .card-heading,
+  .settings-card-header {
+    padding: 14px 16px;
+  }
+
+  .card-heading {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .settings-card-body {
+    padding: 16px;
+  }
+
+  .role-topbar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+

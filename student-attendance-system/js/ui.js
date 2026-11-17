@@ -240,9 +240,93 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   initResponsiveShell();
+  initResponsiveTables();
   initNotifications();
   initUserDropdown();
 });
+
+/* ============================================================
+   Responsive data tables
+   ------------------------------------------------------------
+   Static tables and JS-rendered tables share the same markup, but
+   their rows are generated in several different files. Rather than
+   duplicate a mobile card renderer in every renderer, copy the
+   column headings onto each cell as data-label. styles.css turns
+   labelled tables into stacked cards below 700px.
+
+   The observer keeps labels correct when a table body is replaced
+   after an API call. It only reads/writes attributes and a loading
+   spinner, so it cannot trigger a render loop.
+   ============================================================ */
+function enhanceResponsiveTables(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  const tables = [];
+  if (scope.tagName === 'TABLE') tables.push(scope);
+  scope.querySelectorAll('table').forEach(table => tables.push(table));
+
+  tables.forEach(table => {
+    if (table.dataset.noResponsiveStack === '1') return;
+    const headers = Array.from(table.querySelectorAll('thead tr:first-child th'))
+      .map(th => (th.textContent || '').replace(/\s+/g, ' ').trim());
+    if (headers.length < 2) return;
+
+    table.classList.add('responsive-stack');
+
+    table.querySelectorAll('tbody tr').forEach(row => {
+      const cells = Array.from(row.children).filter(cell => cell.tagName === 'TD');
+      const isSingleCell = cells.length === 1 || cells.some(cell => cell.colSpan > 1);
+      row.classList.toggle('table-stack-empty', isSingleCell);
+
+      if (isSingleCell) {
+        cells.forEach(cell => cell.removeAttribute('data-label'));
+      } else {
+        cells.forEach((cell, index) => {
+          if (headers[index]) cell.setAttribute('data-label', headers[index]);
+          else cell.removeAttribute('data-label');
+        });
+      }
+
+      cells.forEach(cell => {
+        const isLoading = /^loading\b/i.test((cell.textContent || '').trim());
+        cell.classList.toggle('is-loading-row', isLoading);
+        if (isLoading && !cell.querySelector('.table-loading')) {
+          const spinner = document.createElement('span');
+          spinner.className = 'table-loading';
+          spinner.setAttribute('aria-hidden', 'true');
+          cell.prepend(spinner);
+        }
+      });
+    });
+
+    const busy = Boolean(table.querySelector('tbody td.is-loading-row'));
+    if (busy) table.setAttribute('aria-busy', 'true');
+    else table.removeAttribute('aria-busy');
+  });
+}
+
+function initResponsiveTables() {
+  enhanceResponsiveTables(document);
+  if (typeof MutationObserver === 'undefined') return;
+
+  let scheduled = false;
+  const schedule = () => {
+    if (scheduled) return;
+    scheduled = true;
+    const run = () => {
+      scheduled = false;
+      enhanceResponsiveTables(document);
+    };
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(run);
+    } else {
+      window.setTimeout(run, 16);
+    }
+  };
+
+  const observer = new MutationObserver(schedule);
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
 
 /**
  * Provide one keyboard-safe announcement panel for every workspace. Pages may

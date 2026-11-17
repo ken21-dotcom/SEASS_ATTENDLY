@@ -156,6 +156,9 @@ async function request(path, options) {
     var error = new Error(detail ? detail.message : 'Request failed.');
     error.code = detail ? detail.code : 'http_error';
     error.status = response.status;
+    // Optional diagnostics (for example fingerprint score/threshold/finger)
+    // are exposed for ?debug=1; normal UI copy never reads them.
+    error.details = detail && detail.details ? detail.details : null;
 
     // 401 means the PHP session expired. Only bounce to login for
     // calls the user initiated, never for a background probe.

@@ -4,7 +4,7 @@ declare(strict_types=1);
 header('Content-Type: application/json');
 $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 if ($path === '/health') {
-    echo json_encode(['status' => 'ok'], JSON_THROW_ON_ERROR);
+    echo json_encode(['status' => 'ok', 'dpi' => 512, 'threshold' => 40], JSON_THROW_ON_ERROR);
     return;
 }
 if (($_SERVER['HTTP_X_MATCHING_KEY'] ?? '') !== 'attendly-synthetic-test-key') {
@@ -33,13 +33,24 @@ if ($path === '/identify') {
     $candidates = is_array($body['candidates'] ?? null) ? $body['candidates'] : [];
     foreach ($candidates as $candidate) {
         $id = (int) ($candidate['id'] ?? 0);
-        $templates = is_array($candidate['templates'] ?? null) ? $candidate['templates'] : [];
-        if (in_array($template, $templates, true)) {
-            echo json_encode(['match' => ['id' => $id, 'score' => 100.0]], JSON_THROW_ON_ERROR);
-            return;
+        $templates = is_array($candidate['templates'] ?? null) ? array_values($candidate['templates']) : [];
+        $fingers = is_array($candidate['fingers'] ?? null) ? array_values($candidate['fingers']) : [];
+        foreach ($templates as $index => $candidateTemplate) {
+            if ($candidateTemplate === $template) {
+                echo json_encode([
+                    'match' => [
+                        'id' => $id,
+                        'score' => 100.0,
+                        'finger' => is_string($fingers[$index] ?? null) ? $fingers[$index] : null,
+                    ],
+                    'bestScore' => 100.0,
+                    'threshold' => 40.0,
+                ], JSON_THROW_ON_ERROR);
+                return;
+            }
         }
     }
-    echo json_encode(['match' => null, 'bestScore' => 0.0], JSON_THROW_ON_ERROR);
+    echo json_encode(['match' => null, 'bestScore' => 0.0, 'threshold' => 40.0], JSON_THROW_ON_ERROR);
     return;
 }
 http_response_code(404);

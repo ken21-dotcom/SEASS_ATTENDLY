@@ -9,7 +9,7 @@ module.exports = {
       cwd: projectRoot,
       script: path.join(projectRoot, 'node_modules', 'http-server', 'bin', 'http-server'),
       interpreter: 'node',
-      args: '-p 5173 -c-1',
+      args: 'student-attendance-system -p 5173 -c-1',
       env: {
         NODE_ENV: 'development'
       }

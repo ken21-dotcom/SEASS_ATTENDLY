@@ -95,7 +95,7 @@
 
 .stat-label {
   color: var(--color-text-muted);
-  font-size: .74rem;
+  font-size: .875rem;
   font-weight: 600;
   letter-spacing: .02em;
 }
@@ -160,7 +160,7 @@
   gap: 5px;
   margin: 10px 0 0;
   color: var(--color-text-muted);
-  font-size: .7rem;
+  font-size: .875rem;
   text-decoration: none;
 }
 

@@ -9,49 +9,305 @@
   <div id="swagger-ui"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui-bundle.min.js"></script>
   <script>
-    const spec = {
-      "openapi": "3.0.0",
-      "info": {
-        "title": "ATTENDLY API",
-        "version": "1.0.0"
+    /* Route inventory mirrors attendly-backend/src/routes.php. Keep this list in
+       step when a route is added or removed; request schemas are intentionally
+       compact because the PHP handlers are the source of truth for validation. */
+    const routes = [
+      { method: 'GET',    path: '/health',                        tag: 'Health',      summary: 'Health check', auth: false },
+      { method: 'POST',   path: '/auth/login',                    tag: 'Auth',        summary: 'Sign in', auth: false, body: 'Login' },
+      { method: 'POST',   path: '/auth/register',                 tag: 'Auth',        summary: 'Register a student (pending approval)', auth: false, body: 'Register' },
+      { method: 'POST',   path: '/auth/verify-otp',               tag: 'Auth',        summary: 'Verify the registration OTP', auth: false, body: 'VerifyOtp' },
+      { method: 'POST',   path: '/auth/logout',                   tag: 'Auth',        summary: 'Sign out', auth: true },
+      { method: 'GET',    path: '/auth/me',                       tag: 'Auth',        summary: 'Current session user', auth: true },
+      { method: 'POST',   path: '/auth/password',                 tag: 'Auth',        summary: 'Change password', auth: true, body: 'PasswordChange' },
+      { method: 'POST',   path: '/auth/forgot-password',          tag: 'Auth',        summary: 'Request a password-reset OTP', auth: false, body: 'ForgotPassword' },
+      { method: 'POST',   path: '/auth/reset-password',           tag: 'Auth',        summary: 'Reset password with OTP', auth: false, body: 'ResetPassword' },
+
+      { method: 'GET',    path: '/users',                         tag: 'Users',       summary: 'List users (role-scoped)', auth: true, query: ['status', 'role'] },
+      { method: 'PATCH',  path: '/users/:id/status',              tag: 'Users',       summary: 'Approve, activate or deactivate a user', auth: 'admin', body: 'UserStatus' },
+      { method: 'POST',   path: '/users/enroll-fingerprint',      tag: 'Fingerprint', summary: 'Enroll two templates for one finger', auth: 'staff', body: 'EnrollFingerprint' },
+      { method: 'GET',    path: '/users/me/sanctions',            tag: 'Users',       summary: 'My absence-based sanction status', auth: 'student' },
+      { method: 'PATCH',  path: '/users/me/profile',              tag: 'Users',       summary: 'Update my student profile', auth: 'student', body: 'StudentProfile' },
+      { method: 'POST',   path: '/users/me/deactivate',           tag: 'Users',       summary: 'Deactivate my account', auth: 'student' },
+      { method: 'PATCH',  path: '/users/:id/profile',             tag: 'Users',       summary: 'Update a student profile', auth: 'admin', body: 'StudentProfile' },
+      { method: 'POST',   path: '/users/officers',                tag: 'Users',       summary: 'Create an SSC officer account', auth: 'admin', body: 'Officer' },
+
+      { method: 'GET',    path: '/announcements',                 tag: 'Events',      summary: 'List announcements for the current user', auth: true },
+      { method: 'GET',    path: '/events',                        tag: 'Events',      summary: 'List events', auth: false },
+      { method: 'POST',   path: '/events',                        tag: 'Events',      summary: 'Create an event', auth: 'staff', body: 'Event' },
+      { method: 'PATCH',  path: '/events/:id',                    tag: 'Events',      summary: 'Update an event', auth: 'staff', body: 'EventPatch' },
+      { method: 'DELETE', path: '/events/:id',                    tag: 'Events',      summary: 'Delete an event', auth: 'staff' },
+
+      { method: 'GET',    path: '/attendance',                    tag: 'Attendance',  summary: 'List attendance (students see only their own)', auth: true, query: ['event_id', 'student_id'] },
+      { method: 'GET',    path: '/reports/attendance',            tag: 'Reports',     summary: 'Attendance report for the report builder', auth: 'staff', query: ['eventId', 'department', 'program', 'yearLevel', 'semester'] },
+      { method: 'GET',    path: '/reports/sanctions',             tag: 'Reports',     summary: 'Sanction and attendance matrix', auth: 'staff', query: ['from', 'to', 'semester', 'department', 'program', 'eventId', 'eventIds[]'] },
+      { method: 'POST',   path: '/reports/sanctions/notify',      tag: 'Reports',     summary: 'Email sanctioned students', auth: 'admin' },
+      { method: 'GET',    path: '/attendance-corrections',        tag: 'Corrections', summary: 'List correction requests', auth: true, query: ['student_id'] },
+      { method: 'GET',    path: '/attendance-corrections/:id/proof', tag: 'Corrections', summary: 'Fetch a correction proof image', auth: true },
+      { method: 'POST',   path: '/attendance-corrections',        tag: 'Corrections', summary: 'Submit a correction request', auth: 'student', body: 'CorrectionCreate' },
+      { method: 'PATCH',  path: '/attendance-corrections/:id/review', tag: 'Corrections', summary: 'Approve or reject a correction request', auth: 'staff', body: 'CorrectionReview' },
+      { method: 'POST',   path: '/attendance/fingerprint',        tag: 'Fingerprint', summary: 'Match a fingerprint and record attendance', auth: 'staff', body: 'AttendanceFingerprint' },
+      { method: 'POST',   path: '/attendance/manual',             tag: 'Attendance',  summary: 'Record attendance for a selected student', auth: 'staff', body: 'AttendanceManual' },
+      { method: 'GET',    path: '/reenrollment-requests',         tag: 'Reenrollment', summary: 'List reenrollment requests', auth: true, query: ['student_id'] },
+      { method: 'POST',   path: '/reenrollment-requests',         tag: 'Reenrollment', summary: 'Submit a reenrollment request', auth: 'student', body: 'ReenrollmentCreate' },
+      { method: 'PATCH',  path: '/reenrollment-requests/:id/review', tag: 'Reenrollment', summary: 'Approve or reject a reenrollment request', auth: 'admin', body: 'ReenrollmentReview' },
+      { method: 'GET',    path: '/audit-logs',                    tag: 'Operations',  summary: 'List audit log entries', auth: 'staff', query: ['limit'] },
+      { method: 'GET',    path: '/stations',                      tag: 'Operations',  summary: 'List kiosk stations', auth: 'admin' },
+      { method: 'POST',   path: '/stations',                      tag: 'Operations',  summary: 'Create a kiosk station', auth: 'admin', body: 'StationCreate' },
+      { method: 'POST',   path: '/stations/:id/heartbeat',        tag: 'Operations',  summary: 'Record a kiosk heartbeat', auth: 'staff' },
+      { method: 'DELETE', path: '/stations/:id',                  tag: 'Operations',  summary: 'Delete a kiosk station', auth: 'admin' }
+    ];
+
+    const schemas = {
+      Login: {
+        type: 'object', required: ['email', 'password'],
+        properties: { email: { type: 'string', format: 'email' }, password: { type: 'string', format: 'password' } }
       },
-      "servers": [{ "url": "http://localhost:8000/api" }],
-      "paths": {
-        "/auth/login": {
-          "post": {
-            "summary": "Login",
-            "requestBody": {
-              "content": {
-                "application/json": {
-                  "schema": { "type": "object", "properties": { "email": { "type": "string" }, "password": { "type": "string" } } }
-                }
-              }
-            },
-            "responses": { "200": { "description": "OK" } }
-          }
-        },
-        "/events": {
-          "post": {
-            "summary": "Create Event",
-            "requestBody": {
-              "content": {
-                "application/json": {
-                  "schema": { "type": "object", "properties": { "name": { "type": "string" }, "date": { "type": "string" }, "startTime": { "type": "string" }, "endTime": { "type": "string" }, "venue": { "type": "string" }, "eventType": { "type": "string" } } }
-                }
-              }
-            },
-            "responses": { "201": { "description": "Created" } }
-          }
-        },
-        "/attendance": {
-          "get": {
-            "summary": "List Attendance",
-            "responses": { "200": { "description": "List of attendance records" } }
+      Register: {
+        type: 'object',
+        required: ['firstName', 'lastName', 'studentIdNumber', 'email', 'password', 'department', 'program', 'yearLevel', 'block'],
+        properties: {
+          firstName: { type: 'string' }, lastName: { type: 'string' },
+          studentIdNumber: { type: 'string', example: '2025-12345' },
+          email: { type: 'string', format: 'email' }, password: { type: 'string', format: 'password' },
+          department: { type: 'string' }, program: { type: 'string' },
+          yearLevel: { type: 'string' }, block: { type: 'string' }
+        }
+      },
+      VerifyOtp: {
+        type: 'object', required: ['email', 'otp'],
+        properties: { email: { type: 'string', format: 'email' }, otp: { type: 'string' } }
+      },
+      PasswordChange: {
+        type: 'object', required: ['currentPassword', 'newPassword'],
+        properties: { currentPassword: { type: 'string', format: 'password' }, newPassword: { type: 'string', format: 'password' } }
+      },
+      ForgotPassword: {
+        type: 'object', required: ['email'],
+        properties: { email: { type: 'string', format: 'email' } }
+      },
+      ResetPassword: {
+        type: 'object', required: ['email', 'otp', 'password'],
+        properties: { email: { type: 'string', format: 'email' }, otp: { type: 'string' }, password: { type: 'string', format: 'password' } }
+      },
+      UserStatus: {
+        type: 'object', required: ['status'],
+        properties: { status: { type: 'string', enum: ['pending', 'active', 'inactive'] } }
+      },
+      StudentProfile: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' }, email: { type: 'string', format: 'email' },
+          department: { type: 'string' }, program: { type: 'string' },
+          yearLevel: { type: 'string' }, block: { type: 'string' }
+        }
+      },
+      Officer: {
+        type: 'object', required: ['firstName', 'lastName', 'email', 'password', 'position'],
+        properties: {
+          firstName: { type: 'string' }, lastName: { type: 'string' },
+          email: { type: 'string', format: 'email' }, password: { type: 'string', format: 'password' },
+          position: { type: 'string' }
+        }
+      },
+      Event: {
+        type: 'object',
+        required: ['name', 'date', 'startTime', 'endTime', 'venue'],
+        properties: {
+          name: { type: 'string' }, date: { type: 'string', example: '2026-11-18' },
+          startTime: { type: 'string', example: '08:00' }, endTime: { type: 'string', example: '17:00' },
+          venue: { type: 'string' }, eventType: { type: 'string', example: 'mandatory' },
+          eventCategory: { type: 'string', nullable: true }, semester: { type: 'string' },
+          targetDepartment: { type: 'string', nullable: true },
+          attendanceType: { type: 'string', enum: ['single', 'check-in-out'] },
+          description: { type: 'string', nullable: true },
+          checkoutOpenMinutes: { type: 'integer' }, checkoutCloseMinutes: { type: 'integer' }
+        }
+      },
+      EventPatch: {
+        type: 'object', description: 'Any subset of the event fields.',
+        properties: { name: { type: 'string' }, date: { type: 'string' }, startTime: { type: 'string' }, endTime: { type: 'string' }, venue: { type: 'string' } }
+      },
+      EnrollFingerprint: {
+        type: 'object', required: ['studentId', 'finger', 'images'],
+        properties: {
+          studentId: { type: 'integer' },
+          finger: {
+            type: 'string',
+            enum: ['left-thumb', 'left-index', 'left-middle', 'left-ring', 'left-little', 'right-thumb', 'right-index', 'right-middle', 'right-ring', 'right-little']
+          },
+          images: {
+            type: 'array', minItems: 1, maxItems: 10,
+            description: 'Base64 PNG placements. The UI sends two good scans per finger.',
+            items: { type: 'string', description: 'base64 PNG' }
           }
         }
+      },
+      AttendanceFingerprint: {
+        type: 'object', required: ['eventId', 'studentIdNumber', 'image'],
+        properties: {
+          eventId: { type: 'integer' },
+          studentIdNumber: { type: 'string', example: '12345', description: 'Five digits or the full YYYY-NNNNN ID' },
+          image: { type: 'string', description: 'base64 PNG probe from the U.are.U 4500' },
+          action: { type: 'string', enum: ['in', 'out'], default: 'in' }
+        }
+      },
+      AttendanceManual: {
+        type: 'object', required: ['eventId', 'studentId'],
+        properties: {
+          eventId: { type: 'integer' }, studentId: { type: 'integer' },
+          action: { type: 'string', enum: ['in', 'out'], default: 'in' }
+        }
+      },
+      CorrectionCreate: {
+        type: 'object', required: ['eventId', 'checkInTime', 'reason', 'proofImage'],
+        properties: {
+          eventId: { type: 'integer' }, checkInTime: { type: 'string' },
+          reason: { type: 'string' }, proofImage: { type: 'string', description: 'base64 data URL or image bytes' }
+        }
+      },
+      CorrectionReview: {
+        type: 'object', required: ['decision'],
+        properties: { decision: { type: 'string', enum: ['approved', 'rejected'] }, notes: { type: 'string' } }
+      },
+      ReenrollmentCreate: {
+        type: 'object', required: ['reason'],
+        properties: { reason: { type: 'string' } }
+      },
+      ReenrollmentReview: {
+        type: 'object', required: ['decision'],
+        properties: { decision: { type: 'string', enum: ['approved', 'rejected'] } }
+      },
+      StationCreate: {
+        type: 'object', required: ['name'],
+        properties: { name: { type: 'string' }, device: { type: 'string' }, location: { type: 'string' } }
       }
     };
-    SwaggerUIBundle({ spec: spec, dom_id: '#swagger-ui' });
+
+    const bodies = {
+      'POST /auth/login': 'Login',
+      'POST /auth/register': 'Register',
+      'POST /auth/verify-otp': 'VerifyOtp',
+      'POST /auth/password': 'PasswordChange',
+      'POST /auth/forgot-password': 'ForgotPassword',
+      'POST /auth/reset-password': 'ResetPassword',
+      'PATCH /users/:id/status': 'UserStatus',
+      'PATCH /users/me/profile': 'StudentProfile',
+      'PATCH /users/:id/profile': 'StudentProfile',
+      'POST /users/officers': 'Officer',
+      'POST /users/enroll-fingerprint': 'EnrollFingerprint',
+      'POST /events': 'Event',
+      'PATCH /events/:id': 'EventPatch',
+      'POST /attendance-corrections': 'CorrectionCreate',
+      'PATCH /attendance-corrections/:id/review': 'CorrectionReview',
+      'POST /attendance/fingerprint': 'AttendanceFingerprint',
+      'POST /attendance/manual': 'AttendanceManual',
+      'POST /reenrollment-requests': 'ReenrollmentCreate',
+      'PATCH /reenrollment-requests/:id/review': 'ReenrollmentReview',
+      'POST /stations': 'StationCreate'
+    };
+
+    const securityFor = (auth) => {
+      if (!auth) return [];
+      return [{ cookieAuth: [] }];
+    };
+
+    const errorResponse = {
+      description: 'Error envelope',
+      content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+    };
+
+    const paths = {};
+    for (const route of routes) {
+      const oasPath = route.path.replace(/:([A-Za-z]+)/g, '{$1}');
+      if (!paths[oasPath]) paths[oasPath] = {};
+
+      const parameters = [];
+      for (const match of route.path.matchAll(/:([A-Za-z]+)/g)) {
+        parameters.push({
+          name: match[1], in: 'path', required: true,
+          schema: { type: 'integer' }
+        });
+      }
+      for (const name of route.query || []) {
+        parameters.push({
+          name, in: 'query', required: false,
+          schema: { type: name === 'eventIds[]' ? 'array' : 'string' },
+          style: name === 'eventIds[]' ? 'form' : undefined,
+          explode: name === 'eventIds[]' ? true : undefined,
+          description: name.endsWith('[]') ? 'Repeatable id list' : undefined
+        });
+      }
+
+      const bodySchema = bodies[route.method + ' ' + route.path];
+      const operation = {
+        tags: [route.tag],
+        summary: route.summary,
+        security: securityFor(route.auth),
+        responses: {
+          200: {
+            description: 'Success',
+            content: { 'application/json': { schema: { type: 'object', properties: { data: {} } } } }
+          },
+          400: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+          404: errorResponse,
+          409: errorResponse,
+          422: errorResponse,
+          503: errorResponse
+        }
+      };
+      if (route.auth && route.auth !== true) {
+        operation['x-required-roles'] = [route.auth === 'staff' ? 'admin or ssc-officer' : route.auth];
+      }
+      if (parameters.length) operation.parameters = parameters;
+      if (bodySchema) {
+        operation.requestBody = {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/' + bodySchema } } }
+        };
+      }
+      paths[oasPath][route.method.toLowerCase()] = operation;
+    }
+
+    const spec = {
+      openapi: '3.0.0',
+      info: {
+        title: 'ATTENDLY API',
+        version: '1.1.0',
+        description: 'All 40 routes mounted under /api by attendly-backend/public/index.php. Fingerprint routes call the local matching service and keep no images.'
+      },
+      servers: [{ url: 'http://localhost:8000/api' }],
+      tags: [
+        { name: 'Health' }, { name: 'Auth' }, { name: 'Users' }, { name: 'Events' },
+        { name: 'Attendance' }, { name: 'Fingerprint' }, { name: 'Reports' },
+        { name: 'Corrections' }, { name: 'Reenrollment' }, { name: 'Operations' }
+      ],
+      components: {
+        securitySchemes: {
+          cookieAuth: { type: 'apiKey', in: 'cookie', name: 'PHPSESSID' }
+        },
+        schemas: Object.assign({
+          Error: {
+            type: 'object',
+            properties: {
+              error: {
+                type: 'object',
+                properties: {
+                  code: { type: 'string' },
+                  message: { type: 'string' },
+                  details: { type: 'object', nullable: true, description: 'Optional diagnostics such as fingerprint score/threshold/finger.' }
+                }
+              }
+            }
+          }
+        }, schemas)
+      },
+      paths: paths
+    };
+
+    SwaggerUIBundle({ spec: spec, dom_id: '#swagger-ui', deepLinking: true });
   </script>
 </body>
 </html>

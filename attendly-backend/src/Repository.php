@@ -2552,14 +2552,21 @@ final class Repository
             $eligibleCount++;
             $entries = $this->decodeFingerprintEntries($row['fingerprint_template'] ?? null);
             $completed = $this->completedFingerprintFingers($entries);
-            $templates = $this->decodeFingerprintTemplates($row['fingerprint_template'] ?? null);
+            $templates = [];
+            $fingers = [];
+            foreach ($entries as $entry) {
+                foreach ($entry['templates'] as $template) {
+                    $templates[] = $template;
+                    $fingers[] = $entry['finger'];
+                }
+            }
             $id = (int) $row['id'];
             $fingerCounts[$id] = count($completed);
             $students[$id] = $row;
             if ($templates === []) {
                 continue;
             }
-            $candidates[] = ['id' => $id, 'templates' => $templates];
+            $candidates[] = ['id' => $id, 'templates' => $templates, 'fingers' => $fingers];
         }
 
         if ($eligibleCount === 0) {
@@ -2577,7 +2584,7 @@ final class Repository
             Response::fail('fingerprint_not_enrolled', 'No fingerprint templates are available for that ID. Enter the full ID or see an officer.', 409);
         }
 
-        $matchedId = null;
+        $match = ['matchedId' => null, 'score' => null, 'threshold' => null, 'finger' => null];
         if ($candidates !== []) {
             $service = $this->matchingService();
             if (!$service->isConfigured()) {
@@ -2588,7 +2595,7 @@ final class Repository
                 );
             }
             try {
-                $matchedId = $service->identify($fingerprintImage, $candidates);
+                $match = $service->identifyDetailed($fingerprintImage, $candidates);
             } catch (MatchingServiceRejected $e) {
                 Response::fail(
                     'invalid_field',
@@ -2600,11 +2607,17 @@ final class Repository
             }
         }
 
+        $matchedId = $match['matchedId'];
         if ($matchedId === null || !isset($students[$matchedId])) {
             Response::fail(
                 'fingerprint_not_recognized',
                 'This scan does not match a student with that ID.',
-                404
+                404,
+                [
+                    'score' => $match['score'],
+                    'threshold' => $match['threshold'],
+                    'finger' => $match['finger'],
+                ]
             );
         }
 
@@ -2617,7 +2630,7 @@ final class Repository
             );
         }
 
-        return $this->recordScannedAttendance(
+        $record = $this->recordScannedAttendance(
             $eventId,
             $students[$matchedId],
             $action,
@@ -2629,6 +2642,10 @@ final class Repository
             $checkoutOpenMinutesBeforeEnd,
             $checkoutCloseMinutesAfterEnd
         );
+        $record['fingerprintScore'] = $match['score'];
+        $record['fingerprintThreshold'] = $match['threshold'];
+        $record['fingerprintFinger'] = $match['finger'];
+        return $record;
     }
 
     /**

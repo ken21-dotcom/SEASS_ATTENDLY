@@ -180,10 +180,13 @@ function synthetic_fingerprint_image(int $seed): string
 
 function enroll_finger(int $studentId, string $finger, string $image, string $cookieJar): array
 {
+    // The enrollment UI sends two good placements per finger. The synthetic
+    // matcher treats both as the same finger, so reusing one image is enough
+    // to exercise the two-template path.
     return http_client('POST', '/users/enroll-fingerprint', [
         'studentId' => $studentId,
         'finger' => $finger,
-        'images' => [$image],
+        'images' => [$image, $image],
     ], $cookieJar);
 }
 
@@ -574,6 +577,19 @@ try {
         same(10, (int) ($data['fingerprintFingersCompleted'] ?? -1));
     });
 
+    test('10/10 means ten fingers with two templates each', function () use ($db, $studentAId): void {
+        $stmt = $db->prepare('SELECT fingerprint_template FROM students WHERE user_id = :id');
+        $stmt->execute(['id' => $studentAId]);
+        $entries = json_decode((string) $stmt->fetchColumn(), true);
+        same(10, is_array($entries) ? count($entries) : -1);
+        if (!is_array($entries)) {
+            return;
+        }
+        foreach ($entries as $entry) {
+            same(2, is_array($entry['templates'] ?? null) ? count($entry['templates']) : -1);
+        }
+    });
+
     test('a 10/10 student can check in by fingerprint', function () use ($db, $officer, $fingerprintFullEventId, $studentAId, $studentAIdNumber, $imageA): void {
         $response = http_client('POST', '/attendance/fingerprint', [
             'eventId' => $fingerprintFullEventId, 'studentIdNumber' => $studentAIdNumber, 'image' => $imageA,
@@ -582,6 +598,9 @@ try {
         $data = response_data($response);
         same($studentAId, (int) ($data['studentId'] ?? 0));
         same('fingerprint', $data['verificationMethod'] ?? null);
+        assert_true(isset($data['fingerprintScore']), 'matching score missing from check-in response');
+        assert_true(isset($data['fingerprintThreshold']), 'matching threshold missing from check-in response');
+        same('left-thumb', $data['fingerprintFinger'] ?? null);
         same('fingerprint', attendance_row($db, $fingerprintFullEventId, $studentAId)['verification_method'] ?? null);
     });
 
@@ -637,6 +656,11 @@ try {
         ], $officer['jar']);
         same(404, $response['status']);
         response_error($response, 'fingerprint_not_recognized');
+        $details = $response['body']['error']['details'] ?? null;
+        assert_true(is_array($details), 'no-match debug details missing');
+        same(0.0, (float) ($details['score'] ?? -1));
+        same(40.0, (float) ($details['threshold'] ?? -1));
+        same(null, $details['finger'] ?? null);
         same(false, attendance_row($db, $fingerprintWrongEventId, $studentAId));
     });
 

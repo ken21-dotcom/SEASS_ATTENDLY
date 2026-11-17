@@ -93,6 +93,8 @@
         <p id="signupFormSubtitle">Register as a student to start checking in to campus events with a single scan.</p>
       </div>
       <form id="signupForm" class="auth-form" novalidate>
+        <fieldset class="auth-form-section">
+          <legend>Personal details</legend>
         <div class="auth-form-row mb-3 auth-field-group">
           <div>
             <label for="signup-first-name-field" class="form-label auth-label-uppercase">FIRST NAME</label>
@@ -119,6 +121,9 @@
           </div>
           <div class="invalid-feedback" id="signup-email-error">Please enter a valid email address.</div>
         </div>
+        </fieldset>
+        <fieldset class="auth-form-section">
+          <legend>Academic details</legend>
         <div class="mb-3 auth-field-group">
           <label for="signupDepartment" class="form-label auth-label-uppercase">DEPARTMENT</label>
           <div class="input-group">
@@ -166,6 +171,9 @@
             <div class="invalid-feedback" id="signup-block-error">Block is required.</div>
           </div>
         </div>
+        </fieldset>
+        <fieldset class="auth-form-section">
+          <legend>Secure your account</legend>
         <div class="mb-3 auth-field-group">
           <label for="signup-password-field" class="form-label auth-label-uppercase">PASSWORD</label>
           <div class="input-group input-group-password">
@@ -195,6 +203,7 @@
           </div>
           <div class="invalid-feedback" id="signup-confirm-error">Passwords do not match.</div>
         </div>
+        </fieldset>
         <div class="auth-check mb-3">
           <input type="checkbox" class="auth-check-input" id="signup-terms" name="terms" required>
           <div>
@@ -202,7 +211,7 @@
           </div>
         </div>
         <div class="invalid-feedback auth-check-feedback">Please accept the attendance rules to continue.</div>
-        <button type="submit" class="btn btn-primary auth-login-btn">
+        <button type="submit" class="btn btn-primary auth-login-btn auth-signup-submit">
           Create account
         </button>
         <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>

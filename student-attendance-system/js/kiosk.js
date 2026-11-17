@@ -75,6 +75,7 @@
   let debugStopTimes = []; // AcquisitionStopped timestamps within the last minute
   let debugIgnoredReason = '';
   let debugLastError = '';
+  let debugLastMatch = null; // { score, threshold, finger } for ?debug=1
   let scanMode = 'in'; // 'in' = check-in, 'out' = check-out
   let CHECKIN_EARLY_MS = 30 * 60 * 1000;
   let CHECKIN_WINDOW_MS = 6 * 60 * 60 * 1000;
@@ -549,6 +550,18 @@
     if (els.scanCtaDetail) els.scanCtaDetail.textContent = detail;
     if (els.manualInput) els.manualInput.disabled = !usable;
     if (els.manualSubmit) els.manualSubmit.disabled = !usable;
+
+    // Explain why the ID field is unavailable instead of leaving a disabled
+    // input with a generic hint. The wording comes from the existing detail
+    // string so the lock/event state stays the single source of truth.
+    if (els.studentIdHint) {
+      els.studentIdHint.textContent = usable
+        ? 'Enter your 5-digit ID. Full IDs like 2025-12345 also work.'
+        : (detail || 'Select an event above to enable this field.');
+    }
+    if (els.studentId) {
+      els.studentId.title = usable ? '' : (detail || 'Select an event above to enable this field.');
+    }
   }
 
   function syncModeButtons() {
@@ -1048,14 +1061,29 @@
     const now = Date.now();
     debugStopTimes = debugStopTimes.filter((stamp) => now - stamp < 60000);
     const clock = (date) => date.toLocaleTimeString([], { hour12: false });
+    const number = (value) => value == null || Number.isNaN(value) ? '—' : String(value);
+    const match = debugLastMatch
+      ? `last match score ${number(debugLastMatch.score)} · threshold ${number(debugLastMatch.threshold)} · finger ${debugLastMatch.finger}`
+      : 'last match —';
     const rows = [
       `session ${fingerprintSessionActive ? 'active' : 'inactive'} · acquisition ${fingerprintAcquisitionActive ? 'active' : 'idle'} · format ${FINGERPRINT_FORMAT_MODE}`,
       `last SDK event ${debugLastEvent ? `${debugLastEvent.name} @ ${clock(debugLastEvent.at)}` : '—'}`,
+      match,
       `AcquisitionStopped last 60s ${debugStopTimes.length}`,
       `last sample ignored ${debugIgnoredReason || '—'}`,
     ];
     if (debugLastError) rows.push(`startAcquisition error ${debugLastError}`);
     line.textContent = rows.join('\n');
+  }
+
+  function noteFingerprintMatch(score, threshold, finger) {
+    if (!KIOSK_DEBUG) return;
+    debugLastMatch = {
+      score: score == null || score === '' ? null : Number(score),
+      threshold: threshold == null || threshold === '' ? null : Number(threshold),
+      finger: typeof finger === 'string' && finger.trim() !== '' ? finger.trim() : 'none',
+    };
+    renderKioskDebug();
   }
 
   function debugSdkEvent(name) {
@@ -1543,6 +1571,7 @@
 
     try {
       const record = await api.fingerprintCheckIn(eventRow.id, studentIdentifier, image, scanMode);
+      noteFingerprintMatch(record.fingerprintScore, record.fingerprintThreshold, record.fingerprintFinger);
       const action = record.action === 'out' ? 'out' : 'in';
       const stamp = action === 'out'
         ? (record.checkOutTimeLabel || record.time)
@@ -1562,6 +1591,11 @@
         return;
       }
       const code = err && err.code ? err.code : 'fingerprint_capture_failed';
+      if (err && err.details) {
+        noteFingerprintMatch(err.details.score, err.details.threshold, err.details.finger);
+      } else if (code === 'fingerprint_not_recognized') {
+        noteFingerprintMatch(null, null, 'none');
+      }
       const detail = FINGERPRINT_ERRORS[code] || FINGERPRINT_ERRORS['fingerprint_capture_failed'];
       const message = code === 'fingerprint_enrollment_incomplete' && err && err.message
         ? err.message
@@ -1809,6 +1843,7 @@
       scanBtn:      $('kioskScanBtn'),
       studentId:    $('kioskStudentId'),
       studentIdError: $('kioskStudentIdError'),
+      studentIdHint:  $('kioskStudentIdHint'),
       scanCtaTitle: $('kioskScanCtaTitle'),
       scanCtaDetail: $('kioskScanCtaDetail'),
       fingerprintState: $('kioskFingerprintState'),

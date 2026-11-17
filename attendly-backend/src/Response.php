@@ -61,22 +61,27 @@ final class Response
      * @param string $code    machine-readable code for the client
      * @param string $message human-readable message (safe to display)
      * @param int    $status  HTTP status code
+     * @param array<string,mixed> $details optional diagnostics (never sample data)
      */
-    public static function fail(string $code, string $message, int $status = 400): void
+    public static function fail(string $code, string $message, int $status = 400, array $details = []): void
     {
         http_response_code($status);
+        $error = ['code' => $code, 'message' => $message];
+        if ($details !== []) {
+            $error['details'] = $details;
+        }
         $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
         if (stripos($accept, 'application/xml') !== false) {
             header('Content-Type: application/xml; charset=utf-8');
             $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><response></response>');
-            $payload = ['error' => ['code' => $code, 'message' => $message]];
+            $payload = ['error' => $error];
             self::arrayToXml($payload, $xml);
             echo $xml->asXML();
             exit;
         }
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(
-            ['error' => ['code' => $code, 'message' => $message]],
+            ['error' => $error],
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         );
         exit;

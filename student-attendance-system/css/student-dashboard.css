@@ -1968,3 +1968,38 @@ body.notification-open { overflow: hidden; }
     border-bottom: 0;
   }
 }
+
+/* Student records are transformed into labelled cards by ui.js below 700px.
+   Do not leave their desktop minimum width in force, or an empty/loading row
+   can be clipped before the responsive stack takes effect. */
+@media (max-width: 700px) {
+  .records-card .table-responsive,
+  .correction-card .table-responsive {
+    overflow: visible;
+  }
+
+  .records-card .student-table,
+  .correction-card .student-table {
+    min-width: 0;
+  }
+}
+
+/* The student-facing explanatory copy and notification count remain readable
+   at compact widths without changing the data or card hierarchy. */
+.empty-records,
+.empty-records > strong,
+.empty-records > span,
+.profile-section-card .form-text,
+.profile-detail-label,
+.profile-readonly-note,
+.student-record-note p:last-child,
+.notification-empty,
+.notification-badge {
+  font-size: 0.875rem;
+}
+
+.notification-badge {
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 5px;
+}

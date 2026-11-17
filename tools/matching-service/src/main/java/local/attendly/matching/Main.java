@@ -48,7 +48,7 @@ public final class Main {
             System.exit(1);
         }
         threshold = numberEnv("MATCHING_THRESHOLD", 40);
-        dpi = numberEnv("MATCHING_DPI", 500);
+        dpi = numberEnv("MATCHING_DPI", 512);
 
         HttpServer server = HttpServer.create(
                 new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT), 0);
@@ -73,7 +73,8 @@ public final class Main {
                 send(exchange, 405, error("method not allowed; use GET"));
                 return;
             }
-            send(exchange, 200, "{\"status\":\"ok\"}");
+            send(exchange, 200, "{\"status\":\"ok\",\"dpi\":" + trim(dpi)
+                    + ",\"threshold\":" + trim(threshold) + "}");
         }
     }
 
@@ -138,16 +139,18 @@ public final class Main {
 
                 FingerprintMatcher matcher = new FingerprintMatcher(toTemplate(image));
                 Integer bestId = null;
+                String bestFinger = null;
                 double bestScore = Double.NEGATIVE_INFINITY;
                 int comparisons = 0;
 
                 for (Candidate candidate : candidates) {
-                    for (FingerprintTemplate template : candidate.templates) {
-                        double score = matcher.match(template);
+                    for (int index = 0; index < candidate.templates.size(); index++) {
+                        double score = matcher.match(candidate.templates.get(index));
                         comparisons++;
                         if (score > bestScore) {
                             bestScore = score;
                             bestId = candidate.id;
+                            bestFinger = candidate.fingers == null ? null : candidate.fingers.get(index);
                         }
                     }
                 }
@@ -156,16 +159,19 @@ public final class Main {
                     throw new BadRequest("candidates must contain at least one template");
                 }
 
-                String json;
-                if (bestScore >= threshold) {
-                    json = "{\"match\":{\"id\":" + bestId + ",\"score\":" + round(bestScore) + "}}";
-                } else {
-                    json = "{\"match\":null,\"bestScore\":" + round(bestScore) + "}";
-                }
+                String fingerJson = bestFinger == null ? "null" : Json.quote(bestFinger);
+                String matchJson = bestScore >= threshold
+                        ? "{\"id\":" + bestId + ",\"score\":" + round(bestScore)
+                                + ",\"finger\":" + fingerJson + "}"
+                        : "null";
+                String json = "{\"match\":" + matchJson
+                        + ",\"bestScore\":" + round(bestScore)
+                        + ",\"threshold\":" + trim(threshold) + "}";
                 log("identify", 200, started,
                         "candidates=" + candidates.size() + " templates=" + comparisons
                                 + " best=" + round(bestScore)
-                                + " match=" + (bestScore >= threshold ? bestId : "none"));
+                                + " match=" + (bestScore >= threshold ? bestId : "none")
+                                + " finger=" + (bestScore >= threshold && bestFinger != null ? bestFinger : "none"));
                 send(exchange, 200, json);
             } catch (PayloadException e) {
                 log("identify", e.status, started, "");
@@ -177,7 +183,7 @@ public final class Main {
         }
     }
 
-    private record Candidate(int id, List<FingerprintTemplate> templates) {}
+    private record Candidate(int id, List<FingerprintTemplate> templates, List<String> fingers) {}
 
     private static List<Candidate> readCandidates(Object raw) {
         if (!(raw instanceof List<?> list)) {
@@ -222,7 +228,31 @@ public final class Main {
                 }
                 position++;
             }
-            candidates.add(new Candidate(id, templates));
+
+            Object fingersValue = object.get("fingers");
+            List<String> fingers = null;
+            if (fingersValue != null) {
+                if (!(fingersValue instanceof List<?> fingerList)) {
+                    throw new BadRequest("candidates[" + index + "].fingers must be an array of finger names");
+                }
+                if (fingerList.size() != templateList.size()) {
+                    throw new BadRequest("candidates[" + index + "].fingers must have one entry per template");
+                }
+                fingers = new ArrayList<>(fingerList.size());
+                int fingerIndex = 0;
+                for (Object encoded : fingerList) {
+                    if (encoded == null) {
+                        fingers.add(null);
+                    } else if (encoded instanceof String text && !text.isBlank()) {
+                        fingers.add(text.trim());
+                    } else {
+                        throw new BadRequest("candidates[" + index + "].fingers[" + fingerIndex
+                                + "] must be a finger name or null");
+                    }
+                    fingerIndex++;
+                }
+            }
+            candidates.add(new Candidate(id, templates, fingers));
             index++;
         }
         return candidates;

@@ -3,15 +3,15 @@
    ------------------------------------------------------------
    The "Enroll Fingerprint" action on a student row opens this
    modal. The officer ticks the consent box, then the student
-   chooses one finger and scans once. Each accepted placement is
+   chooses one finger and scans twice. Each accepted placement is
    a template from the DigitalPersona Web SDK — the same capture
    path and ?format= handling as js/kiosk.js — and poor
    placements are re-prompted instead of counted.
 
-   The four templates live in memory only. Nothing is written to
-   storage, nothing is logged, and only sizes and formats ever
-   reach the console. After the fourth good scan they are sent
-   together to POST /users/enroll-fingerprint through
+   The two templates per finger live in memory only. Nothing is
+   written to storage, nothing is logged, and only sizes and
+   formats ever reach the console. After both good scans they are
+   sent together to POST /users/enroll-fingerprint through
    api.enrollFingerprint().
 
    Depends on:
@@ -25,7 +25,7 @@
 (function (global) {
   'use strict';
 
-  var SCANS_PER_FINGER = 1;
+  var SCANS_PER_FINGER = 2;
   var FINGERS = [
     { key: 'left-thumb', hand: 'Left hand', label: 'Thumb' },
     { key: 'left-index', hand: 'Left hand', label: 'Index' },
@@ -277,6 +277,10 @@
                 '<section class="finger-enroll-hand" aria-label="Right hand"><h6>Right hand</h6>' + fingerButtons('Right hand') + '</section>' +
               '</div>' +
               '<p class="finger-enroll-count" id="fingerEnrollCount" role="status" aria-live="polite">0/10 fingers</p>' +
+              '<div class="fingerprint-enroll-success" id="fingerprintEnrollSuccess" role="status" aria-live="polite" hidden>' +
+                '<i class="bi bi-check-circle-fill" aria-hidden="true"></i>' +
+                '<span><strong>All 10 fingers enrolled</strong>Fingerprint attendance is now enabled for this student.</span>' +
+              '</div>' +
               '<div class="progress fingerprint-enroll-progress" id="fingerprintEnrollProgress" ' +
                 'role="progressbar" aria-valuemin="0" aria-valuemax="' + SCANS_PER_FINGER + '" ' +
                 'aria-valuenow="0" aria-label="Fingerprint captures" style="height:6px">' +
@@ -287,14 +291,20 @@
               '</p>' +
               '<p class="fingerprint-enroll-status" id="fingerprintEnrollStatus" role="status">' +
                 'Tick the consent box, then press Start scanning.</p>' +
-              '<p class="fingerprint-enroll-help">Choose a finger, then place it on the U.are.U 4500 sensor ' + SCANS_PER_FINGER + ' time(s). ' +
+              '<p class="fingerprint-enroll-help">Choose a finger, then place it on the U.are.U 4500 sensor ' + SCANS_PER_FINGER + ' times. ' +
+                'The second scan should be a slightly different placement so both templates are useful. ' +
                 'Only QualityCode.Good scans count. Only captured templates are sent to the server; ' +
                 'the image is sent only to this laptop\'s matching service, used to create a template, then discarded.</p>' +
               '<p class="fingerprint-enroll-error" id="fingerprintEnrollError" role="alert" hidden></p>' +
               '<p class="fingerprint-enroll-debug" id="fingerprintEnrollDebug" hidden></p>' +
             '</div>' +
             '<div class="modal-footer">' +
-              '<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>' +
+              '<button type="button" class="btn btn-outline-secondary" id="fingerprintEnrollClose" data-bs-dismiss="modal">' +
+                'Close (0/10 done, resume later)' +
+              '</button>' +
+              '<button type="button" class="btn btn-success" id="fingerprintEnrollConfirm" hidden>' +
+                '<i class="bi bi-check2-circle"></i> Confirm and finish' +
+              '</button>' +
               '<button type="button" class="btn btn-success" id="fingerprintEnrollStart" disabled>' +
                 '<i class="bi bi-fingerprint"></i> Start scanning' +
               '</button>' +
@@ -319,6 +329,9 @@
       status: document.getElementById('fingerprintEnrollStatus'),
       error: document.getElementById('fingerprintEnrollError'),
       debug: document.getElementById('fingerprintEnrollDebug'),
+      success: document.getElementById('fingerprintEnrollSuccess'),
+      close: document.getElementById('fingerprintEnrollClose'),
+      confirm: document.getElementById('fingerprintEnrollConfirm'),
       start: document.getElementById('fingerprintEnrollStart'),
     };
     state.els.consentText.textContent = CONSENT_TEXT;
@@ -337,6 +350,16 @@
 
     state.els.start.addEventListener('click', function () {
       startSession();
+    });
+
+    state.els.confirm.addEventListener('click', function () {
+      if (state.enrolledFingers.length !== FINGERS.length) return;
+      // The list was refreshed after the final save; refresh once more so the
+      // row shows "Enrolled" the moment the modal closes.
+      if (typeof refreshGroupedStudentList === 'function') {
+        refreshGroupedStudentList();
+      }
+      if (state.modal) state.modal.hide();
     });
 
     state.els.fingerPicker.addEventListener('click', function (event) {
@@ -363,6 +386,7 @@
       state.lastRejectReason = '';
       setError('');
       setStatus('Tick the consent box, then press Start scanning.');
+      renderFingerPicker();
       renderProgress();
       updateDebug();
     });
@@ -399,7 +423,34 @@
   function updateStartButton() {
     if (!state.els || !state.els.start) return;
     var consented = Boolean(state.els.consent && state.els.consent.checked);
-    state.els.start.disabled = !consented || !state.selectedFinger || state.starting || state.submitting || state.sessionActive;
+    state.els.start.disabled = !consented || !state.selectedFinger ||
+      state.starting || state.submitting || state.sessionActive;
+  }
+
+  function fingerprintComplete() {
+    return state.enrolledFingers.length === FINGERS.length;
+  }
+
+  /**
+   * Swap the footer between "Close (X/10 done, resume later)" and the
+   * completion state's "Confirm and finish" button. The success panel is
+   * only shown once every finger has a stored template.
+   */
+  function renderCompletionState() {
+    if (!state.els) return;
+    var complete = fingerprintComplete();
+    if (state.els.success) state.els.success.hidden = !complete;
+    if (state.els.close) {
+      state.els.close.hidden = complete;
+      state.els.close.textContent =
+        'Close (' + state.enrolledFingers.length + '/10 done, resume later)';
+    }
+    if (state.els.confirm) state.els.confirm.hidden = !complete;
+    if (state.els.start) {
+      state.els.start.hidden = false;
+      state.els.start.classList.toggle('btn-outline-success', complete);
+      state.els.start.classList.toggle('btn-success', !complete);
+    }
   }
 
   function renderFingerPicker() {
@@ -415,15 +466,24 @@
       button.querySelector('[data-finger-state]').textContent = done ? 'Done · re-do' : 'Not enrolled';
     });
     state.els.fingerCount.textContent = state.enrolledFingers.length + '/10 fingers';
+    renderCompletionState();
+  }
+
+  /** The exact prompt for the placement the student should make next. */
+  function scanPrompt() {
+    if (state.samples.length === 0) {
+      return 'Scan 1 of ' + SCANS_PER_FINGER + '.';
+    }
+    return 'Lift your finger and place it again, slightly differently — scan ' +
+      Math.min(state.samples.length + 1, SCANS_PER_FINGER) + ' of ' + SCANS_PER_FINGER + '.';
   }
 
   function renderProgress() {
     var done = state.samples.length;
-    var current = Math.min(done + 1, SCANS_PER_FINGER);
     if (!state.els) return;
     state.els.progressText.textContent = state.selectedFinger
-      ? 'Scan ' + current + ' of ' + SCANS_PER_FINGER + ' for ' + state.selectedFinger.replace('-', ' ')
-      : 'Choose one finger to begin.';
+      ? scanPrompt()
+      : (fingerprintComplete() ? 'All 10 fingers enrolled.' : 'Choose one finger to begin.');
     state.els.progressBar.style.width = Math.round((done / SCANS_PER_FINGER) * 100) + '%';
     state.els.progress.setAttribute('aria-valuenow', String(done));
   }
@@ -702,7 +762,7 @@
 
       renderProgress();
       var selected = FINGERS.find(function (finger) { return finger.key === state.selectedFinger; });
-      setStatus('Place the ' + (selected ? selected.label.toLowerCase() : 'finger') + ' on the sensor. ' + progressLabel());
+      setStatus('Place the ' + (selected ? selected.label.toLowerCase() : 'finger') + ' on the sensor. ' + scanPrompt());
     } catch (error) {
       state.sessionActive = false;
       releaseReaderLock();
@@ -715,7 +775,7 @@
   }
 
   function progressLabel() {
-    return 'Scan ' + Math.min(state.samples.length + 1, SCANS_PER_FINGER) + ' of ' + SCANS_PER_FINGER;
+    return 'Scan ' + Math.min(state.samples.length + 1, SCANS_PER_FINGER) + ' of ' + SCANS_PER_FINGER + '.';
   }
 
   function stopSession() {
@@ -808,7 +868,7 @@
         await submit();
         return;
       }
-      setStatus('Good scan. ' + progressLabel());
+      setStatus('Good scan. ' + scanPrompt());
     } catch (error) {
       state.cooldownUntil = Date.now() + SCAN_COOLDOWN_MS;
       state.lastRejectReason = 'capture error: ' + describeError(error);
@@ -826,7 +886,9 @@
     if (state.sessionActive && !state.submitting) {
       await restartAcquisition();
       if (state.sessionActive && !state.submitting) {
-        setStatus((accepted ? 'Good scan. ' : '') + 'Place the same finger again. ' + progressLabel());
+        setStatus(accepted
+          ? 'Good scan. ' + scanPrompt()
+          : 'Place the same finger again. ' + progressLabel());
       }
     }
   }
@@ -855,7 +917,7 @@
     try {
       var result = await api.enrollFingerprint(state.studentId, state.selectedFinger, images);
       markEnrolled(state.studentId, result);
-      var complete = result.fingerprintEnrolled === true && state.enrolledFingers.length === 10;
+      var complete = result.fingerprintEnrolled === true && fingerprintComplete();
       var finger = FINGERS.find(function (item) { return item.key === state.selectedFinger; });
       state.selectedFinger = null;
       renderFingerPicker();
@@ -974,7 +1036,11 @@
     state.els.consent.checked = false;
     state.els.consent.disabled = false;
     setError('');
-    setStatus('Tick the consent box, choose a finger, then press Start scanning.');
+    if (fingerprintComplete()) {
+      setStatus('All 10 fingers are enrolled. Fingerprint attendance is enabled.', 'complete');
+    } else {
+      setStatus('Tick the consent box, choose a finger, then press Start scanning.');
+    }
     updateStartButton();
     updateDebug();
     modal.show();

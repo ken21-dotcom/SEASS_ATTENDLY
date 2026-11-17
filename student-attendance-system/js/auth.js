@@ -965,6 +965,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var emailField = document.getElementById('reset-email-field');
     var otpField = document.getElementById('reset-otp-field');
     var resetError = document.getElementById('resetPasswordError');
+    var resetInvalidTitle = document.getElementById('resetPasswordInvalidTitle');
     var resetSuccess = document.getElementById('resetPasswordSuccess');
     var resetSubmit = document.getElementById('resetSubmitBtn');
     var newPwd = document.getElementById('reset-new-password-field');
@@ -977,6 +978,7 @@ document.addEventListener('DOMContentLoaded', function () {
         resetError.textContent = 'Missing or invalid password reset link. Please request a new one.';
         resetError.hidden = false;
       }
+      if (resetInvalidTitle) resetInvalidTitle.hidden = false;
       if (resetSubmit) resetSubmit.disabled = true;
     }
 
