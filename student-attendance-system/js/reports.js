@@ -393,6 +393,38 @@
     }).join('');
   }
 
+  function attendancePairKey(row) {
+    return String(row.eventId) + ':' + String(row.studentId);
+  }
+
+  function uniqueAttendancePairCount(rows) {
+    return new Set((rows || []).map(attendancePairKey)).size;
+  }
+
+  function aggregateAttendanceBy(rows, getGroupKey) {
+    var groups = Object.create(null);
+    (rows || []).forEach(function (row) {
+      var groupKey = getGroupKey(row);
+      if (!Object.prototype.hasOwnProperty.call(groups, groupKey)) {
+        groups[groupKey] = { total: 0, present: 0, late: 0, pairs: new Map() };
+      }
+      var pairs = groups[groupKey].pairs;
+      var pairKey = attendancePairKey(row);
+      if (!pairs.has(pairKey)) pairs.set(pairKey, new Set());
+      pairs.get(pairKey).add(String(rowValue(row, 'status', 'present')).toLowerCase());
+    });
+    Object.keys(groups).forEach(function (groupKey) {
+      var group = groups[groupKey];
+      group.pairs.forEach(function (statuses) {
+        group.total++;
+        if (statuses.has('present') || statuses.has('late')) group.present++;
+        if (statuses.has('late')) group.late++;
+      });
+      delete group.pairs;
+    });
+    return groups;
+  }
+
   function renderAttendanceSummary() {
     var summaryContainer = byId('attendanceSummaryView');
     var detailContainer = byId('attendanceDetailView');
@@ -403,15 +435,21 @@
     var events = getEvents();
 
     // Compute summary stats
-    var totalRecords = rows.length;
+    var totalRecords = uniqueAttendancePairCount(rows);
     var totalEvents = events.length;
-    var lateRecords = rows.filter(function (row) {
-      return String(rowValue(row, 'status', 'present')).toLowerCase() === 'late';
-    }).length;
-    var presentRecords = rows.filter(function (row) {
+    var statusesByPair = new Map();
+    rows.forEach(function (row) {
+      var key = attendancePairKey(row);
       var status = String(rowValue(row, 'status', 'present')).toLowerCase();
-      return status === 'present' || status === 'late';
-    }).length;
+      if (!statusesByPair.has(key)) statusesByPair.set(key, new Set());
+      statusesByPair.get(key).add(status);
+    });
+    var lateRecords = 0;
+    var presentRecords = 0;
+    statusesByPair.forEach(function (statuses) {
+      if (statuses.has('present') || statuses.has('late')) presentRecords++;
+      if (statuses.has('late')) lateRecords++;
+    });
     var attendanceRate = totalRecords ? Math.round((presentRecords / totalRecords) * 100) : 0;
 
     // Group records by event for the event list
@@ -428,10 +466,10 @@
           date: rowValue(row, 'eventDate', ''),
           startTime: rowValue(row, 'eventStartTime', ''),
           endTime: rowValue(row, 'eventEndTime', ''),
-          attendees: 0
+          attendeeIds: new Set()
         };
       }
-      eventGroups[eventId].attendees++;
+      eventGroups[eventId].attendeeIds.add(String(row.studentId));
     });
 
     var eventListHtml = Object.values(eventGroups).map(function (group) {
@@ -443,7 +481,7 @@
       return '<tr>' +
         '<td>' + escapeHtml(group.name) + '</td>' +
         '<td>' + escapeHtml(meta.join(' · ')) + '</td>' +
-        '<td class="text-center">' + group.attendees + ' attendee' + (group.attendees === 1 ? '' : 's') + '</td>' +
+        '<td class="text-center">' + group.attendeeIds.size + ' attendee' + (group.attendeeIds.size === 1 ? '' : 's') + '</td>' +
         '</tr>';
     }).join('');
 
@@ -452,20 +490,8 @@
     }
 
     // Attendance by Course / Program breakdown
-    var programMap = {};
-    rows.forEach(function (row) {
-      var program = rowValue(row, 'program', 'Unassigned');
-      if (!programMap[program]) {
-        programMap[program] = { total: 0, present: 0, late: 0 };
-      }
-      programMap[program].total++;
-      var status = String(rowValue(row, 'status', 'present')).toLowerCase();
-      if (status === 'present' || status === 'late') {
-        programMap[program].present++;
-      }
-      if (status === 'late') {
-        programMap[program].late++;
-      }
+    var programMap = aggregateAttendanceBy(rows, function (row) {
+      return rowValue(row, 'program', 'Unassigned');
     });
 
     var programRowsHtml = breakdownRowsHtml(programMap, function (program) {
@@ -483,7 +509,7 @@
           '<div class="stat-foot">With attendance records</div>' +
         '</article>' +
         '<article class="stat-card">' +
-          '<div class="stat-head"><span class="stat-label">Total Attendance Records</span><i class="stat-icon bi bi-clipboard-check" aria-hidden="true"></i></div>' +
+          '<div class="stat-head"><span class="stat-label">Total Attendance</span><i class="stat-icon bi bi-clipboard-check" aria-hidden="true"></i></div>' +
           '<div class="stat-value">' + totalRecords + '</div>' +
           '<div class="stat-foot">' + lateRecords + ' late · ' + attendanceRate + '% rate</div>' +
         '</article>' +
@@ -505,7 +531,7 @@
         '<div class="table-responsive">' +
           '<table class="table attendance-dept-table mb-0">' +
             '<caption class="visually-hidden">Attendance breakdown by program</caption>' +
-            '<thead><tr><th scope="col">Program</th><th scope="col" class="text-center">Total Records</th><th scope="col" class="text-center">Present</th><th scope="col" class="text-center">Late</th><th scope="col" class="text-center">Rate</th></tr></thead>' +
+            '<thead><tr><th scope="col">Program</th><th scope="col" class="text-center">Total Attendance</th><th scope="col" class="text-center">Present</th><th scope="col" class="text-center">Late</th><th scope="col" class="text-center">Rate</th></tr></thead>' +
             '<tbody>' + programRowsHtml + '</tbody>' +
           '</table>' +
         '</div>' +
@@ -572,16 +598,8 @@
     }
 
     // Build department breakdown for print
-    var deptMap = {};
-    rows.forEach(function (row) {
-      var dept = rowValue(row, 'department', 'Unassigned');
-      if (!deptMap[dept]) {
-        deptMap[dept] = { total: 0, present: 0, late: 0 };
-      }
-      deptMap[dept].total++;
-      var status = String(rowValue(row, 'status', 'present')).toLowerCase();
-      if (status === 'present' || status === 'late') deptMap[dept].present++;
-      if (status === 'late') deptMap[dept].late++;
+    var deptMap = aggregateAttendanceBy(rows, function (row) {
+      return rowValue(row, 'department', 'Unassigned');
     });
 
     var deptRowsHtml = Object.keys(deptMap).sort().map(function (dept) {
@@ -598,16 +616,8 @@
     }).join('');
 
     // Build program breakdown for print
-    var programMap = {};
-    rows.forEach(function (row) {
-      var program = rowValue(row, 'program', 'Unassigned');
-      if (!programMap[program]) {
-        programMap[program] = { total: 0, present: 0, late: 0 };
-      }
-      programMap[program].total++;
-      var status = String(rowValue(row, 'status', 'present')).toLowerCase();
-      if (status === 'present' || status === 'late') programMap[program].present++;
-      if (status === 'late') programMap[program].late++;
+    var programMap = aggregateAttendanceBy(rows, function (row) {
+      return rowValue(row, 'program', 'Unassigned');
     });
 
     var programRowsHtml = Object.keys(programMap).sort().map(function (program) {
@@ -627,7 +637,7 @@
       '<h2 class="attendance-print-breakdown-title"><i class="bi bi-building me-2"></i>Attendance by Department</h2>' +
       '<table class="table table-bordered report-event-table">' +
         '<caption class="visually-hidden">Attendance breakdown by department</caption>' +
-        '<thead><tr><th scope="col">Acronym</th><th scope="col">Department</th><th scope="col" class="text-center">Total Records</th><th scope="col" class="text-center">Present</th><th scope="col" class="text-center">Late</th><th scope="col" class="text-center">Rate</th></tr></thead>' +
+        '<thead><tr><th scope="col">Acronym</th><th scope="col">Department</th><th scope="col" class="text-center">Total Attendance</th><th scope="col" class="text-center">Present</th><th scope="col" class="text-center">Late</th><th scope="col" class="text-center">Rate</th></tr></thead>' +
         '<tbody>' + deptRowsHtml + '</tbody>' +
       '</table>' +
     '</section>' +
@@ -635,7 +645,7 @@
       '<h2 class="attendance-print-breakdown-title"><i class="bi bi-book me-2"></i>Attendance by Course / Program</h2>' +
       '<table class="table table-bordered report-event-table">' +
         '<caption class="visually-hidden">Attendance breakdown by program</caption>' +
-        '<thead><tr><th scope="col">Program</th><th scope="col" class="text-center">Total Records</th><th scope="col" class="text-center">Present</th><th scope="col" class="text-center">Late</th><th scope="col" class="text-center">Rate</th></tr></thead>' +
+        '<thead><tr><th scope="col">Program</th><th scope="col" class="text-center">Total Attendance</th><th scope="col" class="text-center">Present</th><th scope="col" class="text-center">Late</th><th scope="col" class="text-center">Rate</th></tr></thead>' +
         '<tbody>' + programRowsHtml + '</tbody>' +
       '</table>' +
     '</section>';
@@ -647,7 +657,8 @@
       if (group.startTime) {
         meta.push(group.startTime + (group.endTime ? '–' + group.endTime : ''));
       }
-      meta.push(group.rows.length + ' attendee' + (group.rows.length === 1 ? '' : 's'));
+      var attendeeCount = new Set(group.rows.map(function (row) { return String(row.studentId); })).size;
+      meta.push(attendeeCount + ' attendee' + (attendeeCount === 1 ? '' : 's'));
 
       var rows = group.rows.map(function (row, index) {
         var status = String(rowValue(row, 'status', 'present')).toLowerCase();
@@ -701,12 +712,17 @@
     var events = byId('reportTotalEvents');
     var sanctions = byId('reportActiveSanctions');
 
-    if (total) total.textContent = state.rows.length;
+    var uniqueTotal = uniqueAttendancePairCount(state.rows);
+    if (total) total.textContent = uniqueTotal;
     if (rate) {
-      var attended = state.rows.filter(function (row) {
-        return row.status === 'present' || row.status === 'late';
-      }).length;
-      var percentage = state.rows.length ? Math.round((attended / state.rows.length) * 100) : 0;
+      var pairs = new Map();
+      state.rows.forEach(function (row) {
+        var key = attendancePairKey(row);
+        if (!pairs.has(key)) pairs.set(key, false);
+        if (row.status === 'present' || row.status === 'late') pairs.set(key, true);
+      });
+      var attended = Array.from(pairs.values()).filter(Boolean).length;
+      var percentage = uniqueTotal ? Math.round((attended / uniqueTotal) * 100) : 0;
       rate.textContent = percentage + '%';
       if (progress) progress.style.width = percentage + '%';
     }
@@ -845,10 +861,25 @@
     }).map(function (user) {
       var flags = {};
       events.forEach(function (event) {
-        var record = attendance.find(function (item) {
+        var records = attendance.filter(function (item) {
           return sameId(item.eventId, event.id) && sameId(item.studentId, user.id);
         });
-        if (record) flags[String(event.id)] = attendanceFlags(record);
+        if (records.length) {
+          // Four-point events have separate AM and PM rows. Merge the scan
+          // flags for this student/event just like the backend sanction matrix.
+          flags[String(event.id)] = records.reduce(function (merged, record) {
+            var next = attendanceFlags(record);
+            if (!merged) return next;
+            merged.attended = merged.attended || next.attended;
+            merged.amIn = merged.amIn || next.amIn;
+            merged.amOut = merged.amOut || next.amOut;
+            merged.pmIn = merged.pmIn || next.pmIn;
+            merged.pmOut = merged.pmOut || next.pmOut;
+            if (!merged.checkIn || (next.checkIn && next.checkIn < merged.checkIn)) merged.checkIn = next.checkIn;
+            if (!merged.checkOut || (next.checkOut && next.checkOut > merged.checkOut)) merged.checkOut = next.checkOut;
+            return merged;
+          }, null);
+        }
       });
 
       var absences = endedMandatory.filter(function (event) {
@@ -1278,19 +1309,11 @@
     });
 
     // Build department breakdown
-    var deptMap = {};
-    state.rows.forEach(function (row) {
-      var dept = rowValue(row, 'department', 'Unassigned');
-      if (!deptMap[dept]) {
-        deptMap[dept] = { total: 0, present: 0, late: 0 };
-      }
-      deptMap[dept].total++;
-      var status = String(rowValue(row, 'status', 'present')).toLowerCase();
-      if (status === 'present' || status === 'late') deptMap[dept].present++;
-      if (status === 'late') deptMap[dept].late++;
+    var deptMap = aggregateAttendanceBy(state.rows, function (row) {
+      return rowValue(row, 'department', 'Unassigned');
     });
 
-    var deptHeaders = ['Acronym', 'Department', 'Total Records', 'Present', 'Late', 'Rate (%)'];
+    var deptHeaders = ['Acronym', 'Department', 'Total Attendance', 'Present', 'Late', 'Rate (%)'];
     var deptRows = Object.keys(deptMap).sort().map(function (dept) {
       var data = deptMap[dept];
       var rate = data.total ? Math.round((data.present / data.total) * 100) : 0;
@@ -1305,19 +1328,11 @@
     });
 
     // Build program breakdown
-    var programMap = {};
-    state.rows.forEach(function (row) {
-      var program = rowValue(row, 'program', 'Unassigned');
-      if (!programMap[program]) {
-        programMap[program] = { total: 0, present: 0, late: 0 };
-      }
-      programMap[program].total++;
-      var status = String(rowValue(row, 'status', 'present')).toLowerCase();
-      if (status === 'present' || status === 'late') programMap[program].present++;
-      if (status === 'late') programMap[program].late++;
+    var programMap = aggregateAttendanceBy(state.rows, function (row) {
+      return rowValue(row, 'program', 'Unassigned');
     });
 
-    var programHeaders = ['Program', 'Total Records', 'Present', 'Late', 'Rate (%)'];
+    var programHeaders = ['Program', 'Total Attendance', 'Present', 'Late', 'Rate (%)'];
     var programRows = Object.keys(programMap).sort().map(function (program) {
       var data = programMap[program];
       var rate = data.total ? Math.round((data.present / data.total) * 100) : 0;
@@ -1375,19 +1390,11 @@
     var sheet1Data = [headers].concat(dataRows);
 
     // Sheet 2: Attendance by Department
-    var deptMap = {};
-    state.rows.forEach(function (row) {
-      var dept = rowValue(row, 'department', 'Unassigned');
-      if (!deptMap[dept]) {
-        deptMap[dept] = { total: 0, present: 0, late: 0 };
-      }
-      deptMap[dept].total++;
-      var status = String(rowValue(row, 'status', 'present')).toLowerCase();
-      if (status === 'present' || status === 'late') deptMap[dept].present++;
-      if (status === 'late') deptMap[dept].late++;
+    var deptMap = aggregateAttendanceBy(state.rows, function (row) {
+      return rowValue(row, 'department', 'Unassigned');
     });
 
-    var deptHeaders = ['Acronym', 'Department', 'Total Records', 'Present', 'Late', 'Rate (%)'];
+    var deptHeaders = ['Acronym', 'Department', 'Total Attendance', 'Present', 'Late', 'Rate (%)'];
     var deptRows = Object.keys(deptMap).sort().map(function (dept) {
       var data = deptMap[dept];
       var rate = data.total ? Math.round((data.present / data.total) * 100) : 0;
@@ -1403,19 +1410,11 @@
     var sheet2Data = [deptHeaders].concat(deptRows);
 
     // Sheet 3: Attendance by Course/Program
-    var programMap = {};
-    state.rows.forEach(function (row) {
-      var program = rowValue(row, 'program', 'Unassigned');
-      if (!programMap[program]) {
-        programMap[program] = { total: 0, present: 0, late: 0 };
-      }
-      programMap[program].total++;
-      var status = String(rowValue(row, 'status', 'present')).toLowerCase();
-      if (status === 'present' || status === 'late') programMap[program].present++;
-      if (status === 'late') programMap[program].late++;
+    var programMap = aggregateAttendanceBy(state.rows, function (row) {
+      return rowValue(row, 'program', 'Unassigned');
     });
 
-    var programHeaders = ['Program', 'Total Records', 'Present', 'Late', 'Rate (%)'];
+    var programHeaders = ['Program', 'Total Attendance', 'Present', 'Late', 'Rate (%)'];
     var programRows = Object.keys(programMap).sort().map(function (program) {
       var data = programMap[program];
       var rate = data.total ? Math.round((data.present / data.total) * 100) : 0;

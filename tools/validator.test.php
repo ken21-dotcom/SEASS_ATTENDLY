@@ -160,6 +160,20 @@ test('student id rejects non-strings', function (): void {
     validationFailure('invalid_field', fn() => Validator::studentIdNumber(202300001), 'required');
 });
 
+test('kiosk student id accepts the five-digit suffix', function (): void {
+    same('00123', Validator::kioskStudentIdentifier('00123'));
+});
+
+test('kiosk student id accepts the full stored format', function (): void {
+    same('2025-00123', Validator::kioskStudentIdentifier('2025-00123'));
+});
+
+test('kiosk student id rejects incomplete and malformed values', function (): void {
+    validationFailure('invalid_field', fn() => Validator::kioskStudentIdentifier('1234'), 'five digits');
+    validationFailure('invalid_field', fn() => Validator::kioskStudentIdentifier('2025-1234'), 'five digits');
+    validationFailure('invalid_field', fn() => Validator::kioskStudentIdentifier('2025/00123'), 'five digits');
+});
+
 test('password accepts a policy-compliant value', function (): void {
     same('Password1', Validator::password('Password1'));
 });

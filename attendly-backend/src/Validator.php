@@ -147,6 +147,16 @@ final class Validator
         return $studentId;
     }
 
+    /** Accept a five-digit kiosk lookup or the full stored YYYY-NNNNN ID. */
+    public static function kioskStudentIdentifier(mixed $value, string $field = 'studentIdNumber'): string
+    {
+        $studentId = self::stringValue($value, $field);
+        if (preg_match('/^(?:\d{5}|\d{4}-\d{5})\z/', $studentId) !== 1) {
+            self::invalid($field, 'enter five digits (NNNNN) or the full ID (YYYY-NNNNN).');
+        }
+        return $studentId;
+    }
+
     /**
      * Validate a student block/cohort label such as "A", "1-A", or "BSIT 2B".
      */

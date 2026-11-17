@@ -53,7 +53,9 @@ foreach (['login-ip', 'registration-ip'] as $limitedScope) {
 
 $baseUrl = '';
 $server = null;
-$serverLog = tempnam(sys_get_temp_dir(), 'attendly-qr-checkin-log-');
+$matchingServer = null;
+$serverLog = tempnam(sys_get_temp_dir(), 'attendly-attendance-checkin-log-');
+$matchingLog = tempnam(sys_get_temp_dir(), 'attendly-synthetic-matching-log-');
 $userIds = [];
 $eventIds = [];
 $cookieJars = [];
@@ -148,6 +150,55 @@ function free_port(): int
     fclose($socket);
 
     return (int) substr((string) strrchr((string) $name, ':'), 1);
+}
+
+function png_chunk(string $type, string $data): string
+{
+    $payload = $type . $data;
+    return pack('N', strlen($data)) . $payload . hash('crc32b', $payload, true);
+}
+
+/** Generate a small deterministic ridge-pattern PNG for the mock matcher. */
+function synthetic_fingerprint_image(int $seed): string
+{
+    $width = 128;
+    $height = 128;
+    $scanlines = '';
+    for ($y = 0; $y < $height; $y++) {
+        $scanlines .= "\0"; // PNG filter: None
+        for ($x = 0; $x < $width; $x++) {
+            $phase = ($y + 4.2 * sin(($x + $seed * 7) / 11) + 2.1 * sin(($x + $seed) / 23)) / 5.2;
+            $ridge = (sin($phase) + 1) / 2;
+            $scanlines .= chr($ridge > 0.5 ? 28 : 238);
+        }
+    }
+    $header = pack('NNCCCCC', $width, $height, 8, 0, 0, 0, 0); // 8-bit grayscale
+    $png = "\x89PNG\r\n\x1a\n" . png_chunk('IHDR', $header)
+        . png_chunk('IDAT', gzcompress($scanlines, 9)) . png_chunk('IEND', '');
+    return base64_encode($png);
+}
+
+function enroll_finger(int $studentId, string $finger, string $image, string $cookieJar): array
+{
+    return http_client('POST', '/users/enroll-fingerprint', [
+        'studentId' => $studentId,
+        'finger' => $finger,
+        'images' => [$image],
+    ], $cookieJar);
+}
+
+function unused_student_suffix(PDO $db): string
+{
+    do {
+        $suffix = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+        $stmt = $db->prepare(
+            "SELECT COUNT(*) FROM students
+             WHERE student_id_number = :plain
+                OR RIGHT(student_id_number, 6) = CONCAT('-', :suffix)"
+        );
+        $stmt->execute(['plain' => $suffix, 'suffix' => $suffix]);
+    } while ((int) $stmt->fetchColumn() > 0);
+    return $suffix;
 }
 
 function create_officer(PDO $db, string $suffix, string $password): int
@@ -306,27 +357,56 @@ try {
     $userIds[] = $officerId;
 
     $now = new DateTimeImmutable('now', $timezone);
-    $openEventId = create_event($db, $officerId, 'QR Check-in Open ' . $suffix, $now->modify('-5 minutes'));
+    $openEventId = create_event($db, $officerId, 'Attendance Check-in Open ' . $suffix, $now->modify('-5 minutes'));
     $eventIds[] = $openEventId;
-
-    // Separate in_out event for check-out tests (single-scan events reject check-outs).
-    $inOutEventId = create_event($db, $officerId, 'QR Check-in In/Out ' . $suffix, $now->modify('-5 minutes'));
-    $db->prepare('UPDATE events SET attendance_type = \'in_out\' WHERE id = :id')->execute(['id' => $inOutEventId]);
-    $eventIds[] = $inOutEventId;
-    $wrongEventId = create_event($db, $officerId, 'QR Check-in Wrong Event ' . $suffix, $now->modify('-3 minutes'));
-    $eventIds[] = $wrongEventId;
-    $closedEventId = create_event($db, $officerId, 'QR Check-in Closed ' . $suffix, $now->modify('-7 hours'));
-    $eventIds[] = $closedEventId;
-    $cancelledEventId = create_event($db, $officerId, 'QR Check-in Cancelled ' . $suffix, $now->modify('-5 minutes'), 'cancelled');
-    $eventIds[] = $cancelledEventId;
     $fingerprintEventId = create_event($db, $officerId, 'Fingerprint Check-in ' . $suffix, $now->modify('-5 minutes'));
     $eventIds[] = $fingerprintEventId;
+    $fingerprintFullEventId = create_event($db, $officerId, 'Fingerprint Full Enrollment ' . $suffix, $now->modify('-5 minutes'));
+    $eventIds[] = $fingerprintFullEventId;
+    $fingerprintRedoEventId = create_event($db, $officerId, 'Fingerprint Redo ' . $suffix, $now->modify('-5 minutes'));
+    $eventIds[] = $fingerprintRedoEventId;
+    $fingerprintWrongEventId = create_event($db, $officerId, 'Fingerprint Wrong Student ' . $suffix, $now->modify('-5 minutes'));
+    $eventIds[] = $fingerprintWrongEventId;
+    $fingerprintCollisionEventId = create_event($db, $officerId, 'Fingerprint ID Collision ' . $suffix, $now->modify('-5 minutes'));
+    $eventIds[] = $fingerprintCollisionEventId;
     $correctionEventId = create_event($db, $officerId, 'Correction Proof ' . $suffix, $now->modify('-1 day'));
     $eventIds[] = $correctionEventId;
-    $fingerprintTemplateA = 'FP.' . $suffix . '.' . str_repeat('A1b2', 12);
 
     $port = free_port();
     $baseUrl = 'http://127.0.0.1:' . $port . '/api';
+
+    $matchingPort = free_port();
+    $matchingUrl = 'http://127.0.0.1:' . $matchingPort;
+    $matchingDescriptors = [
+        0 => ['pipe', 'r'],
+        1 => ['file', $matchingLog, 'a'],
+        2 => ['file', $matchingLog, 'a'],
+    ];
+    $matchingServer = proc_open(
+        [PHP_BINARY, '-S', '127.0.0.1:' . $matchingPort, $root . '/tools/matching-service/test/mock-router.php'],
+        $matchingDescriptors,
+        $matchingPipes,
+        $root
+    );
+    if (!is_resource($matchingServer)) {
+        throw new RuntimeException('Unable to start the synthetic matching service.');
+    }
+    fclose($matchingPipes[0]);
+    $matchingReady = false;
+    for ($attempt = 0; $attempt < 50; $attempt++) {
+        usleep(100000);
+        try {
+            $health = file_get_contents($matchingUrl . '/health');
+            if (is_string($health) && str_contains($health, '"status":"ok"')) {
+                $matchingReady = true;
+                break;
+            }
+        } catch (Throwable) {
+        }
+    }
+    if (!$matchingReady) {
+        throw new RuntimeException('Synthetic matching service did not become ready.');
+    }
 
     $descriptors = [
         0 => ['pipe', 'r'],
@@ -338,11 +418,16 @@ try {
     $routerScript = is_file($backend . '/public/router.php')
         ? 'public/router.php'
         : 'router.php';
+    $tempDir = sys_get_temp_dir();
     $server = proc_open(
-        [PHP_BINARY, '-S', '127.0.0.1:' . $port, '-t', 'public', $routerScript],
+        [PHP_BINARY, '-d', 'post_max_size=40M', '-d', 'upload_tmp_dir=' . $tempDir, '-S', '127.0.0.1:' . $port, '-t', 'public', $routerScript],
         $descriptors,
         $pipes,
-        $backend
+        $backend,
+        array_merge(getenv(), [
+            'MATCHING_URL' => $matchingUrl,
+            'MATCHING_KEY' => 'attendly-synthetic-test-key',
+        ])
     );
 
     if (!is_resource($server)) {
@@ -365,7 +450,7 @@ try {
         throw new RuntimeException('API server did not become ready: ' . file_get_contents($serverLog));
     }
 
-    fwrite(STDOUT, "qr-check-in.api.test.php\n");
+    fwrite(STDOUT, "attendance-checkin.api.test.php\n");
 
     // Register two students through POST /auth/register. Accounts land in
     // 'pending'; the admin approves them so they can sign in.
@@ -393,9 +478,7 @@ try {
     $studentBId = (int) response_data($regB)['id'];
     $userIds[] = $studentBId;
 
-    test('registration does not create a permanent qr token', function () use ($db, $studentAId, $studentBId): void {
-        $columns = $db->query("SHOW COLUMNS FROM users LIKE 'qr_token'")->fetchAll();
-        same([], $columns);
+    test('registration creates student accounts', function () use ($studentAId, $studentBId): void {
         assert_true((int) $studentAId > 0 && (int) $studentBId > 0, 'student accounts were not created');
     });
 
@@ -420,96 +503,182 @@ try {
     $studentA = login('alpha.' . $suffix . '@example.test', $password, $cookieJars);
     $studentB = login('beta.' . $suffix . '@example.test', $password, $cookieJars);
 
-    // ── Fingerprint enrollment and kiosk check-in (migration 042) ──
-    test('anonymous cannot enroll a fingerprint', function () use ($studentAId, $fingerprintTemplateA): void {
+    // Fingerprint enrollment: all ten fingers are required before kiosk access.
+    $studentNumberQuery = $db->prepare('SELECT student_id_number FROM students WHERE user_id = :id');
+    $studentNumberQuery->execute(['id' => $studentAId]);
+    $studentAIdNumber = (string) $studentNumberQuery->fetchColumn();
+    $studentNumberQuery->execute(['id' => $studentBId]);
+    $studentBIdNumber = (string) $studentNumberQuery->fetchColumn();
+    $imageA = synthetic_fingerprint_image(7);
+    $imageB = synthetic_fingerprint_image(31);
+    $imageRedo = synthetic_fingerprint_image(57);
+    $fingerKeys = [
+        'left-thumb', 'left-index', 'left-middle', 'left-ring', 'left-little',
+        'right-thumb', 'right-index', 'right-middle', 'right-ring', 'right-little',
+    ];
+
+    test('anonymous cannot enroll a fingerprint', function () use ($studentAId, $imageA): void {
         $response = http_client('POST', '/users/enroll-fingerprint', [
-            'studentId' => $studentAId,
-            'fingerprintTemplate' => $fingerprintTemplateA,
+            'studentId' => $studentAId, 'finger' => 'left-thumb', 'images' => [$imageA],
         ]);
         same(401, $response['status']);
         response_error($response, 'unauthenticated');
     });
 
-    test('a student cannot enroll a fingerprint', function () use ($studentA, $studentAId, $fingerprintTemplateA): void {
+    test('a student cannot enroll a fingerprint', function () use ($studentA, $studentAId, $imageA): void {
         $response = http_client('POST', '/users/enroll-fingerprint', [
-            'studentId' => $studentAId,
-            'fingerprintTemplate' => $fingerprintTemplateA,
+            'studentId' => $studentAId, 'finger' => 'left-thumb', 'images' => [$imageA],
         ], $studentA['jar']);
         same(403, $response['status']);
         response_error($response, 'forbidden');
     });
 
-    test('an officer enrolls a fingerprint template', function () use ($db, $officer, $studentAId, $fingerprintTemplateA): void {
-        $response = http_client('POST', '/users/enroll-fingerprint', [
-            'studentId' => $studentAId,
-            'fingerprintTemplate' => $fingerprintTemplateA,
-        ], $officer['jar']);
-        same(200, $response['status']);
-        $data = response_data($response);
-        same(true, $data['fingerprintEnrolled'] ?? null);
-        same($studentAId, (int) ($data['studentId'] ?? 0));
-        same('Alpha Student', (string) ($data['studentName'] ?? ''));
-
-        $stored = $db->prepare('SELECT fingerprint_template FROM students WHERE user_id = :id');
-        $stored->execute(['id' => $studentAId]);
-        same($fingerprintTemplateA, (string) $stored->fetchColumn());
+    test('9 of 10 fingers remains incomplete in the backend status', function () use ($officer, $studentAId, $fingerKeys, $imageA): void {
+        $result = null;
+        foreach (array_slice($fingerKeys, 0, 9) as $finger) {
+            $response = enroll_finger($studentAId, $finger, $imageA, $officer['jar']);
+            same(200, $response['status']);
+            $result = response_data($response);
+        }
+        same(false, $result['fingerprintEnrolled'] ?? null);
+        same(9, (int) ($result['fingerprintFingersCompleted'] ?? -1));
+        same(9, count($result['enrolledFingers'] ?? []));
     });
 
-    test('the same fingerprint cannot be enrolled to a second student', function () use ($officer, $studentBId, $fingerprintTemplateA): void {
-        $response = http_client('POST', '/users/enroll-fingerprint', [
-            'studentId' => $studentBId,
-            'fingerprintTemplate' => $fingerprintTemplateA,
+    test('9/10 fingerprint check-in is rejected and does not record attendance', function () use ($db, $officer, $fingerprintEventId, $studentAId, $studentAIdNumber, $imageA): void {
+        $response = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintEventId, 'studentIdNumber' => $studentAIdNumber, 'image' => $imageA,
         ], $officer['jar']);
         same(409, $response['status']);
-        response_error($response, 'fingerprint_already_enrolled');
-    });
-
-    test('an unknown fingerprint is not recognised', function () use ($db, $officer, $fingerprintEventId, $studentAId, $suffix): void {
-        $response = http_client('POST', '/attendance/fingerprint', [
-            'eventId' => $fingerprintEventId,
-            'fingerprintTemplate' => 'FP.' . $suffix . '.unknown.' . str_repeat('Z9', 16),
-        ], $officer['jar']);
-        same(404, $response['status']);
-        response_error($response, 'fingerprint_not_recognized');
+        response_error($response, 'fingerprint_enrollment_incomplete');
+        assert_true(str_contains((string) ($response['body']['error']['message'] ?? ''), 'Enrollment incomplete (9/10 fingers)'), 'incomplete count missing from kiosk error');
         same(false, attendance_row($db, $fingerprintEventId, $studentAId));
     });
 
-    test('an enrolled fingerprint records fingerprint attendance', function () use ($db, $officer, $fingerprintEventId, $studentAId, $fingerprintTemplateA): void {
+    test('manual attendance still works for a 9/10 student', function () use ($db, $officer, $fingerprintEventId, $studentAId): void {
+        $response = http_client('POST', '/attendance/manual', [
+            'eventId' => $fingerprintEventId, 'studentId' => $studentAId, 'action' => 'in',
+        ], $officer['jar']);
+        if ($response['status'] !== 200) {
+            throw new RuntimeException('manual check-in for partial student: ' . $response['raw']);
+        }
+        same('manual', response_data($response)['verificationMethod'] ?? null);
+        same('manual', attendance_row($db, $fingerprintEventId, $studentAId)['verification_method'] ?? null);
+    });
+
+    test('adding the tenth finger marks the student complete', function () use ($officer, $studentAId, $fingerKeys, $imageA): void {
+        $response = enroll_finger($studentAId, $fingerKeys[9], $imageA, $officer['jar']);
+        same(200, $response['status']);
+        $data = response_data($response);
+        same(true, $data['fingerprintEnrolled'] ?? null);
+        same(10, (int) ($data['fingerprintFingersCompleted'] ?? -1));
+    });
+
+    test('a 10/10 student can check in by fingerprint', function () use ($db, $officer, $fingerprintFullEventId, $studentAId, $studentAIdNumber, $imageA): void {
         $response = http_client('POST', '/attendance/fingerprint', [
-            'eventId' => $fingerprintEventId,
-            'fingerprintTemplate' => $fingerprintTemplateA,
+            'eventId' => $fingerprintFullEventId, 'studentIdNumber' => $studentAIdNumber, 'image' => $imageA,
         ], $officer['jar']);
         same(200, $response['status']);
         $data = response_data($response);
         same($studentAId, (int) ($data['studentId'] ?? 0));
-        same('Alpha Student', (string) ($data['studentName'] ?? ''));
-        same('fingerprint', (string) ($data['verificationMethod'] ?? ''));
-        same('in', (string) ($data['action'] ?? ''));
-
-        $row = attendance_row($db, $fingerprintEventId, $studentAId);
-        assert_true($row !== false, 'fingerprint attendance row was not created');
-        same('fingerprint', (string) $row['verification_method']);
+        same('fingerprint', $data['verificationMethod'] ?? null);
+        same('fingerprint', attendance_row($db, $fingerprintFullEventId, $studentAId)['verification_method'] ?? null);
     });
 
-    test('scanning the same fingerprint twice is rejected', function () use ($officer, $fingerprintEventId, $fingerprintTemplateA): void {
+    test('duplicate fingerprint attendance is still rejected', function () use ($officer, $fingerprintFullEventId, $studentAIdNumber, $imageA): void {
         $response = http_client('POST', '/attendance/fingerprint', [
-            'eventId' => $fingerprintEventId,
-            'fingerprintTemplate' => $fingerprintTemplateA,
+            'eventId' => $fingerprintFullEventId, 'studentIdNumber' => $studentAIdNumber, 'image' => $imageA,
         ], $officer['jar']);
         same(409, $response['status']);
         response_error($response, 'duplicate_checkin');
     });
 
-    test('staff listing reports the enrollment without the template', function () use ($officer, $studentAId, $fingerprintTemplateA): void {
+    test('re-enrolling one finger preserves 10/10 and remains usable', function () use ($officer, $fingerprintRedoEventId, $studentAId, $studentAIdNumber, $fingerKeys, $imageRedo): void {
+        $enroll = enroll_finger($studentAId, $fingerKeys[0], $imageRedo, $officer['jar']);
+        same(200, $enroll['status']);
+        same(true, response_data($enroll)['fingerprintEnrolled'] ?? null);
+        same(10, (int) (response_data($enroll)['fingerprintFingersCompleted'] ?? -1));
+        $scan = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintRedoEventId, 'studentIdNumber' => $studentAIdNumber, 'image' => $imageRedo,
+        ], $officer['jar']);
+        same(200, $scan['status']);
+    });
+
+    test('legacy flat templates count as 0/10 until named fingers are enrolled', function () use ($db, $officer, $studentBId, $studentBIdNumber, $fingerprintWrongEventId, $imageB): void {
+        $legacy = json_encode([base64_encode('legacy-synthetic-template')], JSON_THROW_ON_ERROR);
+        $store = $db->prepare('UPDATE students SET fingerprint_template = :templates WHERE user_id = :id');
+        $store->execute(['templates' => $legacy, 'id' => $studentBId]);
+        $blocked = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintWrongEventId, 'studentIdNumber' => $studentBIdNumber, 'image' => $imageB,
+        ], $officer['jar']);
+        same(409, $blocked['status']);
+        response_error($blocked, 'fingerprint_enrollment_incomplete');
+        assert_true(str_contains((string) ($blocked['body']['error']['message'] ?? ''), 'Enrollment incomplete (0/10 fingers)'), 'legacy status should be 0/10');
+    });
+
+    test('legacy templates stay unknown while named fingers complete the enrollment', function () use ($db, $officer, $studentBId, $fingerKeys, $imageB): void {
+        $result = null;
+        foreach ($fingerKeys as $finger) {
+            $response = enroll_finger($studentBId, $finger, $imageB, $officer['jar']);
+            same(200, $response['status']);
+            $result = response_data($response);
+        }
+        same(true, $result['fingerprintEnrolled'] ?? null);
+        same(10, (int) ($result['fingerprintFingersCompleted'] ?? -1));
+        $stored = $db->prepare('SELECT fingerprint_template FROM students WHERE user_id = :id');
+        $stored->execute(['id' => $studentBId]);
+        $entries = json_decode((string) $stored->fetchColumn(), true);
+        assert_true(is_array($entries) && count($entries) === 11 && array_key_exists('finger', $entries[0]) && $entries[0]['finger'] === null, 'legacy template was not preserved as unknown');
+    });
+
+    test('another fully enrolled student fingerprint is rejected for the typed ID', function () use ($db, $officer, $fingerprintWrongEventId, $studentAId, $studentAIdNumber, $imageB): void {
+        $response = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintWrongEventId, 'studentIdNumber' => $studentAIdNumber, 'image' => $imageB,
+        ], $officer['jar']);
+        same(404, $response['status']);
+        response_error($response, 'fingerprint_not_recognized');
+        same(false, attendance_row($db, $fingerprintWrongEventId, $studentAId));
+    });
+
+    test('suffix collision resolves against both students by fingerprint', function () use ($db, $officer, $fingerprintCollisionEventId, $studentBId, $studentAIdNumber, $imageB): void {
+        $suffix = substr($studentAIdNumber, -5);
+        $year = 2025;
+        do {
+            $alternateId = $year++ . '-' . $suffix;
+            $check = $db->prepare('SELECT COUNT(*) FROM students WHERE student_id_number = :number AND user_id <> :id');
+            $check->execute(['number' => $alternateId, 'id' => $studentBId]);
+        } while ((int) $check->fetchColumn() > 0);
+        $update = $db->prepare('UPDATE students SET student_id_number = :number WHERE user_id = :id');
+        $update->execute(['number' => $alternateId, 'id' => $studentBId]);
+        $response = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintCollisionEventId,
+            'studentIdNumber' => $suffix,
+            'image' => $imageB,
+        ], $officer['jar']);
+        same(200, $response['status']);
+        same($studentBId, (int) (response_data($response)['studentId'] ?? 0));
+    });
+
+    test('five-digit lookup with no matching student returns ID not found', function () use ($db, $officer, $fingerprintCollisionEventId, $imageA): void {
+        $missing = unused_student_suffix($db);
+        $response = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintCollisionEventId, 'studentIdNumber' => $missing, 'image' => $imageA,
+        ], $officer['jar']);
+        same(404, $response['status']);
+        response_error($response, 'student_id_not_found');
+    });
+
+    test('staff listing reports 10/10 without exposing fingerprint templates', function () use ($officer, $studentAId, $studentBId): void {
         $response = http_client('GET', '/users', null, $officer['jar']);
         same(200, $response['status']);
-        $match = null;
-        foreach (response_data($response) as $row) {
-            if ((int) ($row['id'] ?? 0) === $studentAId) { $match = $row; break; }
+        foreach ([$studentAId, $studentBId] as $id) {
+            $match = null;
+            foreach (response_data($response) as $row) if ((int) ($row['id'] ?? 0) === $id) { $match = $row; break; }
+            assert_true(is_array($match), 'student missing from /users');
+            same(true, $match['fingerprintEnrolled'] ?? null);
+            same(10, (int) ($match['fingerprintFingersCompleted'] ?? -1));
+            assert_true(!array_key_exists('fingerprintTemplate', $match), 'user listing exposed templates');
         }
-        assert_true(is_array($match), 'student missing from /users');
-        same(true, $match['fingerprintEnrolled'] ?? null);
-        assert_true(!str_contains(json_encode($match, JSON_THROW_ON_ERROR), $fingerprintTemplateA), 'user listing leaked the template');
     });
 
     test('events expose EVNT public ids', function () use ($db, $officer, $openEventId): void {
@@ -528,31 +697,6 @@ try {
         same($publicId, (string) ($match['publicId'] ?? ''));
     });
 
-    test('student can request an event-scoped QR token', function () use ($studentA, $studentAId, $openEventId, $qrSecret): void {
-        $response = http_client('GET', '/events/' . $openEventId . '/qr-token', null, $studentA['jar']);
-        same(200, $response['status']);
-        $data = response_data($response);
-        same($openEventId, (int) $data['eventId']);
-        $token = (string) ($data['qrToken'] ?? '');
-        same(['studentId' => $studentAId, 'eventId' => $openEventId], QrToken::parseEventToken($token, $qrSecret));
-    });
-
-    test('non-student cannot request an event QR token', function () use ($officer, $openEventId): void {
-        $response = http_client('GET', '/events/' . $openEventId . '/qr-token', null, $officer['jar']);
-        same(403, $response['status']);
-        response_error($response, 'forbidden');
-    });
-
-    test('ended event QR token request is rejected', function () use ($studentA, $closedEventId): void {
-        $response = http_client('GET', '/events/' . $closedEventId . '/qr-token', null, $studentA['jar']);
-        same(409, $response['status']);
-        response_error($response, 'event_ended');
-    });
-
-    test('login response does not expose a permanent qrToken', function () use ($studentA): void {
-        assert_true(!array_key_exists('qrToken', $studentA['user']), 'login payload exposed qrToken');
-    });
-
     test('login and /auth/me expose the student public id', function () use ($studentA): void {
         $publicId = (string) ($studentA['user']['publicId'] ?? '');
         assert_true(preg_match('/^STUD_\d{3,}$/', $publicId) === 1, "login publicId: {$publicId}");
@@ -560,12 +704,6 @@ try {
         $me = http_client('GET', '/auth/me', null, $studentA['jar']);
         same(200, $me['status']);
         same($publicId, (string) (response_data($me)['publicId'] ?? ''));
-    });
-
-    test('/auth/me does not expose a permanent qrToken', function () use ($studentA): void {
-        $me = http_client('GET', '/auth/me', null, $studentA['jar']);
-        same(200, $me['status']);
-        assert_true(!array_key_exists('qrToken', response_data($me)), '/auth/me exposed qrToken');
     });
 
     test('student profile save treats contactNumber as optional', function () use ($studentA, $suffix): void {
@@ -644,7 +782,7 @@ try {
         $base = [
             'eventId' => $correctionEventId,
             'checkInTime' => $time,
-            'reason' => 'The kiosk did not scan my QR code.',
+            'reason' => 'The kiosk did not record my attendance.',
         ];
 
         $missing = http_client('POST', '/attendance-corrections', $base, $studentA['jar']);
@@ -670,7 +808,7 @@ try {
         $created = http_client('POST', '/attendance-corrections', [
             'eventId' => $correctionEventId,
             'checkInTime' => $now->modify('-1 day')->format('Y-m-d H:i'),
-            'reason' => 'The kiosk did not scan my QR code.',
+            'reason' => 'The kiosk did not record my attendance.',
             'proofImage' => $proof,
         ], $studentA['jar']);
         same(200, $created['status']);
@@ -775,53 +913,6 @@ try {
         response_error($denied, 'forbidden');
     });
 
-    test('staff listing other students does not leak qr tokens', function () use ($db, $officer): void {
-        $list = http_client('GET', '/users', null, $officer['jar']);
-        same(200, $list['status']);
-        $rows = response_data($list);
-        assert_true(is_array($rows) && count($rows) > 0, 'officer saw no users');
-        foreach ($rows as $row) {
-            if ((int) ($row['id'] ?? 0) === 0) continue;
-            $token = $row['qrToken'] ?? null;
-            if ($token === null) continue;
-            // If a token is present at all, it must belong to the viewer —
-            // an officer has none, so any non-null value is a leak.
-            throw new RuntimeException('qrToken leaked to an officer listing: user ' . $row['id']);
-        }
-    });
-
-    test('admin and officer user listings omit the qrToken field', function () use ($admin, $officer): void {
-        foreach (['admin' => $admin, 'officer' => $officer] as $role => $session) {
-            $list = http_client('GET', '/users', null, $session['jar']);
-            same(200, $list['status']);
-            $rows = response_data($list);
-            assert_true(is_array($rows) && count($rows) > 0, "{$role} saw no users");
-            foreach ($rows as $row) {
-                assert_true(
-                    !array_key_exists('qrToken', $row),
-                    "qrToken field leaked to the {$role} listing for user " . ($row['id'] ?? '?')
-                );
-            }
-        }
-    });
-
-    test('admin profile update response omits the qrToken field', function () use ($admin, $studentAId, $suffix): void {
-        $update = http_client('PATCH', "/users/{$studentAId}/profile", [
-            'name'       => 'Alpha Student',
-            'email'      => 'alpha.' . $suffix . '@example.test',
-            'department' => 'Computer Studies',
-            'program'    => 'BSIT',
-            'yearLevel'  => '1',
-        ], $admin['jar']);
-        same(200, $update['status']);
-        $updated = response_data($update);
-        same($studentAId, (int) ($updated['id'] ?? 0));
-        assert_true(
-            !array_key_exists('qrToken', $updated),
-            'qrToken field leaked in the profile update response'
-        );
-    });
-
     test('sanction report endpoint returns the semester matrix', function () use ($admin): void {
         $response = http_client('GET', '/reports/sanctions', null, $admin['jar']);
         same(200, $response['status']);
@@ -864,262 +955,19 @@ try {
         assert_true(!array_key_exists('studentId', response_data($ownB)), 'response exposed a student id');
     });
 
-    $tokenA = qr_token_for($studentAId, $openEventId);
-    $tokenB = qr_token_for($studentBId, $openEventId);
-
-    // Tokens scoped to the in_out event for check-out tests.
-    $inOutTokenA = qr_token_for($studentAId, $inOutEventId);
-    $inOutTokenB = qr_token_for($studentBId, $inOutEventId);
-
-    test('anonymous QR check-in is rejected', function () use ($db, $openEventId, $tokenA, $studentAId): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-            'qrToken' => $tokenA,
-        ]);
-        same(401, $response['status']);
-        response_error($response, 'unauthenticated');
-        same(false, attendance_row($db, $openEventId, $studentAId));
-    });
-
-    test('student session cannot record a QR check-in', function () use ($db, $studentA, $openEventId, $tokenA, $studentAId): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-            'qrToken' => $tokenA,
-        ], $studentA['jar']);
-        same(403, $response['status']);
-        response_error($response, 'forbidden');
-        same(false, attendance_row($db, $openEventId, $studentAId));
-    });
-
-    test('missing qrToken is rejected', function () use ($officer, $openEventId): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-        ], $officer['jar']);
-        same(422, $response['status']);
-        response_error($response, 'invalid_field');
-    });
-
-    test('malformed qrToken never reaches the index', function () use ($officer, $openEventId): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-            'qrToken' => 'too-short',
-        ], $officer['jar']);
-        same(422, $response['status']);
-        response_error($response, 'invalid_qr');
-    });
-
-    test('well-formed but unknown qrToken returns invalid_qr, not a 404 leak', function () use ($officer, $openEventId): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-            'qrToken' => qr_token_for(2147483646, $openEventId),
-        ], $officer['jar']);
-        same(422, $response['status']);
-        response_error($response, 'invalid_qr');
-    });
-
-    test('missing event id is rejected', function () use ($officer, $tokenA): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'qrToken' => $tokenA,
-        ], $officer['jar']);
-        same(422, $response['status']);
-        response_error($response, 'invalid_field');
-    });
-
-    test('unknown event returns event_not_found', function () use ($officer, $studentAId): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => 2147483647,
-            'qrToken' => qr_token_for($studentAId, 2147483647),
-        ], $officer['jar']);
-        same(404, $response['status']);
-        response_error($response, 'event_not_found');
-    });
-
-    test('QR token for a different live event is rejected', function () use ($officer, $openEventId, $wrongEventId, $studentAId, $db): void {
-        $wrongToken = qr_token_for($studentAId, $wrongEventId);
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-            'qrToken' => $wrongToken,
-        ], $officer['jar']);
-        same(400, $response['status']);
-        response_error($response, 'invalid_qr_event');
-        same('Invalid QR code for this event.', $response['body']['error']['message'] ?? null);
-        same(false, attendance_row($db, $openEventId, $studentAId));
-    });
-
-    test('cancelled event is refused before recording', function () use ($officer, $cancelledEventId, $studentAId, $db): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $cancelledEventId,
-            // Scope the token to this event: a token for another event is now
-            // rejected as invalid_qr_event before the status check runs.
-            'qrToken' => qr_token_for($studentAId, $cancelledEventId),
-        ], $officer['jar']);
-        same(409, $response['status']);
-        response_error($response, 'event_unavailable');
-        same(false, attendance_row($db, $cancelledEventId, $studentAId));
-    });
-
-    test('token for another event is rejected before the closed-window check', function () use ($officer, $closedEventId, $tokenA, $studentAId, $db): void {
-        // A stale code scanned at a closed kiosk must report the event mismatch,
-        // not checkin_closed, which would reveal that the event is open.
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $closedEventId,
-            'qrToken' => $tokenA,
-        ], $officer['jar']);
-        same(400, $response['status']);
-        response_error($response, 'invalid_qr_event');
-        same('Invalid QR code for this event.', $response['body']['error']['message'] ?? null);
-        same(false, attendance_row($db, $closedEventId, $studentAId));
-    });
-
-    test('closed check-in window is refused', function () use ($officer, $closedEventId, $studentAId, $db): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $closedEventId,
-            'qrToken' => qr_token_for($studentAId, $closedEventId),
-        ], $officer['jar']);
-        same(409, $response['status']);
-        response_error($response, 'checkin_closed');
-        same(false, attendance_row($db, $closedEventId, $studentAId));
-    });
-
-    $success = null;
-
-    test('officer scan checks in the token owner', function () use ($officer, $openEventId, $tokenA, $studentAId, &$success): void {
-        $success = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-            'qrToken' => $tokenA,
-        ], $officer['jar']);
-
-        same(200, $success['status']);
-        $data = response_data($success);
-        same($studentAId, (int) $data['studentId']);
-        assert_true(str_contains((string) $data['studentName'], 'Alpha'), 'unexpected studentName: ' . $data['studentName']);
-        same('qr', $data['verificationMethod']);
-        same('in', $data['action']);
-        assert_true((bool) preg_match('/^\d{2}:\d{2}$/', (string) $data['time']), 'time was not HH:MM');
-    });
-
-    test('successful scan writes a qr attendance row', function () use ($db, $openEventId, $studentAId): void {
-        $row = attendance_row($db, $openEventId, $studentAId);
-        if ($row === false) {
-            throw new RuntimeException('Attendance row was not created.');
-        }
-        same($openEventId, (int) $row['event_id']);
-        same($studentAId, (int) $row['student_id']);
-        same('qr', $row['verification_method']);
-        assert_true(strlen((string) $row['check_in_time']) >= 19, 'check_in_time was not a timestamp');
-    });
-
-    // Check in to the in_out event so check-out tests have a row to work with.
-    test('in_out check-in for check-out tests', function () use ($officer, $inOutEventId, $inOutTokenA, $studentAId): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $inOutEventId,
-            'qrToken' => $inOutTokenA,
-        ], $officer['jar']);
-        same(200, $response['status']);
-        same('in', response_data($response)['action']);
-    });
-
-    test('duplicate scan returns duplicate_checkin', function () use ($officer, $openEventId, $tokenA): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-            'qrToken' => $tokenA,
-        ], $officer['jar']);
-        same(409, $response['status']);
-        response_error($response, 'duplicate_checkin');
-    });
-
-    test('unknown action is rejected', function () use ($officer, $openEventId, $tokenA): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-            'qrToken' => $tokenA,
-            'action' => 'sideways',
-        ], $officer['jar']);
-        same(422, $response['status']);
-        response_error($response, 'invalid_field');
-    });
-
-    test('check-out before check-in returns not_checked_in', function () use ($officer, $inOutEventId, $inOutTokenB, $studentBId, $db): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $inOutEventId,
-            'qrToken' => $inOutTokenB,
-            'action' => 'out',
-        ], $officer['jar']);
-        same(409, $response['status']);
-        response_error($response, 'not_checked_in');
-        same(false, attendance_row($db, $inOutEventId, $studentBId));
-    });
-
-    test('check-out updates the checked-in row instead of duplicating it', function () use ($officer, $inOutEventId, $inOutTokenA, $studentAId, $db): void {
-        $before = attendance_row($db, $inOutEventId, $studentAId);
-        if ($before === false) {
-            throw new RuntimeException('Check-in row disappeared before check-out.');
-        }
-        same(null, $before['check_out_time']);
-
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $inOutEventId,
-            'qrToken' => $inOutTokenA,
-            'action' => 'out',
-        ], $officer['jar']);
-
-        same(200, $response['status']);
-        $data = response_data($response);
-        same('out', $data['action']);
-        same($studentAId, (int) $data['studentId']);
-        same('qr', $data['verificationMethod']);
-        assert_true((bool) $data['checkedOut'], 'checkedOut flag missing');
-        assert_true((bool) preg_match('/^\d{2}:\d{2}$/', (string) $data['checkOutTimeLabel']), 'check-out time was not HH:MM');
-
-        $after = attendance_row($db, $inOutEventId, $studentAId);
-        if ($after === false) {
-            throw new RuntimeException('Check-out row disappeared.');
-        }
-        same((int) $before['id'], (int) $after['id']);
-        assert_true($after['check_out_time'] !== null && $after['check_out_time'] !== '', 'check_out_time was not written');
-        same(1, attendance_count($db, $inOutEventId, $studentAId));
-    });
-
-    test('second check-out returns duplicate_checkout', function () use ($officer, $inOutEventId, $inOutTokenA): void {
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $inOutEventId,
-            'qrToken' => $inOutTokenA,
-            'action' => 'out',
-        ], $officer['jar']);
-        same(409, $response['status']);
-        response_error($response, 'duplicate_checkout');
-    });
-
-    test('inactive student cannot check in even with a valid token', function () use ($db, $admin, $officer, $openEventId, $tokenB, $studentBId): void {
-        $deactivate = http_client('PATCH', "/users/{$studentBId}/status", ['status' => 'inactive'], $admin['jar']);
-        same(200, $deactivate['status']);
-
-        $response = http_client('POST', '/attendance/qr-check-in', [
-            'eventId' => $openEventId,
-            'qrToken' => $tokenB,
-        ], $officer['jar']);
-        same(422, $response['status']);
-        response_error($response, 'invalid_qr');
-        same(false, attendance_row($db, $openEventId, $studentBId));
-    });
-
-    test('the retired qr_token column is absent', function () use ($db): void {
-        $columns = $db->query("SHOW COLUMNS FROM users LIKE 'qr_token'")->fetchAll();
-        same([], $columns);
-    });
-
-    test('manual check-in fallback still works', function () use ($db, $admin, $officer, $openEventId, $studentBId): void {
-        $reactivate = http_client('PATCH', '/users/' . $studentBId . '/status', ['status' => 'active'], $admin['jar']);
-        same(200, $reactivate['status']);
+    test('manual check-in fallback still works', function () use ($db, $admin, $officer, $fingerprintWrongEventId, $studentBId): void {
         $response = http_client('POST', '/attendance/manual', [
-            'eventId' => $openEventId,
+            'eventId' => $fingerprintWrongEventId,
             'studentId' => $studentBId,
             'action' => 'in',
         ], $officer['jar']);
-        same(200, $response['status']);
+        if ($response['status'] !== 200) {
+            throw new RuntimeException('manual fallback response: ' . $response['raw']);
+        }
         $data = response_data($response);
         same($studentBId, (int) $data['studentId']);
         same('manual', $data['verificationMethod']);
-        assert_true(attendance_row($db, $openEventId, $studentBId) !== false, 'manual attendance row was not created');
+        assert_true(attendance_row($db, $fingerprintWrongEventId, $studentBId) !== false, 'manual attendance row was not created');
     });
 } catch (Throwable $e) {
     $failed++;
@@ -1131,6 +979,13 @@ try {
             proc_terminate($server);
         }
         proc_close($server);
+    }
+    if (is_resource($matchingServer)) {
+        $status = proc_get_status($matchingServer);
+        if ($status['running']) {
+            proc_terminate($matchingServer);
+        }
+        proc_close($matchingServer);
     }
 
     foreach ($cookieJars as $jar) {
@@ -1179,6 +1034,9 @@ try {
     }
     if (is_file($serverLog)) {
         unlink($serverLog);
+    }
+    if (is_file($matchingLog)) {
+        unlink($matchingLog);
     }
 }
 

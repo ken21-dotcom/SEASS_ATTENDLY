@@ -32,20 +32,24 @@ document.addEventListener('DOMContentLoaded', async function() {
       departmentFilterId: 'filterDepartment',
       courseFilterId: 'filterCourse',
       yearFilterId: 'filterYear',
+      fingerprintEnrollmentFilterId: 'filterFingerprintEnrollment',
       searchId: 'studentSearch',
       colspan: 6,
-      renderRow: (student) =>
-        `<td>${escapeHtml(student.name)}</td>` +
+      renderRow: (student) => {
+        const fingersDone = studentFingerprintFingersCompleted(student);
+        const fingerprintsComplete = fingersDone === 10;
+        return `<td>${escapeHtml(student.name)}</td>` +
         `<td>${escapeHtml(student.studentIdNumber || student.id)}</td>` +
         `<td>${escapeHtml(student.email)}</td>` +
         `<td>${yearBadge(student)}</td>` +
         `<td>${escapeHtml(student.block || '—')}</td>` +
-        `<td><div class="small mb-1 ${student.fingerprintEnrolled ? 'text-success' : 'text-muted'}">` +
-          `<i class="bi bi-fingerprint"></i> ${student.fingerprintEnrolled ? 'Enrolled' : 'Not enrolled'}</div>` +
+        `<td><div class="small mb-1 ${fingerprintsComplete ? 'text-success' : 'text-warning fw-semibold'}">` +
+          `<i class="bi bi-fingerprint"></i> ${fingerprintsComplete ? 'Enrolled' : 'Incomplete: ' + fingersDone + '/10 fingers'}</div>` +
           `<button class="btn btn-sm btn-outline-success" type="button" ` +
           `onclick="enrollStudentFingerprint('${escapeHtml(student.id)}')" ` +
-          `title="Capture a fingerprint template for this student">` +
-          `<i class="bi bi-fingerprint"></i> Enroll Fingerprint</button></td>`,
+          `title="Enroll or re-do one of this student's ten fingers">` +
+          `<i class="bi bi-fingerprint"></i> Manage Fingerprints</button></td>`;
+      },
     });
   }
 

@@ -90,6 +90,33 @@
   // canonical id from the event object.
   const sameId = (a, b) => a != null && b != null && String(a) === String(b);
 
+  const validStudentIdentifier = (value) => /^(?:\d{5}|\d{4}-\d{5})$/.test(String(value || '').trim());
+
+  function setStudentIdError(message) {
+    if (!els || !els.studentIdError) return;
+    els.studentIdError.textContent = message || '';
+    els.studentIdError.hidden = !message;
+    if (els.studentId) els.studentId.setAttribute('aria-invalid', message ? 'true' : 'false');
+  }
+
+  function clearStudentIdentifier() {
+    if (els && els.studentId) els.studentId.value = '';
+    setStudentIdError('');
+  }
+
+  function validateStudentIdentifier(showError) {
+    const value = els && els.studentId ? String(els.studentId.value || '').trim() : '';
+    if (validStudentIdentifier(value)) {
+      setStudentIdError('');
+      return value;
+    }
+    if (showError) {
+      setStudentIdError('Enter exactly 5 digits, or the full ID in YYYY-NNNNN format.');
+      if (els && els.studentId) els.studentId.focus();
+    }
+    return '';
+  }
+
   const isOfficerRole = (role) => role === 'admin' || role === 'ssc-officer';
 
   const actionWord = (mode) => (mode === 'out' ? 'check-out' : 'check-in');
@@ -166,12 +193,11 @@
   /**
    * Steps are gated: only the active step is highlighted and every step
    * after it is visually disabled until its precondition is met. The kiosk
-   * starts on Step 1 (select an event) and only advances to Step 2 once the
-   * selected event actually accepts scans.
+   * starts on Step 1 (select an event), then asks for the ID before scanning.
    */
   function setStepState(activeStep) {
     const steps = els.steps || [];
-    const active = Math.min(3, Math.max(1, Number(activeStep) || 1));
+    const active = Math.min(4, Math.max(1, Number(activeStep) || 1));
     Array.prototype.forEach.call(steps, function (step, index) {
       const stepNumber = index + 1;
       const isCurrent = stepNumber === active;
@@ -444,14 +470,14 @@
         // Keep the scanner disabled while a result is on screen. The Done
         // button clears the overlay and re-runs this renderer.
         els.scanBtn.disabled = true;
-        setStepState(3);
+        setStepState(4);
       } else if (phase === 'live') {
         setScanAvailability(
           true,
           fingerprintSessionActive ? 'Scanner active' : 'Scan Fingerprint',
           fingerprintSessionActive
             ? 'Place your finger on the sensor; the reader stays on until the event ends.'
-            : 'Tap to wake the scanner, then rest your finger on the sensor.'
+            : 'Enter your ID above, then tap Scan Fingerprint.'
         );
         setStepState(2);
         if (fingerprintSessionActive) {
@@ -464,7 +490,7 @@
           setStatus(
             'idle',
             `Ready for ${modeWord}`,
-            'Tap Scan Fingerprint, then rest your finger on the sensor.'
+            'Enter your ID above before scanning.'
           );
         }
         // An event that just became live opens the scanner without a tap;
@@ -594,9 +620,12 @@
   // ── Live counts — checked-in / enrolled / attendance % ──
   function updateCounts() {
     const attendance = getAttendance();
-    const checkedIn = currentEventId
-      ? attendance.filter((a) => sameId(a.eventId, currentEventId) && (a.status === 'present' || a.status === 'late')).length
-      : 0;
+    const eventAttendance = currentEventId
+      ? attendance.filter((a) => sameId(a.eventId, currentEventId) && (a.status === 'present' || a.status === 'late'))
+      : [];
+    const checkedIn = typeof countUniqueAttendance === 'function'
+      ? countUniqueAttendance(eventAttendance)
+      : new Set(eventAttendance.map((a) => String(a.studentId))).size;
 
     els.count.textContent = checkedIn;
 
@@ -777,8 +806,26 @@
     'fingerprint_not_recognized': [
       'no-match',
       'Fingerprint not recognised',
-      'This fingerprint is not enrolled to an active student.',
+      'This scan does not match a student with that ID.',
       'Ask the SSC officer to enroll your fingerprint, or use manual entry.',
+    ],
+    'student_id_not_found': [
+      'no-match',
+      'ID not found',
+      'No active student was found for that ID.',
+      'Check the five digits or enter the full YYYY-NNNNN ID.',
+    ],
+    'fingerprint_not_enrolled': [
+      'no-match',
+      'No fingerprints enrolled',
+      'No fingerprint fingers are enrolled for this student ID.',
+      'Ask the SSC officer to enroll this student before scanning.',
+    ],
+    'fingerprint_enrollment_incomplete': [
+      'no-match',
+      'Enrollment incomplete',
+      'Enrollment is not complete. Please see an officer to finish enrolling.',
+      'Use the manual check-in option with a staff officer.',
     ],
     'fingerprint_already_enrolled': [
       'already',
@@ -1405,8 +1452,11 @@
    */
   function maybeAutoStartFingerprintSession() {
     if (!unlocked || !isApiEnabled()) return;
+    if (!validateStudentIdentifier(false)) return;
     if (busy || fingerprintSessionActive || fingerprintSessionStarting) return;
     if (!fingerprintSdkReady()) return;
+    const event = getEvents().find((item) => sameId(item.id, currentEventId));
+    if (!event || getEventPhase(event, scanMode) !== 'live') return;
 
     const key = `${currentEventId}:${scanMode}`;
     if (fingerprintAutoStartAttempts.has(key)) return;
@@ -1424,7 +1474,7 @@
           'Place your finger on the sensor; the reader stays on until the event ends.'
         );
         setStationState(true, 'Scanner ready');
-        setStepState(2);
+        setStepState(3);
         setStatus('scanning', 'Place your finger', 'Rest your finger on the U.are.U 4500 sensor.');
         resetIdleTimer();
       })
@@ -1436,7 +1486,7 @@
         setScanAvailability(
           true,
           'Scan Fingerprint',
-          'Tap to wake the scanner, then rest your finger on the sensor.'
+          'Enter your ID above, then tap Scan Fingerprint.'
         );
         setStepState(2);
         setStationState(false, 'Scanner offline');
@@ -1465,6 +1515,13 @@
       return;
     }
 
+    const studentIdentifier = validateStudentIdentifier(false);
+    if (!studentIdentifier) {
+      setStudentIdError('Enter your 5-digit ID before scanning.');
+      setStatus('attention', 'Enter student ID', 'Type five digits or the full YYYY-NNNNN ID before placing a finger.');
+      return;
+    }
+
     const samples = event && Array.isArray(event.samples) ? event.samples : [];
     const image = api.encodeFingerprintSample(samples[0]);
     if (!image) {
@@ -1485,7 +1542,7 @@
     setStatus('processing', 'Verifying identity', 'The server is matching the fingerprint.');
 
     try {
-      const record = await api.fingerprintCheckIn(eventRow.id, image, scanMode);
+      const record = await api.fingerprintCheckIn(eventRow.id, studentIdentifier, image, scanMode);
       const action = record.action === 'out' ? 'out' : 'in';
       const stamp = action === 'out'
         ? (record.checkOutTimeLabel || record.time)
@@ -1506,9 +1563,14 @@
       }
       const code = err && err.code ? err.code : 'fingerprint_capture_failed';
       const detail = FINGERPRINT_ERRORS[code] || FINGERPRINT_ERRORS['fingerprint_capture_failed'];
-      showResult(detail[0], detail[1], detail[2], '');
+      const message = code === 'fingerprint_enrollment_incomplete' && err && err.message
+        ? err.message
+        : detail[2];
+      showResult(detail[0], detail[1], message, detail[3]);
       setStatus(detail[0] === 'no-match' ? 'attention' : 'error', detail[1], detail[3]);
     }
+
+    clearStudentIdentifier();
 
     if (!fingerprintSessionActive) {
       busy = false;
@@ -1543,6 +1605,7 @@
       return;
     }
     if (busy) return;
+    if (!validateStudentIdentifier(true)) return;
 
     const event = getEvents().find((e) => sameId(e.id, currentEventId));
     if (!event) {
@@ -1621,9 +1684,14 @@
       showLock('Sign in to unlock this station.');
       return;
     }
-    const id = (rawId || '').trim();
+    const id = String(rawId || '').trim();
     const event = getEvents().find((e) => sameId(e.id, currentEventId));
-    if (!event || !id) return;
+    if (!event) return;
+    if (!validStudentIdentifier(id)) {
+      setStudentIdError('Enter exactly 5 digits, or the full ID in YYYY-NNNNN format.');
+      if (els.studentId) els.studentId.focus();
+      return;
+    }
     const modeTitle = actionTitle(scanMode);
     const modeWord = actionWord(scanMode);
     if (getEventPhase(event, scanMode) !== 'live') {
@@ -1631,18 +1699,25 @@
       return;
     }
 
-    const needle = id.toLowerCase();
-    const student = getUsers().find((u) =>
-      u.role === 'student' && (
-        String(u.id) === id ||
-        String(u.studentIdNumber || '').toLowerCase() === needle ||
-        String(u.email || '').toLowerCase() === needle
-      )
-    );
-    if (!student) {
-      showToast('error', 'Student not found.');
+    const matchingStudents = getUsers().filter((user) => {
+      if (user.role !== 'student' || (user.status && user.status !== 'active')) return false;
+      const stored = String(user.studentIdNumber || '').trim();
+      return id.length === 5
+        ? stored === id || stored.endsWith('-' + id)
+        : stored === id;
+    });
+    if (matchingStudents.length === 0) {
+      setStudentIdError('No active student was found for that ID.');
+      showResult('no-match', 'ID not found', 'No active student was found for that ID.', 'Check the five digits or enter the full YYYY-NNNNN ID.');
       return;
     }
+    if (matchingStudents.length > 1) {
+      setStudentIdError('More than one student shares these digits. Use the full YYYY-NNNNN ID or fingerprint scanning.');
+      showToast('error', 'This 5-digit ID matches multiple students.');
+      return;
+    }
+    setStudentIdError('');
+    const student = matchingStudents[0];
 
     const studentName = student.name || 'Student';
     busy = true;
@@ -1712,7 +1787,7 @@
       els.manualToggle.setAttribute('aria-expanded', 'false');
     }
     if (els.manualBody) els.manualBody.hidden = true;
-    if (els.manualId) els.manualId.placeholder = 'API required';
+    if (els.studentId) els.studentId.placeholder = 'API required';
     setLockMessage(API_REQUIRED_MESSAGE);
     setLockBusy(true);
   }
@@ -1732,6 +1807,8 @@
       scanHint:     $('kioskScanHint'),
       steps:        document.querySelectorAll('.kiosk-steps li'),
       scanBtn:      $('kioskScanBtn'),
+      studentId:    $('kioskStudentId'),
+      studentIdError: $('kioskStudentIdError'),
       scanCtaTitle: $('kioskScanCtaTitle'),
       scanCtaDetail: $('kioskScanCtaDetail'),
       fingerprintState: $('kioskFingerprintState'),
@@ -1750,8 +1827,8 @@
       manualToggle: $('manualToggle'),
       manualBody:   $('manualBody'),
       manualForm:   $('kioskManualForm'),
-      manualId:     $('manualStudentId'),
-      manualInput:  $('manualStudentId'),
+      manualId:     $('kioskStudentId'),
+      manualInput:  $('kioskStudentId'),
       manualSubmit: document.querySelector('#kioskManualForm button[type="submit"]'),
       stationState: $('kioskStationState'),
       stationDot:   $('kioskStationDot'),
@@ -1825,6 +1902,21 @@
         showToast('error', 'The scan did not finish. Please try again.');
         showResult('server-error', 'Scan failed', 'The fingerprint scan did not finish. Please try again.', '');
       });
+    });
+
+    els.studentId.addEventListener('input', () => {
+      const cleaned = els.studentId.value.replace(/[^\d-]/g, '').slice(0, 10);
+      if (cleaned !== els.studentId.value) els.studentId.value = cleaned;
+      const value = String(els.studentId.value || '').trim();
+      if (!value) {
+        setStudentIdError('');
+      } else if (!validStudentIdentifier(value)) {
+        setStudentIdError('Enter exactly 5 digits, or the full ID in YYYY-NNNNN format.');
+      } else {
+        setStudentIdError('');
+        setStepState(2);
+        maybeAutoStartFingerprintSession();
+      }
     });
 
     // The Web SDK pauses scanning when the page loses focus, so resume the

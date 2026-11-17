@@ -4,7 +4,7 @@
   "scripts": {
     "serve": "http-server -p 5173 -c-1",
     "test": "node tools/run-checks.js && npm run test:php",
-    "test:php": "php tools/validator.test.php && php tools/attendance-checkin.api.test.php && php tools/announcement-sync.test.php"
+    "test:php": "php tools/validator.test.php && php tools/fingerprint-enrollment-state.test.php && php tools/attendance-checkin.api.test.php && php tools/announcement-sync.test.php"
   },
   "devDependencies": {
     "http-server": "^14.1.1"

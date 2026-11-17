@@ -2,6 +2,10 @@
 
 ATTENDLY is a modern, secure web application for tracking student attendance at campus events, managing student records, and disciplinary sanctions.
 
+**Fingerprint attendance rule:** A student must have an active account and all
+10 fingers enrolled before using fingerprint attendance. Students with
+incomplete enrollment can still be checked in manually by an officer.
+
 ## Architecture
 
 - **Backend**: PHP 8 (custom front-controller architecture routing through `attendly-backend/public/index.php`), PDO with MySQL / MariaDB (`attendly_seass_db`), robust migration runner (`php db/migrate.php`), session cookie authentication with CSRF protection and rate limiting.
@@ -13,7 +17,7 @@ ATTENDLY is a modern, secure web application for tracking student attendance at 
 1. **Database**: Run `scripts/init-db.sql` in MySQL / phpMyAdmin to create the `attendly_seass_db` database and users.
 2. **Backend Config**: Copy `attendly-backend/config/config.example.php` to `attendly-backend/config/config.php` and configure your database credentials.
 3. **Run Migrations**: `cd attendly-backend && php db/migrate.php`
-4. **Start Backend** (from the repository root): `php -S localhost:8000 -t attendly-backend/public`
+4. **Start Backend** (from the repository root): `php -S localhost:8000 -t attendly-backend/public attendly-backend/router.php`
 5. **Start Frontend** (from the repository root, not inside `student-attendance-system/`): `npm install` then `npm run serve`. The static server serves the repository root on <http://localhost:5173>, so open <http://localhost:5173/index.html> (or a page under `student-attendance-system/pages/`).
 
 ## Known Limitations (Future Work)

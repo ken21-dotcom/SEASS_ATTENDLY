@@ -604,14 +604,18 @@ function applyStudentFilters(students, filters, query) {
   const course = (f.course     || '').trim();
   const year  = (f.yearLevel   || '').trim();
   const block = (f.block       || '').trim();
+  const enrollment = (f.fingerprintEnrollment || '').trim();
   const q     = (query         || '').trim().toLowerCase();
 
   return students.filter(student => {
+    const fingersDone = studentFingerprintFingersCompleted(student);
     const org = normalizeStudentOrg(student);
     if (dept  && org.department !== dept)  return false;
     if (course && org.course    !== course) return false;
     if (year  && org.yearLevel  !== year)  return false;
     if (block && String(student.block || '').trim() !== block) return false;
+    if (enrollment === 'incomplete' && fingersDone >= 10) return false;
+    if (enrollment === 'complete' && fingersDone < 10) return false;
     if (q) {
       const haystack = [student.name, student.id, student.email]
         .map(v => (v || '').toString().toLowerCase());
@@ -619,6 +623,11 @@ function applyStudentFilters(students, filters, query) {
     }
     return true;
   });
+}
+
+function studentFingerprintFingersCompleted(student) {
+  if (student && student.fingerprintEnrolled === true) return 10;
+  return Math.max(0, Math.min(10, Number(student && student.fingerprintFingersCompleted) || 0));
 }
 
 /**

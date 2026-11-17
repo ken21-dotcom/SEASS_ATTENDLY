@@ -48,9 +48,13 @@ final class MatchingService
         if ($key === false || trim($key) === '') {
             $key = (string) ($matching['key'] ?? '');
         }
+        $url = getenv('MATCHING_URL');
+        if ($url === false || trim($url) === '') {
+            $url = (string) ($matching['url'] ?? 'http://127.0.0.1:8090');
+        }
 
         return new self(
-            (string) ($matching['url'] ?? 'http://127.0.0.1:8090'),
+            trim($url),
             trim($key),
             max(1, (int) ($matching['timeout_seconds'] ?? 5))
         );

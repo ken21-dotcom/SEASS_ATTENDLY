@@ -375,6 +375,7 @@ function initAdminManageStudents() {
     departmentFilterId: 'filterDepartment',
     courseFilterId: 'filterCourse',
     yearFilterId: 'filterYear',
+    fingerprintEnrollmentFilterId: 'filterFingerprintEnrollment',
     searchId: 'studentSearch',
     colspan: 7,
     filter: function (student) {
@@ -382,19 +383,21 @@ function initAdminManageStudents() {
     },
     renderRow: function (student) {
       var status = normalizedAccountStatus(student.status);
+      var fingersDone = studentFingerprintFingersCompleted(student);
+      var fingerprintsComplete = fingersDone === 10;
       return '<td>' + escapeHtml(student.name) + '</td>' +
         '<td>' + escapeHtml(student.studentIdNumber || '—') + '</td>' +
         '<td>' + escapeHtml(student.email) + '</td>' +
         '<td>' + yearBadge(student) + '</td>' +
         '<td>' + escapeHtml(student.block || '—') + '</td>' +
         '<td>' + accountStatusBadge(status) +
-          '<div class="small mt-1 ' + (student.fingerprintEnrolled ? 'text-success' : 'text-muted') + '">' +
+          '<div class="small mt-1 ' + (fingerprintsComplete ? 'text-success' : 'text-warning fw-semibold') + '">' +
             '<i class="bi bi-fingerprint"></i> ' +
-            (student.fingerprintEnrolled ? 'Enrolled' : 'Not enrolled') +
+            (fingerprintsComplete ? 'Enrolled' : 'Incomplete: ' + fingersDone + '/10 fingers') +
           '</div></td>' +
         '<td>' +
           '<button class="btn btn-sm btn-outline-secondary me-1" onclick="editStudent(\'' + escapeHtml(student.id) + '\')"><i class="bi bi-pencil"></i> Edit</button>' +
-          '<button class="btn btn-sm btn-outline-success me-1" onclick="enrollStudentFingerprint(\'' + escapeHtml(student.id) + '\')" title="Capture a fingerprint template for this student"><i class="bi bi-fingerprint"></i> Enroll Fingerprint</button>' +
+          '<button class="btn btn-sm btn-outline-success me-1" onclick="enrollStudentFingerprint(\'' + escapeHtml(student.id) + '\')" title="Enroll or re-do one of this student\'s ten fingers"><i class="bi bi-fingerprint"></i> Manage Fingerprints</button>' +
           (status === 'active'
             ? '<button class="btn btn-sm btn-outline-warning" onclick="deactivateStudent(\'' + escapeHtml(student.id) + '\')"><i class="bi bi-pause"></i> Deactivate</button>'
             : '<button class="btn btn-sm btn-outline-success" onclick="reactivateStudent(\'' + escapeHtml(student.id) + '\')"><i class="bi bi-play"></i> Reactivate</button>') +

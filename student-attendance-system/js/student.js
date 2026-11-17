@@ -439,8 +439,19 @@ function hasEventEnded(event, now = new Date()) {
   return end <= now;
 }
 
+function countDistinctAttendedEvents(attendance) {
+  const eventIds = new Set();
+  (attendance || []).forEach(record => {
+    if (!record || record.eventId == null) return;
+    if (record.status === 'present' || record.status === 'late') {
+      eventIds.add(String(record.eventId));
+    }
+  });
+  return eventIds.size;
+}
+
 function calculateAttendanceRate(events, attendance, now = new Date()) {
-  const presentCount = attendance.filter(record => record.status === 'present' || record.status === 'late').length;
+  const presentCount = countDistinctAttendedEvents(attendance);
   const completedEvents = events.filter(event => hasEventEnded(event, now));
   const totalEvents = Math.max(completedEvents.length, presentCount);
   return totalEvents ? Math.round((presentCount / totalEvents) * 100) : 0;
@@ -461,7 +472,7 @@ function loadStudentDashboard(user) {
       dashboardAttendanceByEvent[String(record.eventId)] = record;
     }
   });
-  const presentCount = attendance.filter(record => record.status === 'present' || record.status === 'late').length;
+  const presentCount = countDistinctAttendedEvents(attendance);
   // Future events are not absences, so only events that have already ended
   // count in the denominator; otherwise the rate falls as more of the
   // semester is scheduled.

@@ -92,6 +92,14 @@
 
           <p class="kiosk-countdown" id="kioskCountdown" hidden aria-live="polite"></p>
 
+          <div class="kiosk-student-id-wrap">
+            <label for="kioskStudentId">Student ID</label>
+            <input type="text" id="kioskStudentId" class="kiosk-student-id-input" inputmode="numeric"
+              autocomplete="off" maxlength="10" placeholder="Enter your 5-digit ID" aria-describedby="kioskStudentIdHint kioskStudentIdError">
+            <small id="kioskStudentIdHint">Enter your 5-digit ID. Full IDs like 2025-12345 also work.</small>
+            <small id="kioskStudentIdError" class="kiosk-student-id-error" role="alert" hidden></small>
+          </div>
+
           <div class="kiosk-scan-layout">
             <div class="kiosk-scanner" id="kioskScanner" data-state="idle">
               <button class="kiosk-scan-button" id="kioskScanBtn" type="button" aria-describedby="kioskScanHint" disabled>
@@ -109,7 +117,7 @@
                 </span>
                 <span class="kiosk-scan-cta">
                   <strong id="kioskScanCtaTitle">Scan Fingerprint</strong>
-                  <small id="kioskScanCtaDetail">Select an event to enable the scanner.</small>
+                  <small id="kioskScanCtaDetail">Select an event and enter your ID first.</small>
                 </span>
               </button>
 
@@ -124,8 +132,9 @@
 
             <ol class="kiosk-steps" aria-label="Attendance instructions">
               <li class="is-current"><span>1</span><div><strong>Select your event</strong><small>Confirm the event and scan mode above.</small></div></li>
-              <li><span>2</span><div><strong>Scan your fingerprint</strong><small>Tap the scanner, then rest your finger on the sensor.</small></div></li>
-              <li><span>3</span><div><strong>Wait for confirmation</strong><small>A green screen means your attendance is recorded.</small></div></li>
+              <li><span>2</span><div><strong>Enter your ID</strong><small>Type five digits or the full student ID.</small></div></li>
+              <li><span>3</span><div><strong>Scan your fingerprint</strong><small>Rest your finger on the U.are.U 4500 sensor.</small></div></li>
+              <li><span>4</span><div><strong>Wait for confirmation</strong><small>A green screen means your attendance is recorded.</small></div></li>
             </ol>
           </div>
 
@@ -167,15 +176,13 @@
 
           <section class="kiosk-manual" id="manualPanel">
             <button class="kiosk-manual-toggle" id="manualToggle" aria-expanded="true" aria-controls="manualBody" type="button">
-              <span><i class="bi bi-keyboard"></i><span><strong>Manual Entry</strong><small>Type student ID or email</small></span></span>
+              <span><i class="bi bi-keyboard"></i><span><strong>Manual Entry</strong><small>Use the ID above if the scanner is unavailable</small></span></span>
               <i class="bi bi-chevron-down kiosk-manual-chevron"></i>
             </button>
             <div class="kiosk-manual-body" id="manualBody">
               <p class="kiosk-manual-note">Use only when the fingerprint scanner is unavailable. The selected mode (check-in or check-out) is recorded.</p>
               <form id="kioskManualForm" class="kiosk-manual-form">
-                <label for="manualStudentId" class="visually-hidden">Student ID or email</label>
-                <input type="text" id="manualStudentId" class="kiosk-manual-input" placeholder="Student ID or email" autocomplete="off" inputmode="email">
-                <button type="submit" class="kiosk-manual-submit"><i class="bi bi-arrow-right"></i><span class="visually-hidden">Record attendance</span></button>
+                <button type="submit" class="kiosk-manual-submit"><i class="bi bi-arrow-right"></i><span>Record manually</span></button>
               </form>
             </div>
           </section>

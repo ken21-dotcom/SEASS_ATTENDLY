@@ -52,8 +52,8 @@ function event(id, date, endTime) {
   return { id, date, endTime };
 }
 
-function record(status) {
-  return { studentId: 1, status };
+function record(status, eventId = 'e1') {
+  return { studentId: 1, eventId, status };
 }
 
 function rate(events, attendance) {
@@ -122,8 +122,25 @@ ok(
       event('e2', '2026-10-08', '17:00'),
       event('e3', '2026-10-15', '17:00'),
     ],
-    [record('present'), record('late')]
+    [record('present', 'e1'), record('late', 'e2')]
   ) === 67
+);
+ok(
+  'AM and PM rows for one four-point event count once, while another completed event counts as an absence',
+  rate(
+    [event('four-point', '2026-10-01', '17:00'), event('missed', '2026-10-08', '17:00')],
+    [
+      Object.assign(record('present'), { eventId: 'four-point' }),
+      Object.assign(record('present'), { eventId: 'four-point' }),
+    ]
+  ) === 50
+);
+ok(
+  'student dashboard present total counts one attended event once across AM and PM rows',
+  context.countDistinctAttendedEvents([
+    Object.assign(record('present'), { eventId: 'four-point' }),
+    Object.assign(record('present'), { eventId: 'four-point' }),
+  ]) === 1
 );
 
 section('Dashboard wires the helper in');

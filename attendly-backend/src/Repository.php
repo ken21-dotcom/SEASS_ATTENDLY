@@ -21,6 +21,11 @@ require_once __DIR__ . '/MatchingService.php';
 
 final class Repository
 {
+    private const FINGERPRINT_FINGERS = [
+        'left-thumb', 'left-index', 'left-middle', 'left-ring', 'left-little',
+        'right-thumb', 'right-index', 'right-middle', 'right-ring', 'right-little',
+    ];
+
     private ?MatchingService $matching = null;
 
     /**
@@ -212,7 +217,7 @@ final class Repository
                         u.must_change_password,
                         s.student_id_number, s.first_name, s.last_name, s.department,
                         s.program, s.year_level, s.block,
-                        (s.fingerprint_template IS NOT NULL) AS fingerprint_enrolled,
+                        s.fingerprint_template,
                         s.approved_by, s.approved_at
                  FROM users u
                  LEFT JOIN students s ON s.user_id = u.id
@@ -244,7 +249,7 @@ final class Repository
                        u.must_change_password,
                        s.student_id_number, s.first_name, s.last_name, s.department,
                        s.program, s.year_level, s.block,
-                       (s.fingerprint_template IS NOT NULL) AS fingerprint_enrolled,
+                       s.fingerprint_template,
                        s.approved_by, s.approved_at,
                        o.position, o.status AS officer_status
                 FROM users u
@@ -557,7 +562,7 @@ final class Repository
                     u.status, u.must_change_password,
                     s.student_id_number, s.first_name, s.last_name, s.department,
                     s.program, s.year_level, s.block,
-                    (s.fingerprint_template IS NOT NULL) AS fingerprint_enrolled,
+                    s.fingerprint_template,
                     s.approved_by, s.approved_at,
                     o.position, o.status AS officer_status
              FROM users u
@@ -575,17 +580,20 @@ final class Repository
     }
 
     /**
-     * Turn four captured PNG samples into SourceAFIS templates and store
-     * them as a JSON array. Images are sent to the local matching service
-     * one at a time and are never written to the database or a log.
+     * Turn one or more captured PNG samples into templates for one named
+     * finger. Images go to the local matching service and are never stored.
      *
-     * @param string[] $images four base64 PNG samples
+     * @param string[] $images base64 PNG samples for this finger
      */
-    public function enrollFingerprint(int $studentId, array $images, array $actor): array
+    public function enrollFingerprint(int $studentId, string $finger, array $images, array $actor): array
     {
+        $finger = strtolower(trim($finger));
+        if (!in_array($finger, self::FINGERPRINT_FINGERS, true)) {
+            Response::fail('invalid_field', 'Field "finger" must identify one of the ten fingers.', 422);
+        }
         $images = array_values($images);
-        if (count($images) !== 4) {
-            Response::fail('invalid_field', 'Field "images" must contain exactly four fingerprint images.', 422);
+        if (count($images) < 1 || count($images) > 10) {
+            Response::fail('invalid_field', 'Field "images" must contain 1 to 10 scans for this finger.', 422);
         }
         foreach ($images as $index => $image) {
             if (!is_string($image) || trim($image) === '') {
@@ -635,20 +643,30 @@ final class Repository
             Response::fail('matching_service_unavailable', $e->getMessage(), 503);
         }
 
-        $encoded = json_encode($templates, JSON_THROW_ON_ERROR);
+        $current = $this->db->prepare('SELECT fingerprint_template FROM students WHERE user_id = :student_id');
+        $current->execute(['student_id' => $studentId]);
+        $entries = $this->decodeFingerprintEntries($current->fetchColumn());
+        $entries = $this->replaceFingerprintEntry($entries, $finger, $templates);
+
+        $encoded = json_encode($entries, JSON_THROW_ON_ERROR);
         $update = $this->db->prepare(
             'UPDATE students SET fingerprint_template = :templates WHERE user_id = :student_id'
         );
         $update->execute(['templates' => $encoded, 'student_id' => $studentId]);
 
         $studentName = trim((string) ($student['first_name'] ?? '') . ' ' . (string) ($student['last_name'] ?? ''));
+        $completed = $this->completedFingerprintFingers($entries);
+        $enrolled = count($completed) === count(self::FINGERPRINT_FINGERS);
 
         return [
             'ok' => true,
             'studentId' => $studentId,
             'studentName' => $studentName,
-            'fingerprintEnrolled' => true,
-            'message' => ($studentName !== '' ? $studentName : 'Student') . ' fingerprint enrolled.',
+            'fingerprintEnrolled' => $enrolled,
+            'fingerprintFingersCompleted' => count($completed),
+            'enrolledFingers' => $completed,
+            'message' => ($studentName !== '' ? $studentName : 'Student') . ' — '
+                . count($completed) . '/' . count(self::FINGERPRINT_FINGERS) . ' fingers enrolled.',
         ];
     }
 
@@ -694,9 +712,13 @@ final class Repository
     }
 
     /**
-     * @return string[]
+     * Decode both the legacy flat template list and the named-finger format.
+     * Legacy templates are retained as one unknown-finger entry and remain
+     * usable for identification, but they do not count toward 10/10.
+     *
+     * @return array<int,array{finger:?string,templates:string[]}>
      */
-    private function decodeFingerprintTemplates(mixed $raw): array
+    private function decodeFingerprintEntries(mixed $raw): array
     {
         if (!is_string($raw) || trim($raw) === '') {
             return [];
@@ -706,13 +728,88 @@ final class Repository
             return [];
         }
 
-        $templates = [];
-        foreach ($decoded as $template) {
-            if (is_string($template) && trim($template) !== '') {
-                $templates[] = trim($template);
+        $isList = $decoded === []
+            || array_keys($decoded) === range(0, count($decoded) - 1);
+        $isLegacy = $isList;
+        if ($isLegacy) {
+            foreach ($decoded as $item) {
+                if (!is_string($item)) {
+                    $isLegacy = false;
+                    break;
+                }
             }
         }
+        if ($isLegacy) {
+            $templates = array_values(array_filter(
+                array_map(static fn($template): string => is_string($template) ? trim($template) : '', $decoded),
+                static fn(string $template): bool => $template !== ''
+            ));
+            return $templates !== [] ? [['finger' => null, 'templates' => $templates]] : [];
+        }
+
+        $entries = [];
+        foreach ($decoded as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $finger = isset($entry['finger']) && is_string($entry['finger'])
+                ? strtolower(trim($entry['finger']))
+                : null;
+            if ($finger !== null && !in_array($finger, self::FINGERPRINT_FINGERS, true)) {
+                continue;
+            }
+            $rawTemplates = $entry['templates'] ?? null;
+            if (!is_array($rawTemplates)) {
+                continue;
+            }
+            $templates = array_values(array_filter(
+                array_map(static fn($template): string => is_string($template) ? trim($template) : '', $rawTemplates),
+                static fn(string $template): bool => $template !== ''
+            ));
+            if ($templates !== []) {
+                $entries[] = ['finger' => $finger, 'templates' => $templates];
+            }
+        }
+        return $entries;
+    }
+
+    /** @param array<int,array{finger:?string,templates:string[]}> $entries */
+    private function decodeFingerprintTemplates(mixed $raw): array
+    {
+        $templates = [];
+        foreach ($this->decodeFingerprintEntries($raw) as $entry) {
+            array_push($templates, ...$entry['templates']);
+        }
         return $templates;
+    }
+
+    /** @param array<int,array{finger:?string,templates:string[]}> $entries
+     *  @return string[]
+     */
+    private function completedFingerprintFingers(array $entries): array
+    {
+        $completed = [];
+        foreach ($entries as $entry) {
+            if ($entry['finger'] !== null && $entry['templates'] !== []) {
+                $completed[$entry['finger']] = true;
+            }
+        }
+        return array_values(array_filter(self::FINGERPRINT_FINGERS, static fn(string $finger): bool => isset($completed[$finger])));
+    }
+
+    /** @param array<int,array{finger:?string,templates:string[]}> $entries
+     *  @param string[] $templates
+     *  @return array<int,array{finger:?string,templates:string[]}> */
+    private function replaceFingerprintEntry(array $entries, string $finger, array $templates): array
+    {
+        foreach ($entries as $index => $entry) {
+            if ($entry['finger'] === $finger) {
+                $entries[$index] = ['finger' => $finger, 'templates' => array_values($templates)];
+                return $entries;
+            }
+        }
+        $entries[] = ['finger' => $finger, 'templates' => array_values($templates)];
+        return $entries;
     }
 
     public function updateStudentProfile(int $userId, array $input): array
@@ -2380,13 +2477,10 @@ final class Repository
         );
     }
 
-    /**
-     * Match one captured fingerprint image against the active students who
-     * are eligible for the event, then record a check-in or check-out
-     * through the shared attendance policy engine.
-     */
+    /** Match a scan only against the active student(s) found by the kiosk ID. */
     public function checkInByFingerprint(
         int $eventId,
+        string $studentIdentifier,
         string $fingerprintImage,
         string $action = 'in',
         int $openMinutesBefore = 30,
@@ -2396,6 +2490,7 @@ final class Repository
         int $checkoutOpenMinutesBeforeEnd = 60,
         int $checkoutCloseMinutesAfterEnd = 60
     ): array {
+        $studentIdentifier = Validator::kioskStudentIdentifier($studentIdentifier);
         $action = strtolower(trim($action));
         if (!in_array($action, ['in', 'out'], true)) {
             Response::fail('invalid_field', 'Field "action" must be "in" or "out".', 422);
@@ -2409,9 +2504,33 @@ final class Repository
             Response::fail('invalid_field', 'Fingerprint image is too large.', 422);
         }
 
-        // Candidate scope follows the event audience: a department-targeted
-        // event only compares against students from that department. This
-        // keeps the kiosk from identifying students who could not attend.
+        // A five-digit identifier can match several legacy year-prefixed
+        // records. Keep every suffix match as a candidate and let the scan
+        // resolve the identity; never choose the first row by ID alone.
+        $studentSql = 'SELECT u.id, u.role, u.status, s.first_name, s.last_name,
+                              s.department, s.student_id_number, s.fingerprint_template
+                       FROM students s
+                       JOIN users u ON u.id = s.user_id
+                       WHERE u.role = \'student\' AND u.status = \'active\' AND ';
+        if (preg_match('/^\d{4}-\d{5}$/D', $studentIdentifier) === 1) {
+            $studentSql .= 's.student_id_number = :student_id_number';
+        } else {
+            $studentSql .= '(s.student_id_number = :student_id_number
+                            OR RIGHT(s.student_id_number, 6) = CONCAT(\'-\', :student_id_suffix))';
+        }
+        $studentStmt = $this->db->prepare($studentSql);
+        $studentParams = ['student_id_number' => $studentIdentifier];
+        if (preg_match('/^\d{5}$/D', $studentIdentifier) === 1) {
+            $studentParams['student_id_suffix'] = $studentIdentifier;
+        }
+        $studentStmt->execute($studentParams);
+        $matchedStudents = $studentStmt->fetchAll();
+        if ($matchedStudents === []) {
+            Response::fail('student_id_not_found', 'No active student was found for that ID.', 404);
+        }
+
+        // Candidate scope follows the event audience: department-targeted
+        // events only compare eligible students for this ID.
         $eventStmt = $this->db->prepare(
             'SELECT target_department FROM events WHERE id = :id LIMIT 1'
         );
@@ -2422,31 +2541,40 @@ final class Repository
         }
         $targetDepartment = trim((string) ($event['target_department'] ?? ''));
 
-        $sql = 'SELECT u.id, u.role, u.status, s.first_name, s.last_name, s.department,
-                       s.fingerprint_template
-                FROM students s
-                JOIN users u ON u.id = s.user_id
-                WHERE s.fingerprint_template IS NOT NULL
-                  AND u.role = \'student\'
-                  AND u.status = \'active\'';
-        $params = [];
-        if ($targetDepartment !== '') {
-            $sql .= ' AND s.department = :department';
-            $params['department'] = $targetDepartment;
-        }
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-
         $students = [];
         $candidates = [];
-        foreach ($stmt->fetchAll() as $row) {
+        $fingerCounts = [];
+        $eligibleCount = 0;
+        foreach ($matchedStudents as $row) {
+            if (!$this->eventTargetsDepartment($targetDepartment, (string) ($row['department'] ?? ''))) {
+                continue;
+            }
+            $eligibleCount++;
+            $entries = $this->decodeFingerprintEntries($row['fingerprint_template'] ?? null);
+            $completed = $this->completedFingerprintFingers($entries);
             $templates = $this->decodeFingerprintTemplates($row['fingerprint_template'] ?? null);
+            $id = (int) $row['id'];
+            $fingerCounts[$id] = count($completed);
+            $students[$id] = $row;
             if ($templates === []) {
                 continue;
             }
-            $id = (int) $row['id'];
-            $students[$id] = $row;
             $candidates[] = ['id' => $id, 'templates' => $templates];
+        }
+
+        if ($eligibleCount === 0) {
+            Response::fail('not_eligible', 'This event is not open to the selected student department.', 403);
+        }
+        if (count($matchedStudents) === 1 && ($fingerCounts[(int) $matchedStudents[0]['id']] ?? 0) < 10) {
+            $completedCount = $fingerCounts[(int) $matchedStudents[0]['id']] ?? 0;
+            Response::fail(
+                'fingerprint_enrollment_incomplete',
+                "Enrollment incomplete ({$completedCount}/10 fingers). Please see an officer to finish enrolling.",
+                409
+            );
+        }
+        if ($candidates === []) {
+            Response::fail('fingerprint_not_enrolled', 'No fingerprint templates are available for that ID. Enter the full ID or see an officer.', 409);
         }
 
         $matchedId = null;
@@ -2473,12 +2601,19 @@ final class Repository
         }
 
         if ($matchedId === null || !isset($students[$matchedId])) {
-            // One answer covers an unknown finger and a deactivated student,
-            // so the kiosk cannot use this endpoint to enumerate enrollments.
             Response::fail(
                 'fingerprint_not_recognized',
-                'This fingerprint is not enrolled to an active student.',
+                'This scan does not match a student with that ID.',
                 404
+            );
+        }
+
+        $completedCount = $fingerCounts[$matchedId] ?? 0;
+        if ($completedCount < 10) {
+            Response::fail(
+                'fingerprint_enrollment_incomplete',
+                "Enrollment incomplete ({$completedCount}/10 fingers). Please see an officer to finish enrolling.",
+                409
             );
         }
 
@@ -2978,6 +3113,10 @@ final class Repository
                 ?? trim((string) $department);
         }
 
+        $enrolledFingers = $this->completedFingerprintFingers(
+            $this->decodeFingerprintEntries($row['fingerprint_template'] ?? null)
+        );
+
         return [
             'id'                 => (int) $row['id'],
             'publicId'           => $row['public_id'] ?? null,
@@ -2994,7 +3133,9 @@ final class Repository
             'program'            => $program,
             'yearLevel'          => $row['year_level'] ?? null,
             'block'              => $row['block'] ?? null,
-            'fingerprintEnrolled' => (bool) (int) ($row['fingerprint_enrolled'] ?? 0),
+            'fingerprintEnrolled' => count($enrolledFingers) === count(self::FINGERPRINT_FINGERS),
+            'fingerprintFingersCompleted' => count($enrolledFingers),
+            'enrolledFingers' => $enrolledFingers,
             'approvedBy'         => isset($row['approved_by']) && $row['approved_by'] !== null
                 ? (int) $row['approved_by']
                 : null,

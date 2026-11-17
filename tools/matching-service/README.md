@@ -187,9 +187,11 @@ default; the same three files can be used with the curl example above.
   backend and sent in each `/identify` request.
 - Binding to `127.0.0.1` is deliberate: only local processes can call it.
 
-## Notes for later integration
+## ATTENDLY integration
 
-The PHP backend currently returns a placeholder from `matchingServiceEnroll()`
-and does not call this service. Wiring it up means: `POST /template` per capture,
-store the base64 template instead of the image, and `POST /identify` with the
-probe plus the enrolled templates — none of which is done here.
+The PHP backend calls `POST /template` for enrollment images and stores only
+the returned base64 templates in `students.fingerprint_template`. At kiosk
+check-in it calls `POST /identify` with only students selected by the typed ID.
+If a five-digit suffix matches multiple stored IDs, all eligible students are
+sent as candidates and the fingerprint match resolves the identity. Images
+remain in memory for the request and are discarded.

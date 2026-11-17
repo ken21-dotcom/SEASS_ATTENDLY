@@ -396,18 +396,20 @@ var api = {
    * server turns each image into a template and discards the image.
    *
    * @param {number|string} studentId user id of the student
-   * @param {string[]} fingerprintImages four base64 PNG samples
+   * @param {string} finger stable key such as `left-thumb`
+   * @param {string[]} fingerprintImages base64 PNG samples for that finger
    * @returns {Promise<{ok:boolean,studentId:number,studentName:string,fingerprintEnrolled:boolean}>}
    */
-  enrollFingerprint: function (studentId, fingerprintImages) {
+  enrollFingerprint: function (studentId, finger, fingerprintImages) {
     return request('/users/enroll-fingerprint', {
       method: 'POST',
       body: {
         studentId: studentId,
+        finger: finger,
         images: fingerprintImages,
       },
       validate: function (result) {
-        return !!result && result.ok === true && result.fingerprintEnrolled === true;
+        return !!result && result.ok === true && Number.isInteger(result.fingerprintFingersCompleted);
       },
     });
   },
@@ -617,21 +619,22 @@ var api = {
 
 
   /**
-   * Match a captured fingerprint template at the kiosk and record the
-   * check-in or check-out. The server resolves the student; the browser
-   * never sends a name or id.
+   * Match a captured fingerprint against the student candidates found by
+   * the kiosk ID and record check-in or check-out.
    *
    * @param {number|string} eventId
+   * @param {string} studentIdNumber 5 digits or full YYYY-NNNNN
    * @param {string} fingerprintImage one base64 PNG sample
    * @param {string} [action='in'] 'in' or 'out'
    * @returns {Promise<Object>} the attendance row plus studentName/action
    */
-  fingerprintCheckIn: function (eventId, fingerprintImage, action) {
+  fingerprintCheckIn: function (eventId, studentIdNumber, fingerprintImage, action) {
     return request('/attendance/fingerprint', {
       method: 'POST',
       anonymous: true,
       body: {
         eventId: eventId,
+        studentIdNumber: studentIdNumber,
         image: fingerprintImage,
         action: action === 'out' ? 'out' : 'in',
       },

@@ -244,6 +244,63 @@
   cursor: pointer;
 }
 
+.finger-enroll-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 620px;
+  margin: 16px auto 0;
+  text-align: left;
+}
+.finger-enroll-hand {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-input);
+}
+.finger-enroll-hand h6 {
+  margin: 0 0 8px;
+  color: var(--color-text-heading);
+  font-size: .75rem;
+  font-weight: 750;
+}
+.finger-enroll-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: .76rem;
+  text-align: left;
+  cursor: pointer;
+}
+.finger-enroll-choice:hover:not(:disabled) { background: var(--color-bg-card); }
+.finger-enroll-choice:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 1px; }
+.finger-enroll-choice.is-selected { border-color: var(--brand-500); background: var(--color-bg-success-light); }
+.finger-enroll-choice.is-done small { color: var(--color-text-success, #0e9f6e); font-weight: 700; }
+.finger-enroll-choice:disabled { cursor: default; opacity: .72; }
+.finger-enroll-choice small { color: var(--color-text-muted); font-size: .65rem; white-space: nowrap; }
+.finger-enroll-count {
+  margin: 10px 0 0;
+  color: var(--color-text-heading);
+  font-size: .82rem;
+  font-weight: 750;
+}
+@media (max-width: 575.98px) {
+  .finger-enroll-picker { gap: 8px; }
+  .finger-enroll-hand { padding: 8px; }
+  .finger-enroll-choice { display: block; padding: 6px; }
+  .finger-enroll-choice small { display: block; margin-top: 2px; }
+}
+
 .fingerprint-enroll-progress {
   max-width: 470px;
   margin: 18px auto 8px;
@@ -274,6 +331,17 @@
   margin: 0 0 10px;
   font-size: .82rem;
   color: var(--color-text-secondary);
+}
+.fingerprint-enroll-status.is-incomplete {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-bg-warning-light, #fffbeb);
+  color: var(--color-text-warning, #92400e);
+  font-weight: 700;
+}
+.fingerprint-enroll-status.is-complete {
+  color: var(--color-text-success, #0e9f6e);
+  font-weight: 700;
 }
 .fingerprint-enroll-help {
   margin: 0;

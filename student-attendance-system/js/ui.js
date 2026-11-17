@@ -553,6 +553,7 @@ function emptyTableRow(colspan, title, hint, icon) {
  * @param {string}   [opts.courseFilterId='filterCourse']
  * @param {string}   [opts.yearFilterId='filterYear']
  * @param {string}   [opts.blockFilterId='filterBlock']
+ * @param {string}   [opts.fingerprintEnrollmentFilterId]
  * @param {string}   [opts.searchId='studentSearch']
  * @param {number}   [opts.colspan=5]
  * @param {function(object):boolean} [opts.filter] - optional extra student predicate
@@ -566,6 +567,9 @@ function initGroupedStudentList(opts) {
   const courseSel = document.getElementById(opts.courseFilterId   || 'filterCourse');
   const yearSel   = document.getElementById(opts.yearFilterId     || 'filterYear');
   const blockSel  = document.getElementById(opts.blockFilterId    || 'filterBlock');
+  const enrollmentSel = opts.fingerprintEnrollmentFilterId
+    ? document.getElementById(opts.fingerprintEnrollmentFilterId)
+    : null;
   const searchEl  = document.getElementById(opts.searchId         || 'studentSearch');
   const colspan   = opts.colspan || 5;
   const taxonomy  = getStudentOrgTaxonomy();
@@ -580,6 +584,10 @@ function initGroupedStudentList(opts) {
     yearSel.innerHTML = '<option value="">All Year Levels</option>' +
       taxonomy.yearLevels.map(y => `<option value="${escapeHtml(y)}">${escapeHtml(getStudentYearLabel(y))}</option>`).join('') +
       `<option value="${UNASSIGNED}">${UNASSIGNED}</option>`;
+  }
+  if (enrollmentSel) {
+    enrollmentSel.innerHTML = '<option value="">All enrollment statuses</option>' +
+      '<option value="incomplete">Incomplete enrollment</option>';
   }
 
   // Course options follow the currently selected Department.
@@ -608,6 +616,7 @@ function initGroupedStudentList(opts) {
       course:     courseSel ? courseSel.value : '',
       yearLevel:  yearSel   ? yearSel.value  : '',
       block:      blockSel  ? blockSel.value : '',
+      fingerprintEnrollment: enrollmentSel ? enrollmentSel.value : '',
       query:      searchEl  ? searchEl.value : '',
     };
   }
@@ -705,6 +714,7 @@ function initGroupedStudentList(opts) {
   if (courseSel) courseSel.addEventListener('change', render);
   if (yearSel)   yearSel.addEventListener('change', render);
   if (blockSel)  blockSel.addEventListener('change', render);
+  if (enrollmentSel) enrollmentSel.addEventListener('change', render);
   if (searchEl)  searchEl.addEventListener('input', render);
 
   fillCourseOptions(deptSel ? deptSel.value : '');

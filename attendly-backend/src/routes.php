@@ -54,6 +54,10 @@ function attendly_route(string $path, string $method, array $ctx): array
 
         return $repo->checkInByFingerprint(
             Response::requireBodyId($body, 'eventId'),
+            \Attendly\Validator::kioskStudentIdentifier(
+                $body['studentIdNumber'] ?? null,
+                'studentIdNumber'
+            ),
             Response::requireString($body, 'image'),
             $action,
             (int) ($ctx['config']['tunables']['checkin_open_minutes_before'] ?? 30),
@@ -191,10 +195,11 @@ function attendly_route(string $path, string $method, array $ctx): array
             $body = Response::body();
             $images = $body['images'] ?? null;
             if (!is_array($images)) {
-                Response::fail('invalid_field', 'Field "images" must be an array of four fingerprint images.', 422);
+                Response::fail('invalid_field', 'Field "images" must be an array of scans for one finger.', 422);
             }
             return $repo->enrollFingerprint(
                 Response::requireBodyId($body, 'studentId'),
+                Response::requireString($body, 'finger'),
                 $images,
                 $actor
             );
