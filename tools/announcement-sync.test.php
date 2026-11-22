@@ -27,6 +27,7 @@ $passed = 0;
 $failed = 0;
 $eventIds = [];
 $notificationIds = [];
+$tempUserIds = [];
 
 function test(string $name, callable $fn): void
 {
@@ -57,19 +58,25 @@ function announcement_titles(array $rows): array
 }
 
 try {
-    $userId = (int) $db->query(
-        "SELECT id FROM users WHERE status = 'active' ORDER BY id LIMIT 1"
-    )->fetchColumn();
-    if ($userId <= 0) {
-        throw new RuntimeException('No active user exists to receive a test announcement.');
-    }
+    // ── Create a temporary SSC officer user for this test run ────────
+    // The defense database may be empty except for the admin, so the test
+    // must be self-contained: create a temp user + ssc_officers row, run
+    // the assertions, then delete them in the finally block.
+    $db->exec(
+        "INSERT INTO users (role, email, display_name, password_hash, status)
+         VALUES ('ssc_officer', '__test_officer__@test.local', 'Test Officer',
+                 'not-a-real-hash', 'active')"
+    );
+    $creatorId = (int) $db->lastInsertId();
+    $tempUserIds[] = $creatorId;
 
-    $creatorId = (int) $db->query(
-        'SELECT user_id FROM ssc_officers ORDER BY user_id LIMIT 1'
-    )->fetchColumn();
-    if ($creatorId <= 0) {
-        throw new RuntimeException('No SSC officer exists to own a test event.');
-    }
+    $db->prepare(
+        "INSERT INTO ssc_officers (user_id, position, status)
+         VALUES (:uid, 'Test Position', 'approved')"
+    )->execute(['uid' => $creatorId]);
+
+    // The test notification recipient can be the same temp user.
+    $userId = $creatorId;
 
     $insertEvent = $db->prepare(
         "INSERT INTO events
@@ -193,6 +200,12 @@ try {
             $placeholders = implode(',', array_fill(0, count($eventIds), '?'));
             $cleanup = $db->prepare('DELETE FROM events WHERE id IN (' . $placeholders . ')');
             $cleanup->execute($eventIds);
+        }
+        // Remove temp SSC officer + user (CASCADE removes ssc_officers row).
+        if ($tempUserIds !== []) {
+            $placeholders = implode(',', array_fill(0, count($tempUserIds), '?'));
+            $cleanup = $db->prepare('DELETE FROM users WHERE id IN (' . $placeholders . ')');
+            $cleanup->execute($tempUserIds);
         }
     } catch (Throwable $e) {
         fwrite(STDERR, 'cleanup warning: ' . $e->getMessage() . "\n");

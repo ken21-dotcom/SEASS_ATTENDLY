@@ -195,11 +195,11 @@ function workingApi() {
   ok('kiosk has an inactivity auto-lock', /AUTO_LOCK_MS/.test(kioskJs) && /lockStation\(/.test(kioskJs));
   ok('kiosk locks on an expired session', /isSessionError\(err\)/.test(kioskJs));
 
-  ok('ssc event create is gated on isApiEnabled', /function syncEventToServer[\s\S]*?if \(!isApiEnabled\(\)\) return;/.test(sscJs));
+  ok('ssc event create helper was removed (server-only now)', !/function syncEventToServer/.test(sscJs));
   ok('ssc event delete is gated on isApiEnabled and numeric ids',
     sscJs.includes('function syncEventDeleteToServer') &&
     sscJs.includes('if (!isApiEnabled() || !/^\\d+$/.test(String(eventId))) return;'));
-  ok('ssc create adopts the server row', /Object\.assign\(\{\}, e, saved\)/.test(sscJs));
+
 
   ok('API login hydrates before redirecting', /await hydrateFromApi\(\)/.test(authSource));
   ok('partial hydration failure is reported', /hydration\.failed\.length/.test(authSource));
@@ -225,7 +225,6 @@ function workingApi() {
   ok('coverage no longer lists a student create path', !/student create/.test(apiSrc));
 
   const syncedWrites = [
-    ['event create is wired', /function syncEventToServer/.test(sscJs)],
     ['event delete is wired', /function syncEventDeleteToServer/.test(sscJs)],
     ['kiosk manual check-in is wired', /api\.manualCheckIn\(/.test(kioskJs)],
   ];

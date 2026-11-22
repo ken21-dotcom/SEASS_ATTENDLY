@@ -161,11 +161,6 @@ function hashPassword(plain) {
   return sha256Hex(String(plain));
 }
 
-/** True when a stored (SHA-256 hex) value matches the typed password. */
-function passwordMatches(plain, stored) {
-  return typeof stored === 'string' && stored === hashPassword(plain);
-}
-
 /** A stored SHA-256 digest is always 64 lowercase hex chars. */
 const HASHED_PASSWORD_RE = /^[a-f0-9]{64}$/;
 
@@ -279,15 +274,6 @@ function initStorage() {
   localStorage.setItem(STORAGE_KEYS.dataVersion, DATA_VERSION);
 }
 
-/**
- * Erase every local record and start over. Accounts and their sessions
- * live in the backend, so this only clears the browser cache.
- */
-function resetAllData() {
-  clearAllAppData();
-  initStorage();
-}
-
 initStorage();
 
 
@@ -303,15 +289,6 @@ initStorage();
  * @param {number} [offsetDays=0] — days to add (negative = past)
  * @returns {string} e.g. "2026-09-08"
  */
-function todayStr(offsetDays = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  const m   = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day}`;
-}
-
-
 /* ============================================================
    Generic localStorage Getters & Setters
    ============================================================ */
@@ -338,8 +315,6 @@ function getUsers()                { return safeGet(STORAGE_KEYS.users, []); }
 function getEvents()               { return safeGet(STORAGE_KEYS.events, []); }
 function getAttendance()           { return safeGet(STORAGE_KEYS.attendance, []); }
 function getAnnouncements()        { return safeGet(STORAGE_KEYS.announcements, []); }
-function getSanctions()            { return safeGet(STORAGE_KEYS.sanctions, []); }
-function getReenrollmentRequests() { return safeGet(STORAGE_KEYS.reenrollmentRequests, []); }
 function getAuditLogs()            { return safeGet(STORAGE_KEYS.auditLogs, []); }
 
 function setUsers(users)                 { localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users)); }

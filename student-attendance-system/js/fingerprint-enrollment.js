@@ -38,9 +38,44 @@
     { key: 'right-ring', hand: 'Right hand', label: 'Ring' },
     { key: 'right-little', hand: 'Right hand', label: 'Little' },
   ];
-  var SCAN_COOLDOWN_MS = 900;   // one placement must not count twice
-  var RESTART_GAP_MS = 2000;    // spacing for an automatic restart
-  var QUALITY_WAIT_MS = 600;    // wait for this placement's QualityReported
+
+  /**
+   * Guided enrollment sequence. The student is told which finger to place
+   * next instead of choosing one from the picker. Right hand first, thumb
+   * to pinky, then left — the order the server's FINGERPRINT_FINGERS list
+   * in Repository.php expects, so the 10/10 count lines up exactly.
+   *
+   * To enroll fewer fingers, keep the same array but stop after the last
+   * desired entry; the guided prompt and auto-advance logic are unchanged.
+   */
+  var GUIDED_FINGERS = [
+    { key: 'right-thumb',   hand: 'Right hand', label: 'Thumb' },
+    { key: 'right-index',   hand: 'Right hand', label: 'Index' },
+    { key: 'right-middle',  hand: 'Right hand', label: 'Middle' },
+    { key: 'right-ring',    hand: 'Right hand', label: 'Ring' },
+    { key: 'right-little',  hand: 'Right hand', label: 'Pinky' },
+    { key: 'left-thumb',    hand: 'Left hand',  label: 'Thumb' },
+    { key: 'left-index',    hand: 'Left hand',  label: 'Index' },
+    { key: 'left-middle',   hand: 'Left hand',  label: 'Middle' },
+    { key: 'left-ring',     hand: 'Left hand',  label: 'Ring' },
+    { key: 'left-little',   hand: 'Left hand',  label: 'Pinky' },
+  ];
+
+  /** The next finger the student should place, per the guided sequence. */
+  function nextGuidedFinger() {
+    for (var i = 0; i < GUIDED_FINGERS.length; i += 1) {
+      if (state.enrolledFingers.indexOf(GUIDED_FINGERS[i].key) === -1) {
+        return GUIDED_FINGERS[i];
+      }
+    }
+    return null;
+  }
+
+  var SCAN_COOLDOWN_MS = 600;   // one placement must not count twice
+  var RESTART_GAP_MS = 700;     // settle time before an automatic restart
+  var AUTO_ADVANCE_MS = 1200;   // beat between a save and the next finger
+  var STOP_ECHO_MS = 2000;      // how long a stop's notification may trail a start
+  var QUALITY_WAIT_MS = 350;    // wait for this placement's QualityReported
   var LOCK_NAME = 'attendly-fingerprint-acquisition';
   var CONSENT_TEXT = 'The student agrees to enroll all ten fingers for event attendance. '
     + 'Each scan image is sent only to this laptop\'s matching service to create a template, '
@@ -64,6 +99,8 @@
     submitting: false,
     restartInFlight: false,
     restartTimer: null,
+    autoAdvanceTimer: null,
+    stopRequestedAt: 0,     // when we last asked the agent to stop
     samples: [],            // in-memory base64 images, discarded after submit
     lastStartAt: 0,
     cooldownUntil: 0,
@@ -181,9 +218,10 @@
   }
 
   /**
-   * Only QualityCode.Good counts as a good placement. QualityCode.Good is 0,
-   * not 100, so the comparison is against the enum itself and never against
-   * a percentage. Agents that send the enum as a numeric string still match.
+   * True only for a perfect placement (QualityCode.Good). Good is 0, not 100,
+   * so the comparison is against the enum itself and never a percentage.
+   * Agents that send the enum as a numeric string still match. This is used to
+   * classify a scan for diagnostics — acceptance is decided by qualityIsUsable.
    */
   function qualityIsGood(value) {
     if (!qualityIsKnown(value)) return false;
@@ -192,6 +230,55 @@
     var text = String(value).trim();
     if (/^-?\d+$/.test(text)) return Number(text) === good;
     return /^good$/i.test(text);
+  }
+
+  /**
+   * Codes that mean the capture itself is unusable: nothing on the sensor, not
+   * a fingerprint, motion blur, or a print too small to extract minutiae from.
+   * Every other code — too light, too dark, low contrast, off-centre, pressure,
+   * noise — still carries a readable print, and SourceAFIS on the backend is
+   * the right judge of it. Accepting only QualityCode.Good meant 24 of the 25
+   * codes a real U.are.U 4500 reports were thrown away locally.
+   */
+  var UNUSABLE_QUALITY_CODES = [
+    'NoImage', 'NotAFinger', 'FakeFinger',
+    'TooFast', 'TooSlow', 'ReverseMotion', 'TooShort', 'TooSmall',
+    'NotEnoughFeatures', 'TooStrange',
+  ];
+
+  /**
+   * True when a quality value can still produce a template. Unknown and
+   * unenumerated values pass: an agent's own code is not ours to refuse, and
+   * the matching service answers for the image either way.
+   */
+  function qualityIsUsable(value) {
+    if (!qualityIsKnown(value)) return true;
+    var name = qualityCodeName(value);
+    if (!name) return true;
+    var wanted = String(name).toLowerCase();
+    for (var i = 0; i < UNUSABLE_QUALITY_CODES.length; i += 1) {
+      if (UNUSABLE_QUALITY_CODES[i].toLowerCase() === wanted) return false;
+    }
+    return true;
+  }
+
+  /** One console line per rejected placement: raw value plus the human reason. */
+  function logRejection(quality, reason) {
+    if (!global.console || typeof global.console.log !== 'function') return;
+    global.console.log(
+      'Scan rejected. Quality:', quality == null ? 'unknown' : quality,
+      'Reason:', reason
+    );
+  }
+
+  /** A scan that is usable but not perfect still gets a console breadcrumb. */
+  function logAcceptance(quality, reason) {
+    if (!global.console || typeof global.console.info !== 'function') return;
+    global.console.info(
+      '[enrollment] scan accepted — quality ' +
+      (quality == null ? 'unknown' : String(quality)) +
+      ' (' + (qualityCodeName(quality) || 'unreported') + '): ' + reason
+    );
   }
 
   /** A sample's own quality field, when the agent sends one. */
@@ -286,6 +373,9 @@
                 'aria-valuenow="0" aria-label="Fingerprint captures" style="height:6px">' +
                 '<div class="progress-bar" id="fingerprintEnrollProgressBar" style="width:0%"></div>' +
               '</div>' +
+              '<p class="fingerprint-enroll-guided" id="fingerprintEnrollGuided" role="status" hidden>' +
+                '<span class="fingerprint-enroll-guided-finger"></span> &middot; ' +
+                '<span class="fingerprint-enroll-guided-count"></span></p>' +
               '<p class="fingerprint-enroll-progress-text" id="fingerprintEnrollProgressText" role="status">' +
                 'Choose one finger to begin.' +
               '</p>' +
@@ -293,14 +383,14 @@
                 'Tick the consent box, then press Start scanning.</p>' +
               '<p class="fingerprint-enroll-help">Choose a finger, then place it on the U.are.U 4500 sensor ' + SCANS_PER_FINGER + ' times. ' +
                 'The second scan should be a slightly different placement so both templates are useful. ' +
-                'Only QualityCode.Good scans count. Only captured templates are sent to the server; ' +
+                'A scan is only refused when the sensor reports no usable print. Only captured templates are sent to the server; ' +
                 'the image is sent only to this laptop\'s matching service, used to create a template, then discarded.</p>' +
               '<p class="fingerprint-enroll-error" id="fingerprintEnrollError" role="alert" hidden></p>' +
               '<p class="fingerprint-enroll-debug" id="fingerprintEnrollDebug" hidden></p>' +
             '</div>' +
             '<div class="modal-footer">' +
-              '<button type="button" class="btn btn-outline-secondary" id="fingerprintEnrollClose" data-bs-dismiss="modal">' +
-                'Close (0/10 done, resume later)' +
+              '<button type="button" class="btn btn-outline-danger" id="fingerprintEnrollClose" data-bs-dismiss="modal">' +
+                'Continue Later / Cancel Enrollment' +
               '</button>' +
               '<button type="button" class="btn btn-success" id="fingerprintEnrollConfirm" hidden>' +
                 '<i class="bi bi-check2-circle"></i> Confirm and finish' +
@@ -326,6 +416,9 @@
       progress: document.getElementById('fingerprintEnrollProgress'),
       progressBar: document.getElementById('fingerprintEnrollProgressBar'),
       progressText: document.getElementById('fingerprintEnrollProgressText'),
+      guided: document.getElementById('fingerprintEnrollGuided'),
+      guidedFinger: document.querySelector('#fingerprintEnrollGuided .fingerprint-enroll-guided-finger'),
+      guidedCount: document.querySelector('#fingerprintEnrollGuided .fingerprint-enroll-guided-count'),
       status: document.getElementById('fingerprintEnrollStatus'),
       error: document.getElementById('fingerprintEnrollError'),
       debug: document.getElementById('fingerprintEnrollDebug'),
@@ -364,7 +457,9 @@
 
     state.els.fingerPicker.addEventListener('click', function (event) {
       var button = event.target.closest('[data-finger]');
-      if (!button || state.sessionActive || state.submitting || state.starting) return;
+      // In guided mode the sequence owns the finger choice; ignore clicks so
+      // the student cannot skip ahead or repeat a finger out of order.
+      if (!button || state.useGuided || state.sessionActive || state.submitting || state.starting) return;
       state.selectedFinger = button.getAttribute('data-finger');
       clearSamples();
       setError('');
@@ -382,6 +477,7 @@
       state.studentId = null;
       state.selectedFinger = null;
       state.enrolledFingers = [];
+      state.useGuided = false;
       state.lastQuality = null;
       state.lastRejectReason = '';
       setError('');
@@ -402,6 +498,13 @@
         missing.join(', ') + '. Saved fingers will be kept. Close now and resume later?';
       if (!global.confirm(warning)) event.preventDefault();
     });
+
+    // The cancel button is the same control from open to close, so it needs
+    // no special wiring: data-bs-dismiss="modal" closes the sheet, which
+    // fires hide.bs.modal (the incomplete-enrollment guard) and then
+    // hidden.bs.modal (stopSession + releaseReaderLock). The reader stream
+    // is released in stopSession() — the same path the lock and pagehide
+    // handlers use — so canceling always frees the hardware.
 
     state.modal = new global.bootstrap.Modal(modalEl);
     return state.modal;
@@ -432,7 +535,7 @@
   }
 
   /**
-   * Swap the footer between "Close (X/10 done, resume later)" and the
+   * Swap the footer between "Continue Later / Cancel Enrollment" and the
    * completion state's "Confirm and finish" button. The success panel is
    * only shown once every finger has a stored template.
    */
@@ -442,8 +545,9 @@
     if (state.els.success) state.els.success.hidden = !complete;
     if (state.els.close) {
       state.els.close.hidden = complete;
-      state.els.close.textContent =
-        'Close (' + state.enrolledFingers.length + '/10 done, resume later)';
+      // The label is fixed: the button is always the cancel/resume action,
+      // so it never needs to announce a changing count.
+      state.els.close.textContent = 'Continue Later / Cancel Enrollment';
     }
     if (state.els.confirm) state.els.confirm.hidden = !complete;
     if (state.els.start) {
@@ -455,13 +559,17 @@
 
   function renderFingerPicker() {
     if (!state.els || !state.els.fingerPicker) return;
+    // In guided mode the sequence chooses the finger, so the picker is
+    // disabled and only shows progress; the student cannot deviate.
+    var guidedActive = state.useGuided && !fingerprintComplete();
     state.els.fingerPicker.querySelectorAll('[data-finger]').forEach(function (button) {
       var finger = button.getAttribute('data-finger');
       var done = state.enrolledFingers.indexOf(finger) !== -1;
       var selected = finger === state.selectedFinger;
-      button.disabled = state.sessionActive || state.starting || state.submitting;
+      button.disabled = guidedActive || state.sessionActive || state.starting || state.submitting;
       button.classList.toggle('is-done', done);
       button.classList.toggle('is-selected', selected);
+      button.classList.toggle('is-guided', guidedActive);
       button.setAttribute('aria-pressed', selected ? 'true' : 'false');
       button.querySelector('[data-finger-state]').textContent = done ? 'Done · re-do' : 'Not enrolled';
     });
@@ -478,6 +586,28 @@
       Math.min(state.samples.length + 1, SCANS_PER_FINGER) + ' of ' + SCANS_PER_FINGER + '.';
   }
 
+  /**
+   * Render the guided-finger prompt: "Please scan your Right Thumb
+   * (Sample 1 of 4)". Hidden when no guided finger is active, so the
+   * layout does not jump when the student is choosing a finger manually.
+   */
+  function renderGuidedPrompt() {
+    if (!state.els || !state.els.guided) return;
+    var finger = state.selectedFinger
+      ? FINGERS.find(function (item) { return item.key === state.selectedFinger; })
+      : null;
+    if (!finger) {
+      state.els.guided.hidden = true;
+      return;
+    }
+    state.els.guided.hidden = false;
+    var guided = GUIDED_FINGERS.find(function (item) { return item.key === finger.key; }) || finger;
+    state.els.guidedFinger.textContent = 'Please scan your ' + guided.label;
+    state.els.guidedCount.textContent =
+      '(Sample ' + Math.min(state.samples.length + 1, SCANS_PER_FINGER) +
+      ' of ' + SCANS_PER_FINGER + ')';
+  }
+
   function renderProgress() {
     var done = state.samples.length;
     if (!state.els) return;
@@ -486,6 +616,7 @@
       : (fingerprintComplete() ? 'All 10 fingers enrolled.' : 'Choose one finger to begin.');
     state.els.progressBar.style.width = Math.round((done / SCANS_PER_FINGER) * 100) + '%';
     state.els.progress.setAttribute('aria-valuenow', String(done));
+    renderGuidedPrompt();
   }
 
   /** Diagnostics for ?debug=1 only — event names, quality, counts. No data. */
@@ -546,6 +677,9 @@
 
   function stopAcquisition(reader) {
     state.acquisitionActive = false;
+    // The agent's Stopped notification can arrive after the next start, so the
+    // request time lets that echo be told apart from a real pause.
+    state.stopRequestedAt = Date.now();
     var active = reader || state.reader;
     if (!active || typeof active.stopAcquisition !== 'function') return Promise.resolve();
     try {
@@ -681,6 +815,13 @@
     reader.on('AcquisitionStopped', function () {
       state.acquisitionActive = false;
       if (!state.sessionActive || state.submitting) return;
+      // Our own stop echoes here too. When a newer run started after the stop
+      // was requested, this notification belongs to the old one: restarting on
+      // it would stop the run the student has just begun.
+      if (state.lastStartAt > state.stopRequestedAt &&
+          Date.now() - state.lastStartAt < STOP_ECHO_MS) {
+        return;
+      }
       // The SDK pauses acquisition on focus loss; restart once, spaced out.
       scheduleRestart();
     });
@@ -708,7 +849,18 @@
   async function startSession() {
     if (state.starting || state.sessionActive || state.submitting) return;
     if (!state.studentId) return;
-    if (!state.selectedFinger) {
+
+    // Guided mode: the sequence tells the student which finger to place,
+    // so the picker is disabled and the selection is derived from it.
+    if (state.useGuided) {
+      var guided = nextGuidedFinger();
+      if (!guided) {
+        // Every finger in the sequence is already enrolled.
+        setStatus('All fingers in the sequence are enrolled.', 'complete');
+        return;
+      }
+      state.selectedFinger = guided.key;
+    } else if (!state.selectedFinger) {
       setError('Choose a finger before scanning.');
       return;
     }
@@ -756,13 +908,17 @@
       bindHandlers(reader);
       state.sessionActive = true;
       renderFingerPicker();
-      // One acquisition at a time: stop any run before starting a new one.
-      await stopAcquisition(reader);
+      // One acquisition at a time: stop a run that is still going before
+      // starting a new one. An idle reader gets no redundant StopAcquisition,
+      // because the agent can apply that stop after the new start and go
+      // silent while the modal still waits for a finger.
+      if (state.acquisitionActive) await stopAcquisition(reader);
       await startAcquisition(reader);
 
       renderProgress();
       var selected = FINGERS.find(function (finger) { return finger.key === state.selectedFinger; });
-      setStatus('Place the ' + (selected ? selected.label.toLowerCase() : 'finger') + ' on the sensor. ' + scanPrompt());
+      setStatus('Place the ' + (selected ? selected.label.toLowerCase() : 'finger') +
+        ' on the sensor. ' + scanPrompt());
     } catch (error) {
       state.sessionActive = false;
       releaseReaderLock();
@@ -778,17 +934,43 @@
     return 'Scan ' + Math.min(state.samples.length + 1, SCANS_PER_FINGER) + ' of ' + SCANS_PER_FINGER + '.';
   }
 
+  /** Ends the session and resolves once the agent has released the reader. */
   function stopSession() {
     state.sessionActive = false;
     if (state.restartTimer) {
       global.clearTimeout(state.restartTimer);
       state.restartTimer = null;
     }
+    if (state.autoAdvanceTimer) {
+      global.clearTimeout(state.autoAdvanceTimer);
+      state.autoAdvanceTimer = null;
+    }
     state.restartInFlight = false;
-    stopAcquisition();
+    var stopped = stopAcquisition();
     releaseReaderLock();
     renderFingerPicker();
     updateStartButton();
+    return stopped;
+  }
+
+  /**
+   * Auto-advance: after a finger is saved the picker already points at the
+   * next one that needs a template, so reopen acquisition instead of making
+   * the student press Start scanning again. Any close, cancel or new save
+   * clears the timer, so a stale advance can never start a hidden scan.
+   */
+  function scheduleAutoAdvance() {
+    if (state.autoAdvanceTimer) {
+      global.clearTimeout(state.autoAdvanceTimer);
+      state.autoAdvanceTimer = null;
+    }
+    if (!state.els || !state.els.consent.checked) return;
+    state.autoAdvanceTimer = global.setTimeout(function () {
+      state.autoAdvanceTimer = null;
+      if (state.sessionActive || state.submitting || state.starting) return;
+      if (!state.selectedFinger) return;
+      startSession();
+    }, AUTO_ADVANCE_MS);
   }
 
   function clearSamples() {
@@ -827,16 +1009,22 @@
       }
 
       if (!qualityIsKnown(quality)) {
-        rejectSample('no quality reported for this placement');
-        setStatus('Scan quality was not reported. Keep your finger on the sensor and try again. ' + progressLabel());
-        return;
-      }
-      if (!qualityIsGood(quality)) {
+        // Some agents never report quality. The image is still a real capture
+        // and the matching service decides whether it yields a template, so a
+        // missing report is not a reason to reject it locally.
+        logAcceptance(quality, 'quality was not reported for this placement');
+      } else if (!qualityIsUsable(quality)) {
         rejectSample(
-          'quality ' + String(quality) +
-          ' (' + (qualityCodeName(quality) || typeof quality) + ') is not QualityCode.Good'
+          'quality ' + String(quality) + ' (' +
+          (qualityCodeName(quality) || typeof quality) + ') has no usable print',
+          quality
         );
         return;
+      } else if (!qualityIsGood(quality)) {
+        // Too light, too dark, low contrast, off-centre, pressure, noise: all
+        // still carry a readable print, and SourceAFIS tolerates them far
+        // better than a student tolerates rescanning.
+        logAcceptance(quality, 'usable, below QualityCode.Good');
       }
 
       state.lastRejectReason = '';
@@ -845,7 +1033,19 @@
       if (!image) {
         state.cooldownUntil = Date.now() + SCAN_COOLDOWN_MS;
         state.lastRejectReason = 'the SDK returned an empty sample';
+        logRejection(quality, 'the SDK returned an empty sample');
         setStatus('Fingerprint not read — place the same finger again. ' + progressLabel());
+        updateDebug();
+        return;
+      }
+
+      // A finger left on the sensor can deliver the same frame again after the
+      // automatic restart; sending it twice would merge a duplicate template.
+      if (state.samples.indexOf(image) !== -1) {
+        state.cooldownUntil = Date.now() + SCAN_COOLDOWN_MS;
+        state.lastRejectReason = 'the same image was delivered twice';
+        logRejection(quality, 'the same image was delivered twice');
+        setStatus('That scan was already captured — lift your finger, then place it again. ' + progressLabel());
         updateDebug();
         return;
       }
@@ -872,6 +1072,7 @@
     } catch (error) {
       state.cooldownUntil = Date.now() + SCAN_COOLDOWN_MS;
       state.lastRejectReason = 'capture error: ' + describeError(error);
+      logRejection(null, 'capture error: ' + describeError(error));
       setStatus('Place the same finger again. ' + progressLabel());
       if (global.console && typeof global.console.warn === 'function') {
         global.console.warn('[enrollment] capture failed — ' + describeError(error));
@@ -894,9 +1095,10 @@
   }
 
   /** A rejected placement is never counted and never leaves the modal busy. */
-  function rejectSample(reason) {
+  function rejectSample(reason, quality) {
     state.cooldownUntil = Date.now() + SCAN_COOLDOWN_MS;
     state.lastRejectReason = reason;
+    logRejection(quality, reason);
     setStatus('Poor scan — place the same finger again. ' + progressLabel());
     updateDebug();
   }
@@ -910,21 +1112,36 @@
     setError('');
     setStatus('Good scan captured. Saving this finger…');
 
-    // No acquisition while the server call runs.
-    stopSession();
+    // No acquisition while the server call runs, and the hardware has to be
+    // free for the next finger: wait for the agent to confirm the stop rather
+    // than leaving a stop notification to overtake the next start.
+    await stopSession();
 
     var images = state.samples.slice();
+    var finger = FINGERS.find(function (item) { return item.key === state.selectedFinger; });
     try {
       var result = await api.enrollFingerprint(state.studentId, state.selectedFinger, images);
       markEnrolled(state.studentId, result);
       var complete = result.fingerprintEnrolled === true && fingerprintComplete();
-      var finger = FINGERS.find(function (item) { return item.key === state.selectedFinger; });
       state.selectedFinger = null;
       renderFingerPicker();
       renderProgress();
       if (complete) {
         setStatus('All 10 fingers are enrolled. Fingerprint attendance is enabled.', 'complete');
         if (typeof showToast === 'function') showToast('success', result.message || 'All 10 fingers enrolled.');
+      } else if (state.useGuided) {
+        // Guided mode: hand the student the next finger in the sequence
+        // instead of making them read a list of what is missing.
+        var next = nextGuidedFinger();
+        if (next) {
+          setStatus(next.hand + ' ' + next.label.toLowerCase() +
+            ' saved. Next: scan your ' + next.label.toLowerCase() + '.', 'incomplete');
+          if (typeof showToast === 'function') {
+            showToast('warning', 'Next finger: ' + next.label);
+          }
+        } else {
+          setStatus('All fingers in the sequence are enrolled.', 'complete');
+        }
       } else {
         var missing = FINGERS.filter(function (item) {
           return state.enrolledFingers.indexOf(item.key) === -1;
@@ -937,8 +1154,20 @@
           showToast('warning', 'Enrollment incomplete: ' + state.enrolledFingers.length + '/10 fingers.');
         }
       }
+
+      // Auto-advance: highlight the next finger that still needs a template
+      // and reopen the scanner so the student just keeps placing fingers.
+      if (state.enrolledFingers.length < FINGERS.length) {
+        var upcoming = nextGuidedFinger();
+        if (upcoming) {
+          state.selectedFinger = upcoming.key;
+          renderFingerPicker();
+          renderProgress();
+          scheduleAutoAdvance();
+        }
+      }
     } catch (error) {
-      setStatus('Enrollment did not finish.');
+      setStatus('Enrollment did not finish — the scans were not saved. Press Start scanning to try again.');
       fail(error);
     } finally {
       state.submitting = false;
@@ -1001,7 +1230,7 @@
    * Called by the row button:
    *   enrollStudentFingerprint('<student user id>')
    */
-  function enrollStudentFingerprint(studentId) {
+  function enrollStudentFingerprint(studentId, options) {
     var student = (typeof getUsers === 'function' ? getUsers() : []).find(function (user) {
       return sameId(user.id, studentId);
     });
@@ -1014,6 +1243,10 @@
           return FINGERS.some(function (item) { return item.key === finger; });
         })
       : [];
+    // Guided mode is opt-in per call: a guided enrollment walks the whole
+    // sequence without the student picking a finger. Default stays the
+    // manual picker so existing callers are unchanged.
+    state.useGuided = !!(options && options.guided);
 
     var modal = ensureModal();
     if (!modal) {
@@ -1038,6 +1271,14 @@
     setError('');
     if (fingerprintComplete()) {
       setStatus('All 10 fingers are enrolled. Fingerprint attendance is enabled.', 'complete');
+    } else if (state.useGuided) {
+      var guided = nextGuidedFinger();
+      if (guided) {
+        setStatus('Tick the consent box, then press Start scanning. ' +
+          'You will scan your ' + guided.label + ' first.');
+      } else {
+        setStatus('All fingers in the sequence are enrolled.', 'complete');
+      }
     } else {
       setStatus('Tick the consent box, choose a finger, then press Start scanning.');
     }

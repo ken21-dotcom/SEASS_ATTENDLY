@@ -457,26 +457,6 @@ async function deleteEvent(eventId) {
 }
 
 /**
- * Push a newly created event to the backend and adopt the row the server
- * returns, so its id is the database id and later edits/deletes line up.
- *
- * Runs only in backend mode; a failure is reported but the local event is
- * left in place, because dropping it would lose what the officer typed.
- */
-function syncEventToServer(event) {
-  if (!isApiEnabled()) return;
-  api.createEvent(event)
-    .then((saved) => {
-      const all = getEvents().map((e) => (sameId(e.id, event.id) ? Object.assign({}, e, saved) : e));
-      setEvents(all);
-      loadEventsTable();
-    })
-    .catch((err) => {
-      showToast('error', 'Event saved locally only — the server rejected it: ' + err.message);
-    });
-}
-
-/**
  * Delete an event server-side. Only numeric ids exist in the database.
  * Returns a promise when the API owns the row; local-only ids resolve
  * immediately so the caller can update localStorage.

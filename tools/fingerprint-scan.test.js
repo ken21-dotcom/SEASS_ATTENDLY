@@ -230,10 +230,9 @@ ok('kiosk debug shows score, threshold and matched finger',
   /last match score/.test(kioskSrc) &&
   /threshold \$\{number\(debugLastMatch\.threshold\)\}/.test(kioskSrc) &&
   /finger \$\{debugLastMatch\.finger\}/.test(kioskSrc));
-ok('enrollment rejects a finger enrolled to another student with 409',
-  /assertFingerprintNotEnrolledToAnotherStudent/.test(repositorySrc) &&
-  /\$service->identify\(\$image, \$candidates\) !== null/.test(repositorySrc) &&
-  /'fingerprint_already_enrolled'[\s\S]{0,160}?409/.test(repositorySrc));
+ok('enrollment extracts templates without a database-wide 1:N match search',
+  !/assertFingerprintNotEnrolledToAnotherStudent/.test(repositorySrc) &&
+  !/\$service->identify\(\$image, \$candidates\)/.test(repositorySrc));
 ok('repository identifies with the matching service instead of BINARY compare',
   /\$service->identifyDetailed\(\$fingerprintImage, \$candidates\)/.test(repositorySrc) &&
   !/BINARY s\.fingerprint_template = BINARY :template/.test(repositorySrc));
@@ -302,11 +301,13 @@ ok('enrollment offers confirm-and-finish when all ten fingers are saved',
   /function renderCompletionState\(/.test(enrollmentSrc) &&
   /state\.modal\.hide\(\)/.test(enrollmentSrc) &&
   /refreshGroupedStudentList\(\)/.test(enrollmentSrc));
-ok('enrollment always shows a close button with progress before completion',
+ok('enrollment always shows a cancel button with a fixed label before completion',
   /id="fingerprintEnrollClose"/.test(enrollmentSrc) &&
-  /Close \(' \+ state\.enrolledFingers\.length \+ '\/10 done, resume later\)/.test(enrollmentSrc) &&
+  /btn-outline-danger/.test(enrollmentSrc) &&
+  /Continue Later \/ Cancel Enrollment/.test(enrollmentSrc) &&
   /state\.els\.close\.hidden = complete/.test(enrollmentSrc) &&
-  /state\.els\.confirm\.hidden = !complete/.test(enrollmentSrc));
+  /state\.els\.confirm\.hidden = !complete/.test(enrollmentSrc) &&
+  !/Close \(' \+ state\.enrolledFingers\.length/.test(enrollmentSrc));
 ok('enrollment collects two good scans per selected finger with progress',
   /SCANS_PER_FINGER = 2/.test(enrollmentSrc) &&
   /FINGERS = \[/.test(enrollmentSrc) &&
@@ -314,17 +315,47 @@ ok('enrollment collects two good scans per selected finger with progress',
   /QualityReported/.test(enrollmentSrc) &&
   /qualityIsGood/.test(enrollmentSrc) &&
   /Poor scan/.test(enrollmentSrc));
+ok('enrollment offers a guided finger sequence with right hand first',
+  /GUIDED_FINGERS = \[/.test(enrollmentSrc) &&
+  /key: 'right-thumb'/.test(enrollmentSrc) &&
+  /key: 'right-index'/.test(enrollmentSrc) &&
+  /key: 'right-little'/.test(enrollmentSrc) &&
+  /key: 'left-thumb'/.test(enrollmentSrc) &&
+  /key: 'left-little'/.test(enrollmentSrc) &&
+  /function nextGuidedFinger\(/.test(enrollmentSrc) &&
+  /state\.useGuided/.test(enrollmentSrc));
+ok('enrollment shows the guided prompt with the finger and sample number',
+  /id="fingerprintEnrollGuided"/.test(enrollmentSrc) &&
+  /fingerprint-enroll-guided-finger/.test(enrollmentSrc) &&
+  /fingerprint-enroll-guided-count/.test(enrollmentSrc) &&
+  /Please scan your /.test(enrollmentSrc) &&
+  /Sample ' \+ Math\.min\(state\.samples\.length \+ 1, SCANS_PER_FINGER\)/.test(enrollmentSrc));
+ok('guided mode advances to the next finger after a finger is saved',
+  /state\.useGuided/.test(enrollmentSrc) &&
+  /nextGuidedFinger\(\)/.test(enrollmentSrc) &&
+  /Next: scan your /.test(enrollmentSrc));
 ok('quality gate compares against the installed QualityCode enum',
   /global\.dp\.devices\.QualityCode/.test(enrollmentSrc) &&
   /typeof codes\.Good === 'number'/.test(enrollmentSrc) &&
   /return value === good/.test(enrollmentSrc) &&
   !/value >= 90/.test(enrollmentSrc));
+ok('enrollment refuses a scan only when the code means no usable print',
+  /var UNUSABLE_QUALITY_CODES = \[/.test(enrollmentSrc) &&
+  /function qualityIsUsable\(/.test(enrollmentSrc) &&
+  /!qualityIsUsable\(quality\)/.test(enrollmentSrc) &&
+  /'NoImage', 'NotAFinger', 'FakeFinger'/.test(enrollmentSrc));
+ok('a rejected scan is logged with its quality and reason',
+  /'Scan rejected\. Quality:'/.test(enrollmentSrc) &&
+  /function logRejection\(quality, reason\)/.test(enrollmentSrc) &&
+  /logRejection\(quality, reason\);/.test(enrollmentSrc));
+ok('a repeated frame is not counted as a second sample',
+  /state\.samples\.indexOf\(image\) !== -1/.test(enrollmentSrc));
 ok('each placement is judged by its own quality value',
   /function takePendingQuality\(/.test(enrollmentSrc) &&
   /function deliverQuality\(/.test(enrollmentSrc) &&
   /function waitForQuality\(/.test(enrollmentSrc) &&
   !/return state\.lastQuality;/.test(enrollmentSrc));
-ok('a rejected scan restarts acquisition after the two-second gap',
+ok('a rejected scan restarts acquisition after the restart gap',
   /async function restartAcquisition\(/.test(enrollmentSrc) &&
   /RESTART_GAP_MS - \(Date\.now\(\) - state\.lastStartAt\)/.test(enrollmentSrc) &&
   /await stopAcquisition\(\);/.test(enrollmentSrc) &&

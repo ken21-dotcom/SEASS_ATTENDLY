@@ -550,39 +550,6 @@ function formatDate(dateStr) {
 }
 
 /**
- * Return the severity badge HTML for a sanction level.
- * @param {'warning'|'probation'|'suspension'} severity
- * @returns {string} innerHTML for a <span class="badge …">
- */
-function severityBadge(severity) {
-  const classMap = {
-    warning:    'badge-warning-severity',
-    probation:  'badge-probation-severity',
-    suspension: 'badge-suspension-severity',
-  };
-  const cls = classMap[severity] || 'bg-secondary';
-  const label = severity.charAt(0).toUpperCase() + severity.slice(1);
-  return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
-}
-
-/**
- * Format a sanction row for display. Pending recommendations carry the
- * internal `r<id>` key used by the review endpoint, while finalized records
- * have numeric IDs. The UI shows stable public labels in both cases.
- *
- * @param {{id: (string|number), status?: string}} sanction
- * @returns {string} e.g. "REC_002" or "SAN_014"
- */
-function sanctionPublicId(sanction) {
-  const raw = String(sanction && sanction.id != null ? sanction.id : '');
-  const match = raw.match(/^r?(\d+)$/);
-  if (!match) return raw || '—';
-  const label = match[1].padStart(3, '0');
-  const isRecommendation = raw.startsWith('r') || (sanction && sanction.status === 'pending-review');
-  return (isRecommendation ? 'REC_' : 'SAN_') + label;
-}
-
-/**
  * Show or hide an empty-state container based on whether
  * data is present.
  *

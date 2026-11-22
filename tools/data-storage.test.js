@@ -94,14 +94,6 @@ ok('old version wipes events', JSON.parse(localStorage.getItem('attendly_events'
 ok('old version keeps unrelated keys', localStorage.getItem('theme') === 'dark');
 ok('old version rewrites the marker', localStorage.getItem('attendly_data_version') === '6-qr');
 
-/* ── resetAllData ─────────────────────────────────────────────── */
-
-localStorage.setItem('attendly_users', JSON.stringify([{ id: 'adm_2' }]));
-runData('resetAllData();');
-ok('resetAllData clears users', JSON.parse(localStorage.getItem('attendly_users')).length === 0);
-ok('resetAllData keeps the marker', localStorage.getItem('attendly_data_version') === '6-qr');
-ok('resetAllData recreates collections', JSON.parse(localStorage.getItem('attendly_attendance')).length === 0);
-
 /* ── Report ────────────────────────────────────────────────────── */
 
 if (failures.length === 0) {

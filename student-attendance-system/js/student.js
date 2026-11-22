@@ -752,39 +752,6 @@ function unreadAnnouncementCount() {
   return announcements.filter(a => !read.includes(a.id)).length;
 }
 
-function renderNotificationList() {
-  const list = document.getElementById('notificationList');
-  const announcements = getAnnouncements();
-  if (!announcements.length) {
-    list.innerHTML = '<p class="notification-empty">No announcements yet.</p>';
-    return;
-  }
-  list.innerHTML = announcements.map(announcementItemHTML).join('');
-}
-
-function openNotifications() {
-  const panel = document.getElementById('notificationPanel');
-  const backdrop = document.getElementById('notificationBackdrop');
-  if (!panel) return;
-  renderNotificationList();
-  panel.hidden = false;
-  if (backdrop) backdrop.hidden = false;
-  document.body.classList.add('notification-open');
-  // Mark current announcements as read and refresh the badge
-  const read = getReadAnnouncements();
-  const ids = getAnnouncements().map(a => a.id);
-  localStorage.setItem(READ_KEY, JSON.stringify(Array.from(new Set([...read, ...ids]))));
-  updateNotificationBadge();
-}
-
-function closeNotifications() {
-  const panel = document.getElementById('notificationPanel');
-  const backdrop = document.getElementById('notificationBackdrop');
-  if (panel) panel.hidden = true;
-  if (backdrop) backdrop.hidden = true;
-  document.body.classList.remove('notification-open');
-}
-
 function updateNotificationBadge() {
   const badge = document.getElementById('notificationBadge');
   if (!badge) return;
