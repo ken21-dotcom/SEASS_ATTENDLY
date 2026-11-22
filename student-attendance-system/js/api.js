@@ -101,6 +101,7 @@ function getCsrfToken() {
  */
 function setCsrfToken(token) {
   csrfToken = token;
+  if (token) csrfSessionless = false;
 }
 
 /**
@@ -108,6 +109,83 @@ function setCsrfToken(token) {
  */
 function clearCsrfToken() {
   csrfToken = null;
+}
+
+/**
+ * Routes the backend accepts without a CSRF token. This mirrors the
+ * exemption list in public/index.php: a pre-session POST to one of these
+ * must not trigger a token fetch that could only 401.
+ * @type {string[]}
+ */
+var CSRF_EXEMPT_PATHS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/verify-otp',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
+
+/**
+ * Whether the method changes state, and so needs a CSRF token.
+ * @param {string} method
+ * @returns {boolean}
+ */
+function isStateChangingMethod(method) {
+  return ['POST', 'PUT', 'PATCH', 'DELETE'].indexOf(String(method || 'GET').toUpperCase()) !== -1;
+}
+
+/**
+ * Whether a path is exempt from the CSRF check, ignoring the query string.
+ * @param {string} path
+ * @returns {boolean}
+ */
+function isCsrfExemptPath(path) {
+  var bare = String(path || '').split('?')[0].replace(/\/+$/, '') || '/';
+  return CSRF_EXEMPT_PATHS.indexOf(bare) !== -1;
+}
+
+/** In-flight token fetch, shared so parallel writes make only one request. */
+var csrfTokenPromise = null;
+
+/** True once a token fetch came back 401: there is no session to token. */
+var csrfSessionless = false;
+
+/**
+ * Fetch this session's CSRF token and cache it in memory.
+ *
+ * The token itself lives in the PHP session, not in the browser, so it
+ * outlives a page load — it is only this page's copy that does not. Called
+ * before a state-changing request when that copy is missing, so a freshly
+ * loaded page can write without the caller knowing anything about CSRF.
+ *
+ * Never throws: a failure leaves the original write to fail with the
+ * server's own error code instead of masking it as a token problem.
+ *
+ * @returns {Promise<string|null>} the token, or null when there is no session
+ */
+function ensureCsrfToken() {
+  if (csrfToken) return Promise.resolve(csrfToken);
+  if (csrfSessionless) return Promise.resolve(null);
+  if (csrfTokenPromise) return csrfTokenPromise;
+
+  csrfTokenPromise = request('/auth/csrf-token', { anonymous: true })
+    .then(function (data) {
+      var token = data && typeof data.csrfToken === 'string' ? data.csrfToken : null;
+      if (token) setCsrfToken(token);
+      return token;
+    })
+    .catch(function (error) {
+      // No session, no token. Remember it so a session-less page (the kiosk
+      // before sign-in) does not pay for a 401 on every state change.
+      if (error && error.status === 401) csrfSessionless = true;
+      return null;
+    })
+    .then(function (token) {
+      csrfTokenPromise = null;
+      return token;
+    });
+
+  return csrfTokenPromise;
 }
 
 /**
@@ -147,7 +225,17 @@ async function request(path, options) {
     headers: { 'Accept': 'application/json' },
   };
 
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].indexOf(init.method.toUpperCase()) !== -1) {
+  var stateChanging = isStateChangingMethod(init.method);
+  var needsCsrf = stateChanging && !isCsrfExemptPath(path);
+
+  // The token is kept in memory only, so a reload or a new tab starts
+  // without one. Fetch it before the write goes out instead of sending a
+  // request the server is certain to reject.
+  if (needsCsrf && !getCsrfToken()) {
+    await ensureCsrfToken();
+  }
+
+  if (stateChanging) {
     init.headers['X-Requested-With'] = 'XMLHttpRequest';
     // Attach CSRF token for state-changing requests
     var token = getCsrfToken();
@@ -190,6 +278,17 @@ async function request(path, options) {
     // Optional diagnostics (for example fingerprint score/threshold/finger)
     // are exposed for ?debug=1; normal UI copy never reads them.
     error.details = detail && detail.details ? detail.details : null;
+
+    // A token can go stale while the session stays valid (server-side
+    // rotation, or another tab refreshing it). Recover once and replay
+    // this same write; the flag stops a permanent 403 from looping.
+    if (error.code === 'csrf_rejected' && needsCsrf && !opts.csrfRetried) {
+      clearCsrfToken();
+      await ensureCsrfToken();
+      if (getCsrfToken()) {
+        return request(path, Object.assign({}, opts, { csrfRetried: true }));
+      }
+    }
 
     // 401 means the PHP session expired. Only bounce to login for
     // calls the user initiated, never for a background probe.
@@ -375,7 +474,16 @@ var api = {
   },
 
   me: function () {
-    return request('/auth/me', { anonymous: true });
+    return request('/auth/me', { anonymous: true }).then(function (response) {
+      // Warm the token as soon as a page confirms its session, so the first
+      // write after a reload does not need an extra round trip. Best effort:
+      // a signed-out visitor simply gets no token.
+      var user = response && Object.prototype.hasOwnProperty.call(response, 'user')
+        ? response.user
+        : response;
+      if (user && user.id) ensureCsrfToken();
+      return response;
+    });
   },
 
   changePassword: function (currentPassword, newPassword) {
