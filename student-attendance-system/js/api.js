@@ -316,37 +316,27 @@ function addHour(hhmm) {
 
 var api = {
   login: function (email, password) {
-    // /auth/login is CSRF-protected, so fetch a pre-auth token into the
-    // session before posting. The token survives session_regenerate_id().
-    return request('/auth/csrf-pre-auth', { anonymous: true })
-      .catch(function () { return null; })
-      .then(function (data) {
-        if (data && data.csrfToken) {
-          setCsrfToken(data.csrfToken);
-        }
-        return request('/auth/login', {
-          method: 'POST',
-          body: { email: email, password: password },
-          anonymous: true,
-          validate: function (user) {
-            return user && user.id && user.role;
-          },
+    // /auth/login is exempt from the token check, so sign in first and then
+    // collect the session token for the writes that follow.
+    return request('/auth/login', {
+      method: 'POST',
+      body: { email: email, password: password },
+      anonymous: true,
+      validate: function (user) {
+        return user && user.id && user.role;
+      },
+    }).then(function (user) {
+      return request('/auth/csrf-token', { anonymous: true })
+        .then(function (data) {
+          if (data && data.csrfToken) {
+            setCsrfToken(data.csrfToken);
+          }
+          return user;
+        })
+        .catch(function () {
+          return user;
         });
-      })
-      .then(function (user) {
-        // Refresh from the authenticated session; in practice this returns
-        // the same value issued before login.
-        return request('/auth/csrf-token', { anonymous: true })
-          .then(function (data) {
-            if (data && data.csrfToken) {
-              setCsrfToken(data.csrfToken);
-            }
-            return user;
-          })
-          .catch(function () {
-            return user;
-          });
-      });
+    });
   },
 
   /**

@@ -175,13 +175,11 @@ function attendly_enforce_password_change(string $method, string $path, Auth $au
         'GET /auth/me',
         'POST /auth/logout',
         'GET /auth/csrf-token',
-        'GET /auth/csrf-pre-auth',
         'POST /auth/password',
-        'GET /health',
     ];
     if (!in_array($method . ' ' . $path, $allowed, true)) {
         Response::fail(
-            'must_change_password',
+            'password_change_required',
             'Change your temporary password before continuing.',
             403
         );
@@ -195,27 +193,22 @@ try {
     $limiter = new RateLimiter($db);
     $ctx   = ['repo' => $repo, 'auth' => $auth, 'limiter' => $limiter, 'method' => $method, 'config' => $config];
 
-    // Synchronizer-token check. Routes that cannot yet hold a session token
-    // (registration, OTP, password reset) are exempt. Everything else,
-    // including /auth/login, must echo the token issued by
-    // GET /auth/csrf-pre-auth or GET /auth/csrf-token.
+    // Synchronizer-token check for state-changing requests. Login, signup,
+    // OTP and password reset are exempt because they run before a usable
+    // token exists; login CSRF is an accepted risk recorded in SECURITY.md.
+    // A request with no session cookie has no ambient authority to forge, so
+    // it is left to the route to answer 401 rather than answering 403 here.
     if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
         $csrfExempt = [
+            '/auth/login',
             '/auth/register',
             '/auth/verify-otp',
             '/auth/forgot-password',
             '/auth/reset-password',
         ];
-        if (!in_array($path, $csrfExempt, true)) {
-            // A request with no session cookie carries no ambient authority,
-            // so there is nothing to forge and the route should answer 401
-            // itself. Login is the exception: a forged login would install
-            // the attacker's session in the victim's browser, so it always
-            // requires a token issued before the password is sent.
-            $sessionCookie = (string) ($config['session']['cookie_name'] ?? 'attendly_sid');
-            if ($path === '/auth/login' || isset($_COOKIE[$sessionCookie])) {
-                $auth->requireCsrfToken();
-            }
+        $sessionCookie = (string) ($config['session']['cookie_name'] ?? 'attendly_sid');
+        if (!in_array($path, $csrfExempt, true) && isset($_COOKIE[$sessionCookie])) {
+            $auth->requireCsrfToken();
         }
     }
 

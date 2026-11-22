@@ -95,10 +95,29 @@ function assert_true(bool $condition, string $message): void
 }
 
 /**
+ * Paths that deliberately skip the synchronizer-token check.
+ */
+function csrf_exempt_path(string $path): bool
+{
+    foreach ([
+        '/auth/login',
+        '/auth/register',
+        '/auth/verify-otp',
+        '/auth/forgot-password',
+        '/auth/reset-password',
+    ] as $exempt) {
+        if ($path === $exempt || str_starts_with($path, $exempt . '?')) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Fetch and cache the CSRF token bound to one cookie jar.
  *
- * The pre-auth endpoint is a GET, so calling it from here cannot recurse
- * back into the mutating-request branch below.
+ * /auth/csrf-token requires a signed-in session and is a GET, so calling it
+ * from here cannot recurse into the mutating-request branch below.
  */
 function csrf_token_for_jar(string $cookieJar): ?string
 {
@@ -108,12 +127,12 @@ function csrf_token_for_jar(string $cookieJar): ?string
     }
     $tokens[$cookieJar] = null;
 
-    $response = http_client('GET', '/auth/csrf-pre-auth', null, $cookieJar);
+    $response = http_client('GET', '/auth/csrf-token', null, $cookieJar);
     $tokens[$cookieJar] = $response['body']['data']['csrfToken'] ?? null;
     return $tokens[$cookieJar];
 }
 
-function http_client(string $method, string $path, ?array $body = null, ?string $cookieJar = null): array
+function http_client(string $method, string $path, ?array $body = null, ?string $cookieJar = null, bool $withCsrf = true): array
 {
     global $baseUrl;
 
@@ -125,8 +144,10 @@ function http_client(string $method, string $path, ?array $body = null, ?string 
 
     // Every state-changing request now needs the session's synchronizer
     // token; attachment is automatic so individual tests stay unchanged.
-    if ($cookieJar !== null
-        && in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+    if ($withCsrf
+        && $cookieJar !== null
+        && in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'], true)
+        && !csrf_exempt_path($path)) {
         $token = csrf_token_for_jar($cookieJar);
         if ($token !== null && $token !== '') {
             $headers[] = 'X-CSRF-Token: ' . $token;
@@ -1025,18 +1046,22 @@ try {
         assert_true(attendance_row($db, $fingerprintWrongEventId, $studentBId) !== false, 'manual attendance row was not created');
     });
 
-    test('login requires a pre-auth CSRF token', function () use ($studentA, $password, $cookieJars): void {
-        // No cookie jar means no X-CSRF-Token header is attached.
+    test('login is CSRF-exempt but authenticated writes are not', function () use ($studentA, $password): void {
+        // Exempt route: no cookie jar and no header still signs in.
         $bare = http_client('POST', '/auth/login', [
             'email' => $studentA['user']['email'],
             'password' => $password,
         ]);
-        same(403, $bare['status']);
-        response_error($bare, 'csrf_rejected');
+        same(200, $bare['status']);
 
-        // The same credentials succeed once /auth/csrf-pre-auth issued a token.
-        $loggedIn = login($studentA['user']['email'], $password, $cookieJars);
-        same($studentA['id'], $loggedIn['id']);
+        // An authenticated state-changing request without the header is refused.
+        $denied = http_client('POST', '/auth/logout', null, $studentA['jar'], false);
+        same(403, $denied['status']);
+        response_error($denied, 'csrf_rejected');
+
+        // The refused logout left the session intact.
+        $me = http_client('GET', '/auth/me', null, $studentA['jar']);
+        same(200, $me['status']);
     });
 
     test('a temporary password blocks every route except the change flow', function () use ($db, $suffix, $password, $cookieJars, &$userIds): void {
@@ -1051,7 +1076,11 @@ try {
         // GET /events only calls currentUser(), so it used to bypass the gate.
         $events = http_client('GET', '/events', null, $session['jar']);
         same(403, $events['status']);
-        response_error($events, 'must_change_password');
+        response_error($events, 'password_change_required');
+
+        // The token route stays reachable so the client can still act.
+        $token = http_client('GET', '/auth/csrf-token', null, $session['jar']);
+        same(200, $token['status']);
 
         // The forced-change screen still needs its own identity.
         $me = http_client('GET', '/auth/me', null, $session['jar']);

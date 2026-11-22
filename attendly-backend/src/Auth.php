@@ -92,8 +92,8 @@ final class Auth
      * Return the session's CSRF token, creating one on first use.
      *
      * The token lives in the server-side session, so it survives the
-     * session_regenerate_id() call on login. A client may fetch it before
-     * signing in, which is what closes login CSRF.
+     * session_regenerate_id() call on login and stays valid for the
+     * state-changing requests that follow.
      */
     public function csrfToken(): string
     {
