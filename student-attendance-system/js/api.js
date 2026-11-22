@@ -84,6 +84,32 @@ var apiOnline = false;
 /** True once a backend call has failed with a network/CORS error. */
 var apiOffline = false;
 
+/** In-memory CSRF token (never persisted to localStorage). */
+var csrfToken = null;
+
+/**
+ * Get the current CSRF token.
+ * @returns {string|null}
+ */
+function getCsrfToken() {
+  return csrfToken;
+}
+
+/**
+ * Set the CSRF token in memory.
+ * @param {string} token
+ */
+function setCsrfToken(token) {
+  csrfToken = token;
+}
+
+/**
+ * Clear the CSRF token (on logout).
+ */
+function clearCsrfToken() {
+  csrfToken = null;
+}
+
 /**
  * Absolute URL for an API path.
  * @param {string} path e.g. '/events'
@@ -123,6 +149,11 @@ async function request(path, options) {
 
   if (['POST', 'PUT', 'PATCH', 'DELETE'].indexOf(init.method.toUpperCase()) !== -1) {
     init.headers['X-Requested-With'] = 'XMLHttpRequest';
+    // Attach CSRF token for state-changing requests
+    var token = getCsrfToken();
+    if (token) {
+      init.headers['X-CSRF-Token'] = token;
+    }
   }
 
   if (opts.body !== undefined) {
@@ -203,16 +234,6 @@ function redirectToLogin() {
  * health check. Until then the prototype keeps using localStorage.
  * @returns {Promise<boolean>}
  */
-async function useRemoteData() {
-  if (!API_BASE_URL) return false;
-  try {
-    var health = await request('/health', { anonymous: true });
-    return !!health && health.status === 'ok';
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Prime the localStorage cache from the backend.
  *
@@ -295,14 +316,37 @@ function addHour(hhmm) {
 
 var api = {
   login: function (email, password) {
-    return request('/auth/login', {
-      method: 'POST',
-      body: { email: email, password: password },
-      anonymous: true,
-      validate: function (user) {
-        return user && user.id && user.role;
-      },
-    });
+    // /auth/login is CSRF-protected, so fetch a pre-auth token into the
+    // session before posting. The token survives session_regenerate_id().
+    return request('/auth/csrf-pre-auth', { anonymous: true })
+      .catch(function () { return null; })
+      .then(function (data) {
+        if (data && data.csrfToken) {
+          setCsrfToken(data.csrfToken);
+        }
+        return request('/auth/login', {
+          method: 'POST',
+          body: { email: email, password: password },
+          anonymous: true,
+          validate: function (user) {
+            return user && user.id && user.role;
+          },
+        });
+      })
+      .then(function (user) {
+        // Refresh from the authenticated session; in practice this returns
+        // the same value issued before login.
+        return request('/auth/csrf-token', { anonymous: true })
+          .then(function (data) {
+            if (data && data.csrfToken) {
+              setCsrfToken(data.csrfToken);
+            }
+            return user;
+          })
+          .catch(function () {
+            return user;
+          });
+      });
   },
 
   /**
@@ -334,7 +378,10 @@ var api = {
   logout: function () {
     // Always clear locally, even if the server call fails.
     return request('/auth/logout', { method: 'POST', anonymous: true })
-      .catch(function () { return { ok: true }; });
+      .catch(function () { return { ok: true }; })
+      .finally(function () {
+        clearCsrfToken();
+      });
   },
 
   me: function () {

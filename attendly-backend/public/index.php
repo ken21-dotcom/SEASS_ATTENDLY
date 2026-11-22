@@ -19,12 +19,14 @@ require __DIR__ . '/../src/Auth.php';
 require __DIR__ . '/../src/Validator.php';
 require __DIR__ . '/../src/RateLimiter.php';
 require __DIR__ . '/../src/Repository.php';
+require __DIR__ . '/../src/ConfigGuard.php';
 require __DIR__ . '/../src/routes.php';
 
 use Attendly\Response;
 use Attendly\Auth;
 use Attendly\Repository;
 use Attendly\RateLimiter;
+use Attendly\ConfigGuard;
 use Attendly\ValidationException;
 
 /**
@@ -83,6 +85,17 @@ if (!is_file($configFile)) {
     Response::fail('config_missing', 'config/config.php is missing.', 500);
 }
 $config = require $configFile;
+
+// Security-critical settings must not still hold a public development
+// default. A missing environment variable would otherwise leave the
+// fingerprint matching service accepting the published key.
+try {
+    ConfigGuard::assertSecure($config);
+} catch (\RuntimeException $e) {
+    error_log('[attendly] ' . $e->getMessage());
+    Response::fail('insecure_config', $e->getMessage(), 500);
+}
+
 $allowedOrigins = (array) ($config['cors']['allowed_origins'] ?? []);
 $devCors = ($config['cors']['dev_allow_cors'] ?? false) === true;
 
@@ -136,12 +149,77 @@ if ($prefix !== '' && $prefix !== '/' && ($path === $prefix || str_starts_with($
 }
 $path = '/' . ltrim($path, '/');
 
+/**
+ * Block a session that still owes a password change.
+ *
+ * Anything not on this list answers 403, so the forced-change screen cannot
+ * be skipped by calling another endpoint directly. The flag used to be
+ * checked only inside Auth::requireRole(), which read-only routes that call
+ * currentUser() never reach.
+ */
+function attendly_enforce_password_change(string $method, string $path, Auth $auth, array $config): void
+{
+    // Without a session cookie there is no session to gate; skipping the
+    // lookup also keeps anonymous traffic from creating a session file.
+    $sessionCookie = (string) ($config['session']['cookie_name'] ?? 'attendly_sid');
+    if (!isset($_COOKIE[$sessionCookie])) {
+        return;
+    }
+
+    $user = $auth->currentUser();
+    if ($user === null || ($user['mustChangePassword'] ?? false) !== true) {
+        return;
+    }
+
+    $allowed = [
+        'GET /auth/me',
+        'POST /auth/logout',
+        'GET /auth/csrf-token',
+        'GET /auth/csrf-pre-auth',
+        'POST /auth/password',
+        'GET /health',
+    ];
+    if (!in_array($method . ' ' . $path, $allowed, true)) {
+        Response::fail(
+            'must_change_password',
+            'Change your temporary password before continuing.',
+            403
+        );
+    }
+}
+
 try {
     $db    = get_db();
     $repo  = new Repository($db, $config);
     $auth  = new Auth($db);
     $limiter = new RateLimiter($db);
     $ctx   = ['repo' => $repo, 'auth' => $auth, 'limiter' => $limiter, 'method' => $method, 'config' => $config];
+
+    // Synchronizer-token check. Routes that cannot yet hold a session token
+    // (registration, OTP, password reset) are exempt. Everything else,
+    // including /auth/login, must echo the token issued by
+    // GET /auth/csrf-pre-auth or GET /auth/csrf-token.
+    if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+        $csrfExempt = [
+            '/auth/register',
+            '/auth/verify-otp',
+            '/auth/forgot-password',
+            '/auth/reset-password',
+        ];
+        if (!in_array($path, $csrfExempt, true)) {
+            // A request with no session cookie carries no ambient authority,
+            // so there is nothing to forge and the route should answer 401
+            // itself. Login is the exception: a forged login would install
+            // the attacker's session in the victim's browser, so it always
+            // requires a token issued before the password is sent.
+            $sessionCookie = (string) ($config['session']['cookie_name'] ?? 'attendly_sid');
+            if ($path === '/auth/login' || isset($_COOKIE[$sessionCookie])) {
+                $auth->requireCsrfToken();
+            }
+        }
+    }
+
+    attendly_enforce_password_change($method, $path, $auth, $config);
 
     respond(attendly_route($path, $method, $ctx));
 } catch (ValidationException $e) {

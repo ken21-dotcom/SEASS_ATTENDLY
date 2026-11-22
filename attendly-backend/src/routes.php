@@ -126,6 +126,15 @@ function attendly_route(string $path, string $method, array $ctx): array
         ['GET', '/auth/me', function () use ($auth): array {
             return $auth->currentUser() ?? ['user' => null];
         }],
+        // Synchronizer token for state-changing requests. The login page
+        // fetches csrf-pre-auth before POST /auth/login, so the login request
+        // itself can be verified instead of being blindly exempt.
+        ['GET', '/auth/csrf-token', function () use ($auth): array {
+            return ['csrfToken' => $auth->csrfToken()];
+        }],
+        ['GET', '/auth/csrf-pre-auth', function () use ($auth): array {
+            return ['csrfToken' => $auth->csrfToken()];
+        }],
         ['POST', '/auth/password', function () use ($auth): array {
             $user = $auth->requireUser();
             $body = Response::body();

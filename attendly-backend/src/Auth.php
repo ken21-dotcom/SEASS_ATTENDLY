@@ -89,6 +89,39 @@ final class Auth
     }
 
     /**
+     * Return the session's CSRF token, creating one on first use.
+     *
+     * The token lives in the server-side session, so it survives the
+     * session_regenerate_id() call on login. A client may fetch it before
+     * signing in, which is what closes login CSRF.
+     */
+    public function csrfToken(): string
+    {
+        init_session();
+        $token = $_SESSION['csrf_token'] ?? null;
+        if (!is_string($token) || $token === '') {
+            $token = bin2hex(random_bytes(32));
+            $_SESSION['csrf_token'] = $token;
+        }
+        return $token;
+    }
+
+    /**
+     * Reject a state-changing request whose X-CSRF-Token header does not
+     * match the session token.
+     */
+    public function requireCsrfToken(): void
+    {
+        init_session();
+        $expected = (string) ($_SESSION['csrf_token'] ?? '');
+        $provided = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+
+        if ($expected === '' || $provided === '' || !hash_equals($expected, $provided)) {
+            Response::fail('csrf_rejected', 'Request verification failed.', 403);
+        }
+    }
+
+    /**
      * Resolve the signed-in user, or null when there is no valid session.
      */
     public function currentUser(): ?array

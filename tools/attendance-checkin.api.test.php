@@ -94,20 +94,51 @@ function assert_true(bool $condition, string $message): void
     }
 }
 
+/**
+ * Fetch and cache the CSRF token bound to one cookie jar.
+ *
+ * The pre-auth endpoint is a GET, so calling it from here cannot recurse
+ * back into the mutating-request branch below.
+ */
+function csrf_token_for_jar(string $cookieJar): ?string
+{
+    static $tokens = [];
+    if (array_key_exists($cookieJar, $tokens)) {
+        return $tokens[$cookieJar];
+    }
+    $tokens[$cookieJar] = null;
+
+    $response = http_client('GET', '/auth/csrf-pre-auth', null, $cookieJar);
+    $tokens[$cookieJar] = $response['body']['data']['csrfToken'] ?? null;
+    return $tokens[$cookieJar];
+}
+
 function http_client(string $method, string $path, ?array $body = null, ?string $cookieJar = null): array
 {
     global $baseUrl;
 
     $ch = curl_init($baseUrl . $path);
+    $headers = [
+        'Content-Type: application/json',
+        'X-Requested-With: XMLHttpRequest',
+    ];
+
+    // Every state-changing request now needs the session's synchronizer
+    // token; attachment is automatic so individual tests stay unchanged.
+    if ($cookieJar !== null
+        && in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+        $token = csrf_token_for_jar($cookieJar);
+        if ($token !== null && $token !== '') {
+            $headers[] = 'X-CSRF-Token: ' . $token;
+        }
+    }
+
     $options = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HEADER         => true,
         CURLOPT_CUSTOMREQUEST  => $method,
         CURLOPT_TIMEOUT        => 15,
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'X-Requested-With: XMLHttpRequest',
-        ],
+        CURLOPT_HTTPHEADER     => $headers,
     ];
 
     if ($cookieJar !== null) {
@@ -992,6 +1023,40 @@ try {
         same($studentBId, (int) $data['studentId']);
         same('manual', $data['verificationMethod']);
         assert_true(attendance_row($db, $fingerprintWrongEventId, $studentBId) !== false, 'manual attendance row was not created');
+    });
+
+    test('login requires a pre-auth CSRF token', function () use ($studentA, $password, $cookieJars): void {
+        // No cookie jar means no X-CSRF-Token header is attached.
+        $bare = http_client('POST', '/auth/login', [
+            'email' => $studentA['user']['email'],
+            'password' => $password,
+        ]);
+        same(403, $bare['status']);
+        response_error($bare, 'csrf_rejected');
+
+        // The same credentials succeed once /auth/csrf-pre-auth issued a token.
+        $loggedIn = login($studentA['user']['email'], $password, $cookieJars);
+        same($studentA['id'], $loggedIn['id']);
+    });
+
+    test('a temporary password blocks every route except the change flow', function () use ($db, $suffix, $password, $cookieJars, &$userIds): void {
+        $userId = create_officer($db, $suffix . 'mc', $password);
+        $userIds[] = $userId;
+        $db->prepare('UPDATE users SET must_change_password = 1 WHERE id = :id')
+            ->execute(['id' => $userId]);
+
+        $session = login('officer.' . $suffix . 'mc@example.test', $password, $cookieJars);
+        same(true, $session['user']['mustChangePassword']);
+
+        // GET /events only calls currentUser(), so it used to bypass the gate.
+        $events = http_client('GET', '/events', null, $session['jar']);
+        same(403, $events['status']);
+        response_error($events, 'must_change_password');
+
+        // The forced-change screen still needs its own identity.
+        $me = http_client('GET', '/auth/me', null, $session['jar']);
+        same(200, $me['status']);
+        same(true, response_data($me)['mustChangePassword']);
     });
 } catch (Throwable $e) {
     $failed++;
