@@ -170,7 +170,7 @@ report('no references to admin.js / admin-panel.js', stale === 0);
 
 /* ── 5. Behavioural suites ──────────────────────────────────────── */
 
-for (const suite of ['tools/escaping.test.js', 'tools/api-contract.test.js', 'tools/hydration.test.js', 'tools/fingerprint-scan.test.js', 'tools/data-storage.test.js', 'tools/first-run.test.js', 'tools/d5-ui.test.js', 'tools/global-search.test.js', 'tools/d6-id-normalization.test.js', 'tools/student-org.test.js', 'tools/student-attendance-rate.test.js', 'tools/weather.test.js']) {
+for (const suite of ['tools/escaping.test.js', 'tools/api-contract.test.js', 'tools/hydration.test.js', 'tools/fingerprint-scan.test.js', 'tools/data-storage.test.js', 'tools/first-run.test.js', 'tools/d5-ui.test.js', 'tools/global-search.test.js', 'tools/d6-id-normalization.test.js', 'tools/student-org.test.js', 'tools/student-attendance-rate.test.js', 'tools/weather.test.js', 'tools/api-csrf.test.js']) {
   section(path.basename(suite));
   try {
     const out = execFileSync(process.execPath, [path.join(ROOT, suite)], { stdio: 'pipe' });
