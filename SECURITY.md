@@ -49,12 +49,17 @@ environment.
 
 ## CSRF
 
-Every state-changing request must carry `X-CSRF-Token` matching the token in the
-server-side session, issued by `GET /auth/csrf-pre-auth` or
-`GET /auth/csrf-token`. `POST /auth/login` is **not** exempt: the login page
-fetches a pre-auth token first, which closes login CSRF. Registration, OTP
-verification and password reset remain exempt because they run before a session
-token can exist.
+Every authenticated state-changing request must carry `X-CSRF-Token` matching
+the token in the server-side session, issued by `GET /auth/csrf-token` (which
+requires a signed-in session). `POST /auth/login` is exempt, as are
+registration, OTP verification and password reset, because they run before a
+usable token exists.
+
+**Login CSRF is therefore an accepted risk in this build.** A forged login can
+install the attacker's session in a victim's browser, so the victim then records
+attendance, profile changes or password changes inside the attacker's account.
+Closing it requires issuing a token before authentication, which is a
+post-defense change.
 
 ## Four-point attendance data model
 
