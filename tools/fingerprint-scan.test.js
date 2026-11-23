@@ -27,10 +27,15 @@ const kioskSrc = read('student-attendance-system/js/kiosk.js');
 const kioskCss = read('student-attendance-system/css/kiosk.css');
 const apiSrc = read('student-attendance-system/js/api.js');
 const enrollmentSrc = read('student-attendance-system/js/fingerprint-enrollment.js');
+const uiSrc = read('student-attendance-system/js/ui.js');
+const stylesCss = read('student-attendance-system/css/styles.css');
 const routesSrc = read('attendly-backend/src/routes.php');
 const repositorySrc = read('attendly-backend/src/Repository.php');
 const matchingSrc = read('tools/matching-service/src/main/java/local/attendly/matching/Main.java');
 const migrationSrc = read('attendly-backend/db/migrations/042_fingerprint_attendance.sql');
+const migrationFlagSrc = read('attendly-backend/db/migrations/043_add_fingerprint_enrolled_flag.sql');
+const phpConfig = read('attendly-backend/config/config.php');
+const phpConfigExample = read('attendly-backend/config/config.example.php');
 const adminHtml = read('student-attendance-system/pages/administrator/admin-manage-students.html');
 const sscHtml = read('student-attendance-system/pages/ssc-officer/ssc-manage-students.html');
 const adminJs = read('student-attendance-system/js/administrator-panel.js');
@@ -87,17 +92,25 @@ ok('kiosk requires an ID before sending one PNG sample to the server',
   /api\.encodeFingerprintSample\(samples\[0\]\)/.test(kioskSrc) &&
   /api\.fingerprintCheckIn\(eventRow\.id, studentIdentifier, image, scanMode\)/.test(kioskSrc) &&
   /function validateStudentIdentifier\(/.test(kioskSrc) &&
+  /setStatus\(\s*'attention',\s*'Enter student ID first'/.test(kioskSrc) &&
   !/captureTemplate\(\)/.test(kioskSrc));
 ok('kiosk ID accepts five digits or the complete stored ID',
   /Enter your 5-digit ID/.test(kioskHtml) &&
   /Full IDs like 2025-12345 also work/.test(kioskHtml) &&
   /const validStudentIdentifier = \(value\) =>/.test(kioskSrc) &&
   /\\d\{5\}\|\\d\{4\}-\\d\{5\}/.test(kioskSrc));
-ok('backend keeps full IDs and resolves all suffix candidates before matching',
+ok('backend scopes 1:1 verification to the typed student ID',
   /kioskStudentIdentifier\(/.test(repositorySrc) &&
   /RIGHT\(s\.student_id_number, 6\) = CONCAT\(\\'\-\\', :student_id_suffix\)/.test(repositorySrc) &&
-  /\$service->identifyDetailed\(\$fingerprintImage, \$candidates\)/.test(repositorySrc) &&
+  /\$service->verifyDetailed\(\$fingerprintImage, \$candidate\)/.test(repositorySrc) &&
+  !/\$service->identifyDetailed\(\$fingerprintImage, \$candidates\)/.test(repositorySrc) &&
   /student_id_not_found/.test(repositorySrc));
+ok('missing fingerprint returns 400 and the kiosk logs verification diagnostics',
+  /fingerprint_not_enrolled[\s\S]{0,300}?400/.test(repositorySrc) &&
+  /\[kiosk\] No fingerprint template for student/.test(repositorySrc) &&
+  /\[kiosk\] Match score for student \{\$studentIdentifier\}/.test(repositorySrc) &&
+  /\[kiosk\] Fingerprint not matched for student/.test(repositorySrc) &&
+  /\[kiosk\] Matching service unreachable for student/.test(repositorySrc));
 ok('fingerprint check-in rejects enrollment below ten before recording attendance',
   /fingerprint_enrollment_incomplete/.test(repositorySrc) &&
   /\$completedCount < 10/.test(repositorySrc) &&
@@ -114,7 +127,7 @@ ok('re-enrolling a finger replaces that entry and preserves the 10-finger count'
   /count\(\$completed\) === count\(self::FINGERPRINT_FINGERS\)/.test(repositorySrc));
 ok('legacy flat templates remain usable but do not count as enrolled fingers',
   /\['finger' => null, 'templates' => \$templates\]/.test(repositorySrc) &&
-  /if \(\$entry\['finger'\] !== null && \$entry\['templates'\] !== \[\]\)/.test(repositorySrc));
+  /if \(\$entry\['finger'\] !== null && count\(\$entry\['templates'\]\) === self::TEMPLATES_PER_FINGER\)/.test(repositorySrc));
 ok('kiosk unique five-digit lookup keeps the matching student candidate',
   /\$matchedStudents = \$studentStmt->fetchAll\(\)/.test(repositorySrc) &&
   /\$students\[\$id\] = \$row/.test(repositorySrc) &&
@@ -124,10 +137,11 @@ ok('kiosk full-format lookup uses exact stored-ID equality',
   /s\.student_id_number = :student_id_number/.test(repositorySrc));
 ok('kiosk reports no active student for an unmatched ID',
   /if \(\$matchedStudents === \[\]\) \{\s*Response::fail\('student_id_not_found'/.test(repositorySrc));
-ok('suffix collisions are resolved by matching among every enrolled candidate',
-  /foreach \(\$matchedStudents as \$row\)/.test(repositorySrc) &&
-  /\$service->identifyDetailed\(\$fingerprintImage, \$candidates\)/.test(repositorySrc) &&
-  /\$matchedId === null \|\| !isset\(\$students\[\$matchedId\]\)/.test(repositorySrc));
+ok('suffix collisions pick the best score after checking every candidate',
+  /foreach \(\$candidates as \$candidate\)/.test(repositorySrc) &&
+  /\$score > \$best\['score'\]/.test(repositorySrc) &&
+  /\$best\['score'\] >= \$best\['threshold'\]/.test(repositorySrc) &&
+  !/if \(\$result\['matchedId'\] !== null\) \{\s*\$match = \$result;\s*break;/.test(repositorySrc));
 ok('department audience uses the existing normalized department policy',
   /eventTargetsDepartment\(\$targetDepartment, \(string\) \(\$row\['department'\] \?\? ''\)\)/.test(repositorySrc));
 ok('kiosk logs nothing about the fingerprint sample',
@@ -169,12 +183,12 @@ ok('no page loads the retired WebUSB adapter',
   !/js\/fingerprint-webusb\.js/.test(sscHtml) &&
   !/js\/fingerprint-webusb\.js/.test(kioskHtml) &&
   !fs.existsSync(path.join(ROOT, 'student-attendance-system/js/fingerprint-webusb.js')));
-ok('enrollment pages load the Web SDK before the modal script',
-  [adminHtml, sscHtml].every((html) =>
-    html.indexOf('@digitalpersona/websdk') !== -1 &&
-    html.indexOf('@digitalpersona/core') !== -1 &&
-    html.indexOf('@digitalpersona/devices') !== -1 &&
-    html.indexOf('@digitalpersona/devices') < html.indexOf('js/fingerprint-enrollment.js')));
+ok('only the admin enrollment page loads the Web SDK before the modal script',
+  adminHtml.indexOf('@digitalpersona/websdk') !== -1 &&
+  adminHtml.indexOf('@digitalpersona/core') !== -1 &&
+  adminHtml.indexOf('@digitalpersona/devices') !== -1 &&
+  adminHtml.indexOf('@digitalpersona/devices') < adminHtml.indexOf('js/fingerprint-enrollment.js') &&
+  !/@digitalpersona/.test(sscHtml));
 ok('enrollment uses the kiosk capture seam and PNG default',
   /new global\.dp\.devices\.FingerprintReader\(/.test(enrollmentSrc) &&
   /\.startAcquisition\(sampleFormat\)/.test(enrollmentSrc) &&
@@ -198,10 +212,16 @@ ok('API client has a chunked PNG base64 encoder',
   !/String\.fromCharCode\.apply\(null, new Uint8Array\(data\)\)/.test(apiSrc));
 ok('fingerprint kiosk route exists', /\['POST', '\/attendance\/fingerprint'/.test(routesSrc));
 ok('fingerprint enrollment route exists', /\['POST', '\/users\/enroll-fingerprint'/.test(routesSrc));
+ok('fingerprint reset route exists', /\['DELETE', '\/users\/:id\/fingerprint'/.test(routesSrc));
 ok('fingerprint route is officer-gated',
   /\$fingerprintCheckIn = function \(\) use \(\$repo, \$auth, \$ctx\): array \{[\s\S]*?requireRole\(\['admin', 'ssc-officer'\]\)/.test(routesSrc));
-ok('enrollment route is staff-gated',
-  /enroll-fingerprint[\s\S]{0,220}?requireRole\(\['admin', 'ssc-officer'\]\)/.test(routesSrc));
+ok('enrollment route is administrator-only',
+  /enroll-fingerprint[\s\S]{0,220}?requireRole\(\['admin'\]\)/.test(routesSrc));
+ok('fingerprint reset route is administrator-only',
+  /\/users\/:id\/fingerprint'[\s\S]{0,160}?requireRole\(\['admin'\]\)/.test(routesSrc));
+ok('repository enforces administrator-only biometric writes',
+  /assertFingerprintAdministrator\(\$actor\)/.test(repositorySrc) &&
+  /Only administrators may manage fingerprint enrollment\./.test(repositorySrc));
 ok('matching service client is local, keyed and fails with 503',
   /curl_init\(\$this->baseUrl \. \$path\)/.test(fs.readFileSync(path.join(ROOT, 'attendly-backend/src/MatchingService.php'), 'utf8')) &&
   /CURLOPT_CONNECTTIMEOUT => 2/.test(fs.readFileSync(path.join(ROOT, 'attendly-backend/src/MatchingService.php'), 'utf8')) &&
@@ -217,24 +237,47 @@ ok('enrollment templates one image at a time and stores a JSON array',
 ok('enrollment stores both scans for a finger as two templates',
   /foreach \(\$images as \$image\)[\s\S]{0,120}\$templates\[\] = \$service->template\(\$image\)/.test(repositorySrc) &&
   /'templates' => array_values\(\$templates\)/.test(repositorySrc));
-ok('matching service defaults to 512 dpi and exposes it on health',
+ok('backend requires two templates per finger and keeps the 10/10 flag honest',
+  /TEMPLATES_PER_FINGER = 2/.test(repositorySrc) &&
+  /count\(\$images\) !== self::TEMPLATES_PER_FINGER/.test(repositorySrc) &&
+  /syncFingerprintEnrolledFlag\(\$studentId, \$enrolled\)/.test(repositorySrc) &&
+  /UPDATE students SET fingerprint_enrolled = :enrolled/.test(repositorySrc));
+ok('migration 043 restores the missing fingerprint_enrolled flag',
+  /ADD COLUMN IF NOT EXISTS fingerprint_enrolled BOOLEAN NOT NULL DEFAULT FALSE/.test(migrationFlagSrc) &&
+  /UPDATE students\s+SET fingerprint_enrolled = CASE/.test(migrationFlagSrc));
+ok('flag sync no longer swallows database failures',
+  /private function syncFingerprintEnrolledFlag[\s\S]{0,600}?\$stmt->execute\(/.test(repositorySrc) &&
+  !/private function syncFingerprintEnrolledFlag[\s\S]{0,600}?catch \(PDOException\)/.test(repositorySrc));
+ok('matching service defaults to 512 dpi and exposes both thresholds on health',
   /numberEnv\("MATCHING_DPI", 512\)/.test(matchingSrc) &&
+  /numberEnv\("MATCHING_THRESHOLD", 40\)/.test(matchingSrc) &&
+  /numberEnv\("MATCHING_VERIFY_THRESHOLD", 30\)/.test(matchingSrc) &&
   /\\"dpi\\":/.test(matchingSrc) &&
-  /\\"threshold\\":/.test(matchingSrc));
+  /\\"threshold\\":/.test(matchingSrc) &&
+  /\\"verifyThreshold\\":/.test(matchingSrc));
+ok('matching service exposes 1:1 /verify and applies the PHP threshold',
+  /createContext\("\/verify", new VerifyHandler\(\)\)/.test(matchingSrc) &&
+  /POST \/verify/.test(matchingSrc) &&
+  /requestThreshold\(request\.get\("threshold"\), verifyThreshold\)/.test(matchingSrc) &&
+  /matchJson\(best, effectiveThreshold\)/.test(matchingSrc));
 ok('matching service returns best score, threshold and matched finger',
   /\\"bestScore\\":/.test(matchingSrc) &&
   /\\"finger\\":/.test(matchingSrc) &&
   /candidate\.fingers/.test(matchingSrc));
+ok('PHP config sets the 1:1 verification threshold to 30',
+  /'threshold'\s*=>\s*30,/.test(phpConfig) &&
+  /'threshold'\s*=>\s*30,/.test(phpConfigExample));
 ok('kiosk debug shows score, threshold and matched finger',
   /debugLastMatch/.test(kioskSrc) &&
   /last match score/.test(kioskSrc) &&
   /threshold \$\{number\(debugLastMatch\.threshold\)\}/.test(kioskSrc) &&
   /finger \$\{debugLastMatch\.finger\}/.test(kioskSrc));
-ok('enrollment extracts templates without a database-wide 1:N match search',
-  !/assertFingerprintNotEnrolledToAnotherStudent/.test(repositorySrc) &&
-  !/\$service->identify\(\$image, \$candidates\)/.test(repositorySrc));
-ok('repository identifies with the matching service instead of BINARY compare',
-  /\$service->identifyDetailed\(\$fingerprintImage, \$candidates\)/.test(repositorySrc) &&
+ok('enrollment rejects a finger enrolled to another student with 409',
+  /assertFingerprintNotEnrolledToAnotherStudent/.test(repositorySrc) &&
+  /\$service->identify\(\$image, \$candidates\) !== null/.test(repositorySrc) &&
+  /'fingerprint_already_enrolled'[\s\S]{0,160}?409/.test(repositorySrc));
+ok('repository verifies with the matching service instead of BINARY compare',
+  /\$service->verifyDetailed\(\$fingerprintImage, \$candidate\)/.test(repositorySrc) &&
   !/BINARY s\.fingerprint_template = BINARY :template/.test(repositorySrc));
 ok('repository reuses the shared attendance policy',
   /private function recordScannedAttendance\(/.test(repositorySrc) &&
@@ -245,7 +288,7 @@ ok('manual and QR methods remain available',
 /* ── Migration ─────────────────────────────────────────────────── */
 
 ok('migration adds the nullable template column',
-  /ALTER TABLE students\s+ADD COLUMN fingerprint_template LONGTEXT NULL/.test(migrationSrc));
+  /ALTER TABLE students\s+ADD COLUMN IF NOT EXISTS fingerprint_template LONGTEXT NULL/.test(migrationSrc));
 ok('migration preserves the QR token columns',
   !/qr_token|DROP COLUMN/i.test(migrationSrc));
 ok('migration adds the fingerprint verification method',
@@ -256,9 +299,11 @@ ok('migration adds the fingerprint verification method',
 ok('admin manage students offers fingerprint enrollment',
   /enrollStudentFingerprint/.test(adminJs) &&
   /js\/fingerprint-enrollment\.js/.test(adminHtml));
-ok('SSC manage students offers fingerprint enrollment',
-  /enrollStudentFingerprint/.test(sscJs) &&
-  /js\/fingerprint-enrollment\.js/.test(sscHtml));
+ok('SSC manage students cannot open fingerprint enrollment',
+  !/enrollStudentFingerprint/.test(sscJs) &&
+  !/Manage Fingerprints/.test(sscJs) &&
+  !/js\/fingerprint-enrollment\.js/.test(sscHtml) &&
+  /administrator-only/.test(sscHtml));
 ok('admin student list shows full or partial finger enrollment state',
   /studentFingerprintFingersCompleted\(student\)/.test(adminJs) &&
   /'Incomplete: ' \+ fingersDone \+ '\/10 fingers'/.test(adminJs) &&
@@ -287,10 +332,33 @@ ok('enrollment requires consent before scanning',
   /id="fingerprintEnrollConsent"/.test(enrollmentSrc) &&
   /state\.els\.consent\.checked/.test(enrollmentSrc) &&
   /Consent is required before scanning/.test(enrollmentSrc));
-ok('partial enrollment warns before closing and lists missing fingers',
+ok('partial enrollment warns that closing wipes saved fingers and lists them',
   /hide\.bs\.modal/.test(enrollmentSrc) &&
-  /Missing: ' \+\s*missing\.join\(', '\)/.test(enrollmentSrc) &&
-  /Saved fingers will be kept\. Close now and resume later\?/.test(enrollmentSrc));
+  /showIncompleteEnrollmentConfirm\(missing\)/.test(enrollmentSrc) &&
+  /missing\.forEach\(function \(fingerName\)/.test(enrollmentSrc) &&
+  /fingerprintCancelMissing/.test(enrollmentSrc) &&
+  /dialog\.showModal\(\)/.test(enrollmentSrc) &&
+  !/global\.confirm\(/.test(enrollmentSrc) &&
+  /Closing will cancel enrollment and wipe all saved fingers\./.test(enrollmentSrc) &&
+  !/Saved fingers will be kept/.test(enrollmentSrc));
+ok('closing a partial enrollment wipes every saved finger and explains why',
+  /hidden\.bs\.modal/.test(enrollmentSrc) &&
+  /enrolledFingers\.length > 0 && state\.enrolledFingers\.length < FINGERS\.length/.test(enrollmentSrc) &&
+  /queueFingerprintReset\(studentIdToWipe, true\)/.test(enrollmentSrc) &&
+  /Enrollment incomplete\. All partial fingers have been erased to ensure data integrity\. Please try again\./.test(enrollmentSrc) &&
+  /Enrollment incomplete\. The partial fingerprints could not be erased\. Please try again\./.test(enrollmentSrc));
+ok('reopen awaits the wipe and only marks it clean after backend confirmation',
+  /async function enrollStudentFingerprint\(studentId, options\)/.test(enrollmentSrc) &&
+  /await queueFingerprintReset\(studentId, true\)/.test(enrollmentSrc) &&
+  /var inflight = pendingResetFor\(studentId\)/.test(enrollmentSrc) &&
+  /if \(inflight && \(await inflight\) !== true\) return;/.test(enrollmentSrc) &&
+  !/api\.resetStudentFingerprint\(studentId\)\.catch/.test(enrollmentSrc));
+ok('rejected samples still restart acquisition',
+  /sampleFlow: \{/.test(enrollmentSrc) &&
+  (enrollmentSrc.match(/break sampleFlow;/g) || []).length >= 3 &&
+  /if \(state\.sessionActive && !state\.submitting\)[\s\S]{0,120}await restartAcquisition\(\)/.test(enrollmentSrc));
+ok('every enrollment failure persists its toast across navigation',
+  /function fail\(error, persistent\)[\s\S]{0,500}persistent !== false/.test(enrollmentSrc));
 ok('enrollment shows a success state only after all ten fingers are saved',
   /result\.fingerprintEnrolled === true && fingerprintComplete\(\)/.test(enrollmentSrc) &&
   /All 10 fingers are enrolled/.test(enrollmentSrc) &&
@@ -301,20 +369,48 @@ ok('enrollment offers confirm-and-finish when all ten fingers are saved',
   /function renderCompletionState\(/.test(enrollmentSrc) &&
   /state\.modal\.hide\(\)/.test(enrollmentSrc) &&
   /refreshGroupedStudentList\(\)/.test(enrollmentSrc));
-ok('enrollment always shows a cancel button with a fixed label before completion',
+ok('enrollment keeps Close and Confirm actions visible when applicable',
   /id="fingerprintEnrollClose"/.test(enrollmentSrc) &&
   /btn-outline-danger/.test(enrollmentSrc) &&
   /Continue Later \/ Cancel Enrollment/.test(enrollmentSrc) &&
-  /state\.els\.close\.hidden = complete/.test(enrollmentSrc) &&
+  /state\.els\.close\.hidden = false/.test(enrollmentSrc) &&
   /state\.els\.confirm\.hidden = !complete/.test(enrollmentSrc) &&
   !/Close \(' \+ state\.enrolledFingers\.length/.test(enrollmentSrc));
-ok('enrollment collects two good scans per selected finger with progress',
+ok('enrollment puts the error above the picker and consent below progress',
+  enrollmentSrc.indexOf('id="fingerprintEnrollError"') < enrollmentSrc.indexOf('id="fingerEnrollPicker"') &&
+  enrollmentSrc.indexOf('id="fingerprintEnrollConsent"') > enrollmentSrc.indexOf('id="fingerEnrollPicker"') &&
+  enrollmentSrc.indexOf('id="fingerprintEnrollConsent"') > enrollmentSrc.indexOf('id="fingerprintEnrollProgress"'));
+ok('consent checkbox uses the green checked theme',
+  /class="form-check-input fingerprint-consent-checkbox"/.test(enrollmentSrc) &&
+  /\.fingerprint-consent-checkbox:checked/.test(stylesCss) &&
+  /background-color: #198754/.test(stylesCss) &&
+  /border-color: #198754/.test(stylesCss));
+ok('enrollment errors show a persistent toast that survives navigation',
+  /\{ persistent: true \}/.test(enrollmentSrc) &&
+  /sessionStorage/.test(uiSrc) &&
+  /autohide: !persistent/.test(uiSrc) &&
+  /function replayPersistentToast\(/.test(uiSrc) &&
+  /\.toast-persistent/.test(stylesCss));
+ok('enrollment collects two scans per selected finger with progress',
   /SCANS_PER_FINGER = 2/.test(enrollmentSrc) &&
   /FINGERS = \[/.test(enrollmentSrc) &&
+  /sensor 2 times/.test(enrollmentSrc) &&
+  /both placements/.test(enrollmentSrc) &&
   /Lift your finger and place it again, slightly differently/.test(enrollmentSrc) &&
   /QualityReported/.test(enrollmentSrc) &&
   /qualityIsGood/.test(enrollmentSrc) &&
   /Poor scan/.test(enrollmentSrc));
+ok('the two accepted captures are submitted directly in scan order',
+  /var images = state\.samples\.slice\(\)/.test(enrollmentSrc) &&
+  /state\.samples\.push\(image\)/.test(enrollmentSrc) &&
+  !/qualityRank|bestSamples|TEMPLATES_PER_FINGER/.test(enrollmentSrc));
+ok('a low-quality but usable scan is accepted with a visible warning',
+  /LOW_QUALITY_WARNING = 'Scan accepted, but quality is low\. Please press slightly harder for the next scan\.'/.test(enrollmentSrc) &&
+  /lowQualityAccepted = true/.test(enrollmentSrc) &&
+  /setStatus\(acceptedStatus, acceptedState\)/.test(enrollmentSrc) &&
+  /state\.samples\.push\(image\)/.test(enrollmentSrc) &&
+  /await submit\(lowQualityAccepted\)/.test(enrollmentSrc) &&
+  /async function submit\(lowQualityOnFinalScan\)/.test(enrollmentSrc));
 ok('enrollment offers a guided finger sequence with right hand first',
   /GUIDED_FINGERS = \[/.test(enrollmentSrc) &&
   /key: 'right-thumb'/.test(enrollmentSrc) &&
@@ -341,9 +437,11 @@ ok('quality gate compares against the installed QualityCode enum',
   !/value >= 90/.test(enrollmentSrc));
 ok('enrollment refuses a scan only when the code means no usable print',
   /var UNUSABLE_QUALITY_CODES = \[/.test(enrollmentSrc) &&
+  /'NoImage', 'FakeFinger', 'TooFast', 'TooSlow', 'ReverseMotion', 'TooStrange'/.test(enrollmentSrc) &&
+  !/TooShort|TooSmall/.test(enrollmentSrc.match(/var UNUSABLE_QUALITY_CODES = \[([\s\S]*?)\];/)?.[1] || '') &&
   /function qualityIsUsable\(/.test(enrollmentSrc) &&
   /!qualityIsUsable\(quality\)/.test(enrollmentSrc) &&
-  /'NoImage', 'NotAFinger', 'FakeFinger'/.test(enrollmentSrc));
+  /'TooFast', 'TooSlow', 'ReverseMotion', 'TooStrange'/.test(enrollmentSrc));
 ok('a rejected scan is logged with its quality and reason',
   /'Scan rejected\. Quality:'/.test(enrollmentSrc) &&
   /function logRejection\(quality, reason\)/.test(enrollmentSrc) &&

@@ -65,7 +65,6 @@ body {
   flex-direction: column;
   justify-content: flex-end;
   padding: 56px 60px 52px;
-  overflow: hidden;
   color: #fff;
   background: #0d221b;
   box-shadow: inset -18px 0 30px rgba(10, 20, 16, 0.18);
@@ -83,6 +82,10 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
+  /* The drifting background images are scaled past the panel edge. Clip
+     them here, on the decorative layer, so the hero panel itself no longer
+     reports clipped text and its real content is never cut off. */
+  overflow: hidden;
 }
 
 .auth-hero-slide {
@@ -422,7 +425,7 @@ body {
 
 .auth-hero-slide-label {
   font-family: var(--font-body);
-  font-size: .72rem;
+  font-size: var(--font-size-xs);
   font-weight: 600;
   letter-spacing: .06em;
   color: rgba(255, 255, 255, .55);
@@ -523,7 +526,7 @@ body {
   background: rgba(255, 255, 255, .08);
   border: 1px solid rgba(255, 255, 255, .14);
   font-family: var(--font-body);
-  font-size: .8rem;
+  font-size: var(--font-size-xs);
   font-weight: 500;
   letter-spacing: .01em;
   color: rgba(255, 255, 255, .88);
@@ -686,7 +689,7 @@ body {
   background: rgba(14, 159, 110, .08);
   color: var(--campus-bark);
   font-family: var(--font-body);
-  font-size: .8rem;
+  font-size: var(--font-size-xs);
   line-height: 1.5;
 }
 
@@ -920,6 +923,10 @@ body {
 
 /* ── Submit button — the single deliberate moment ──
    Solid green, confident; scale-on-press for tactile feedback. */
+button.auth-login-btn {
+  min-height: 48px;
+}
+
 .auth-login-btn {
   width: 100%;
   padding: 16px 24px;
@@ -1222,7 +1229,7 @@ body {
 .auth-account-line {
   margin-top: 10px !important;
   font-family: var(--font-body);
-  font-size: .8rem !important;
+  font-size: var(--font-size-xs) !important;
   font-weight: 600;
   color: var(--campus-green) !important;
   word-break: break-word;
@@ -1236,7 +1243,7 @@ body {
   background: rgba(195, 53, 53, .08);
   color: var(--campus-risk);
   font-family: var(--font-body);
-  font-size: .82rem;
+  font-size: var(--font-size-xs);
   line-height: 1.45;
 }
 
@@ -1413,7 +1420,7 @@ body {
   display: block;
   margin-top: 8px;
   font-family: var(--font-body);
-  font-size: .7rem;
+  font-size: var(--font-size-xs);
   font-weight: 500;
   letter-spacing: .01em;
   color: #7d97b3;
@@ -1572,11 +1579,34 @@ body {
 
 @media (max-width: 480px) {
   .auth-form-panel--scroll {
-    padding: 48px 20px;
+    /* Tighter, predictable rhythm: the sign-up form is long, so spend the
+       saved space on fields rather than decoration. It still scrolls inside
+       the panel, with no page-level horizontal movement. */
+    padding: 28px 18px 36px;
+  }
+
+  .auth-form-panel--scroll .auth-form-brand {
+    margin-bottom: 20px;
+  }
+
+  .auth-form-panel--scroll .auth-form-header {
+    margin-bottom: 22px;
+  }
+
+  .auth-form .auth-field-group,
+  .auth-form .mb-3,
+  .auth-form .mb-4 {
+    margin-bottom: 14px;
+  }
+
+  .auth-login-btn {
+    min-height: 48px;
+    padding: 14px 20px;
   }
 
   .auth-form-row {
     grid-template-columns: 1fr;
+    gap: 0;
   }
 }
 
@@ -1719,7 +1749,7 @@ body {
   background: rgba(195, 53, 53, .08);
   color: var(--campus-risk);
   font-family: var(--font-body);
-  font-size: .82rem;
+  font-size: var(--font-size-xs);
   line-height: 1.45;
 }
 
@@ -1778,3 +1808,86 @@ body {
    NOTE: All dark-theme styles (auth pages included) have been
    consolidated in dark-style.css. Register it AFTER this file (and
    after styles.css) so its dark rules override these. */
+
+/* Minimal auth surfaces: dark remains the page default, with no hero artwork. */
+.auth-page { background: var(--bg); color: var(--text); }
+.auth-split { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; background: var(--bg); }
+.auth-hero, .auth-hero-slides, .auth-hero-content { display: none !important; }
+.auth-form-panel, .auth-form-panel--standalone {
+  width: min(100%, 480px);
+  min-height: auto;
+  margin: auto;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+}
+.auth-form-panel--standalone { min-height: 100vh; border: 0; border-radius: 0; background: var(--bg) !important; }
+.auth-form-brand, .auth-form-header h1, .auth-form-section h2 { color: var(--text) !important; }
+.auth-form-brand { font-size: 1rem; }
+.auth-logo-badge { border: 1px solid var(--border); background: var(--surface-2); color: var(--primary); box-shadow: none; }
+.auth-form-header p, .auth-form-hint, .auth-form-label, .auth-form-section p, .auth-form-panel small { color: var(--text-muted) !important; }
+.auth-form-panel label { color: var(--text) !important; font-size: var(--font-size-label); }
+.auth-form-panel input, .auth-form-panel select { border-color: var(--border-strong) !important; background: var(--surface) !important; color: var(--text) !important; }
+.auth-submit, .auth-signup-submit, .auth-form-panel button[type="submit"] { border-radius: 8px !important; }
+.auth-footer, .auth-footer a, .auth-form-panel a { color: var(--text-muted); }
+.auth-form-panel a:hover { color: var(--primary); }
+#resetError { border-color: var(--danger-border); border-radius: 8px; background: var(--danger-bg); color: var(--danger); }
+.toast-error { border: 1px solid var(--danger-border) !important; border-left-width: 4px !important; background: var(--danger-bg) !important; color: var(--danger) !important; box-shadow: none; }
+.toast-success { border: 1px solid var(--success) !important; border-left-width: 4px !important; background: var(--success-bg) !important; color: var(--success) !important; box-shadow: none; }
+@media (max-width: 600px) { .auth-form-panel { width: 100%; padding: 24px 16px; border: 0; border-radius: 0; } }
+
+/* Minimal auth refinement: the forms use the same neutral system as the app. */
+.auth-page,
+.auth-split,
+.auth-form-panel,
+.auth-form-panel--standalone {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+.auth-form-panel {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: none !important;
+}
+.auth-logo-badge,
+.auth-form .input-group-text {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-2) !important;
+  color: var(--primary) !important;
+}
+.auth-form .form-control,
+.auth-form .auth-select {
+  border-color: var(--border-strong) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+.auth-form .form-control::placeholder { color: var(--text-muted) !important; }
+.auth-form-header h1,
+.auth-form-header h2,
+.auth-form-brand,
+.auth-form label { color: var(--text) !important; }
+.auth-form-header p,
+.auth-form-hint,
+.auth-switch,
+.auth-terms-label,
+.auth-form .form-text { color: var(--text-muted) !important; }
+.auth-login-btn,
+.auth-submit,
+.auth-signup-submit {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: var(--on-primary) !important;
+  box-shadow: none !important;
+}
+.auth-login-btn:hover,
+.auth-submit:hover,
+.auth-signup-submit:hover { border-color: var(--primary-hover) !important; background: var(--primary-hover) !important; }
+.auth-form-error,
+.auth-invalid-feedback,
+#resetError { border-color: var(--danger-border) !important; background: var(--danger-bg) !important; color: var(--danger) !important; }
+.auth-strength[data-level="1"] .auth-strength-bar { background: var(--danger) !important; }
+.auth-strength[data-level="2"] .auth-strength-bar { background: var(--warning) !important; }
+.auth-strength[data-level="3"] .auth-strength-bar,
+.auth-strength[data-level="4"] .auth-strength-bar { background: var(--accent) !important; }

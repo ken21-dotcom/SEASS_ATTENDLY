@@ -19,11 +19,29 @@
 var APP_BASE = (function () {
   var scripts = document.getElementsByTagName('script');
   var src = '';
+  // Cache-busting suffixes are part of script.src, so the match must allow
+  // "?v=4" / "#..." — otherwise every page with a versioned auth.js fell
+  // through to the fallback below.
+  var namedScript = /\/js\/(?:auth|data)\.js(?:[?#].*)?$/i;
+  var anyAppScript = /\/js\/[^/?#]+\.js(?:[?#].*)?$/i;
+
   for (var i = scripts.length - 1; i >= 0; i--) {
-    if (/\/js\/(auth|data)\.js$/.test(scripts[i].src)) { src = scripts[i].src; break; }
+    if (namedScript.test(scripts[i].src)) { src = scripts[i].src; break; }
   }
-  if (!src) src = scripts[scripts.length - 1] ? scripts[scripts.length - 1].src : '';
-  return src.slice(0, src.lastIndexOf('/js/')) + '/';
+  // A third-party script loaded last (a CDN bundle, for example) must not
+  // move the app root. Prefer any script served from the app's own js folder.
+  if (!src) {
+    for (var j = scripts.length - 1; j >= 0; j--) {
+      if (anyAppScript.test(scripts[j].src)) { src = scripts[j].src; break; }
+    }
+  }
+  if (src) return src.slice(0, src.lastIndexOf('/js/')) + '/';
+
+  // Last resort: derive the root from the current page's own path.
+  var path = (window.location && window.location.pathname) || '';
+  var pagesIndex = path.indexOf('/pages/');
+  if (pagesIndex !== -1) return path.slice(0, pagesIndex + 1);
+  return path.slice(0, path.lastIndexOf('/') + 1);
 })();
 
 /**
@@ -167,27 +185,47 @@ async function finishLogin(user) {
   // the authoritative session lives in the PHP cookie.
   setSession(user);
 
+  // A toast is cosmetic. If ui.js failed to load, or the toast container is
+  // missing, that must not stop the redirect.
+  function notify(type, message) {
+    try {
+      if (typeof showToast === 'function') showToast(type, message);
+    } catch (error) {
+      console.error('[login] Could not show a toast:', error);
+    }
+  }
+
   if (user.mustChangePassword === true) {
-    showToast('info', 'Change your temporary password to continue.');
+    // Schedule navigation before the cosmetic work below.
     setTimeout(function () {
       window.location.href = pageUrl('change-password');
     }, 500);
+    notify('info', 'Change your temporary password to continue.');
     return;
   }
 
   // Pull the database's data into the localStorage cache the pages read.
   // Failed collections remain empty rather than exposing another account's
   // stale browser cache as though it belonged to this user.
-  const hydration = await hydrateFromApi();
-  if (hydration.failed.length) {
-    showToast('error', 'Could not load from the server: ' + hydration.failed.join(', ') +
-      '. Some pages may be incomplete until the server is available.');
+  try {
+    const hydration = await hydrateFromApi();
+    if (hydration.failed.length) {
+      notify('error', 'Could not load from the server: ' + hydration.failed.join(', ') +
+        '. Some pages may be incomplete until the server is available.');
+    }
+  } catch (error) {
+    // hydrateFromApi() is designed never to throw. If it ever does, the
+    // user is already authenticated — send them on rather than stranding
+    // the login button.
+    console.error('[login] Could not hydrate data from the API:', error);
   }
 
-  showToast('success', 'Login successful! Redirecting...');
+  // Schedule the redirect first so a toast failure cannot leave the user
+  // on the login screen with a disabled button.
   setTimeout(function () {
     window.location.href = pageUrl(user.role);
   }, 700);
+  notify('success', 'Login successful! Redirecting...');
 }
 
 /**
@@ -261,10 +299,17 @@ async function loginWithCredentials(email, password) {
   try {
     user = await api.login(email, password);
   } catch (error) {
+    // The console is the first place to look when sign-in does not move.
+    // Never log the password itself.
+    console.error('[login] Sign-in request failed:', {
+      code: error && error.code,
+      status: error && error.status,
+      message: error && error.message,
+    }, error);
     var loginCode = error && error.code;
     var loginMessage = error && error.message ? error.message : '';
     var specialLoginError = loginCode === 'account_pending' || loginCode === 'pending' || loginCode === 'pending_approval'
-      || loginCode === 'account_deactivated' || loginCode === 'network_error'
+      || loginCode === 'account_deactivated' || loginCode === 'network_error' || loginCode === 'timeout'
       || loginMessage === 'Cannot reach the server' || /awaiting administrator approval/i.test(loginMessage);
     var invalidCredentials = loginCode === 'invalid_credentials'
       || loginCode === 'invalid_login' || error.status === 401;
@@ -297,7 +342,18 @@ async function loginWithCredentials(email, password) {
     return false;
   }
 
-  await finishLogin(user);
+  try {
+    await finishLogin(user);
+  } catch (error) {
+    // The credentials were accepted, so the session is valid. Surface the
+    // failure and let the caller re-enable the button instead of leaving
+    // "Signing in..." on screen forever.
+    console.error('[login] Signed in, but the dashboard could not be prepared:', error);
+    if (typeof showToast === 'function') {
+      showToast('error', 'Signed in, but the dashboard could not be prepared. Please try again.');
+    }
+    return false;
+  }
   return true;
 }
 
@@ -755,8 +811,12 @@ document.addEventListener('DOMContentLoaded', function () {
   // ── Login form submission ──
   const loginForm = document.getElementById('loginForm');
   if (loginForm) {
+    let loginInFlight = false;
+
     loginForm.addEventListener('submit', async function (e) {
       e.preventDefault();
+      if (loginInFlight) return;
+
       const emailField = document.getElementById('login-email-field');
       const passwordField = document.getElementById('login-password-field');
       [emailField, passwordField].forEach(function (field) {
@@ -787,9 +847,30 @@ document.addEventListener('DOMContentLoaded', function () {
       // be intentional and must be sent exactly as the user entered it.
       const password = document.getElementById('login-password-field').value;
 
+      loginInFlight = true;
       setFormBusy(loginForm, true, 'Signing in...');
-      const accepted = await loginWithCredentials(email, password);
-      if (!accepted) setFormBusy(loginForm, false);
+
+      let accepted = false;
+      try {
+        accepted = await loginWithCredentials(email, password);
+      } catch (error) {
+        // Any unexpected rejection (a failed CSRF fetch, a broken hydration
+        // response, a bug in finishLogin) used to escape this handler and
+        // leave the button disabled with no explanation. Log it and recover.
+        console.error('[login] Sign-in failed:', {
+          code: error && error.code,
+          status: error && error.status,
+          message: error && error.message,
+        }, error);
+        if (typeof showToast === 'function') {
+          showToast('error', (error && error.message) || 'Sign-in failed. Please try again.');
+        }
+      } finally {
+        loginInFlight = false;
+        // On success the page is about to navigate, so keep the busy state.
+        // On any failure, restore the button so the user can retry.
+        if (!accepted) setFormBusy(loginForm, false);
+      }
     });
   }
 

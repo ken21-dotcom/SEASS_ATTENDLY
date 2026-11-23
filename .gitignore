@@ -34,3 +34,6 @@ attendly-backend/config/config.php
 
 # Generated scratch file from tools/run-checks.js
 .syntax-check.tmp.js
+
+# Generated browser-audit screenshots and reports.
+ui-audit/

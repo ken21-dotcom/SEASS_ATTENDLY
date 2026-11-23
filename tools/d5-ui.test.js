@@ -116,7 +116,8 @@ ok('no SSC page or script links to the deleted officer page',
   officerPageRefs.map((file) => path.relative(SYS, file)).join(','));
 ok('SSC student page has no Add Student modal', !sscStudentsHtml.includes('id="addStudentModal"'));
 ok('SSC student page has no Add Student form', !sscStudentsHtml.includes('id="addStudentForm"'));
-ok('SSC student page has a fingerprint Actions column', sscStudentsHtml.includes('<th>Actions</th>'));
+ok('SSC student page has a read-only Fingerprint column',
+  sscStudentsHtml.includes('<th>Fingerprint</th>') && !sscStudentsHtml.includes('<th>Actions</th>'));
 ok('SSC student table has six columns', sscJs.includes('colspan: 6'));
 ok('SSC deleteUser handler is gone', !sscJs.includes('function deleteUser'));
 ok('SSC officer table handler is gone', !sscJs.includes('loadOfficersTable'));

@@ -37,7 +37,8 @@ public final class Main {
     private static final int MAX_BODY_BYTES = 8 * 1024 * 1024;
 
     private static String key;
-    private static double threshold;
+    private static double threshold;          // 1:N identification (enrollment duplicate check)
+    private static double verifyThreshold;    // 1:1 kiosk verification
     private static double dpi;
 
     public static void main(String[] args) throws Exception {
@@ -48,20 +49,23 @@ public final class Main {
             System.exit(1);
         }
         threshold = numberEnv("MATCHING_THRESHOLD", 40);
+        verifyThreshold = numberEnv("MATCHING_VERIFY_THRESHOLD", 30);
         dpi = numberEnv("MATCHING_DPI", 512);
 
         HttpServer server = HttpServer.create(
                 new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT), 0);
         server.createContext("/health", new HealthHandler());
         server.createContext("/template", new TemplateHandler());
+        server.createContext("/verify", new VerifyHandler());
         server.createContext("/identify", new IdentifyHandler());
         server.createContext("/", new NotFoundHandler());
         server.setExecutor(Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors())));
         server.start();
 
         System.out.println("matching service listening on http://127.0.0.1:" + PORT);
-        System.out.println("DPI=" + trim(dpi) + " threshold=" + trim(threshold) + " (MATCHING_KEY is set)");
-        System.out.println("POST /template, POST /identify, GET /health");
+        System.out.println("DPI=" + trim(dpi) + " threshold=" + trim(threshold)
+                + " verifyThreshold=" + trim(verifyThreshold) + " (MATCHING_KEY is set)");
+        System.out.println("POST /template, POST /verify, POST /identify, GET /health");
     }
 
     /* ── Endpoints ─────────────────────────────────────────────────────── */
@@ -74,14 +78,15 @@ public final class Main {
                 return;
             }
             send(exchange, 200, "{\"status\":\"ok\",\"dpi\":" + trim(dpi)
-                    + ",\"threshold\":" + trim(threshold) + "}");
+                    + ",\"threshold\":" + trim(threshold)
+                    + ",\"verifyThreshold\":" + trim(verifyThreshold) + "}");
         }
     }
 
     private static final class NotFoundHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            send(exchange, 404, error("not found; use POST /template or POST /identify"));
+            send(exchange, 404, error("not found; use POST /template, POST /verify or POST /identify"));
         }
     }
 
@@ -136,43 +141,14 @@ public final class Main {
                 Map<String, Object> request = Json.parseObject(readBody(exchange), "body");
                 byte[] image = decodeImage(request.get("image"));
                 List<Candidate> candidates = readCandidates(request.get("candidates"));
+                BestMatch best = bestMatch(image, candidates);
 
-                FingerprintMatcher matcher = new FingerprintMatcher(toTemplate(image));
-                Integer bestId = null;
-                String bestFinger = null;
-                double bestScore = Double.NEGATIVE_INFINITY;
-                int comparisons = 0;
-
-                for (Candidate candidate : candidates) {
-                    for (int index = 0; index < candidate.templates.size(); index++) {
-                        double score = matcher.match(candidate.templates.get(index));
-                        comparisons++;
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestId = candidate.id;
-                            bestFinger = candidate.fingers == null ? null : candidate.fingers.get(index);
-                        }
-                    }
-                }
-
-                if (bestId == null) {
-                    throw new BadRequest("candidates must contain at least one template");
-                }
-
-                String fingerJson = bestFinger == null ? "null" : Json.quote(bestFinger);
-                String matchJson = bestScore >= threshold
-                        ? "{\"id\":" + bestId + ",\"score\":" + round(bestScore)
-                                + ",\"finger\":" + fingerJson + "}"
-                        : "null";
-                String json = "{\"match\":" + matchJson
-                        + ",\"bestScore\":" + round(bestScore)
-                        + ",\"threshold\":" + trim(threshold) + "}";
                 log("identify", 200, started,
-                        "candidates=" + candidates.size() + " templates=" + comparisons
-                                + " best=" + round(bestScore)
-                                + " match=" + (bestScore >= threshold ? bestId : "none")
-                                + " finger=" + (bestScore >= threshold && bestFinger != null ? bestFinger : "none"));
-                send(exchange, 200, json);
+                        "candidates=" + candidates.size() + " templates=" + best.comparisons
+                                + " best=" + round(best.score)
+                                + " match=" + (best.score >= threshold ? best.id : "none")
+                                + " finger=" + (best.score >= threshold && best.finger != null ? best.finger : "none"));
+                send(exchange, 200, matchJson(best, threshold));
             } catch (PayloadException e) {
                 log("identify", e.status, started, "");
                 send(exchange, e.status, error(e.getMessage()));
@@ -183,7 +159,111 @@ public final class Main {
         }
     }
 
+    /**
+     * POST /verify — compare one probe against one student's templates.
+     *
+     * The typed student ID has already scoped the candidate in PHP, so this is
+     * the fast 1:1 kiosk path rather than the 1:N /identify fan-out. PHP sends
+     * its configured threshold in the body; MATCHING_VERIFY_THRESHOLD is the
+     * default when the field is absent.
+     */
+    private static final class VerifyHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            long started = System.nanoTime();
+            try {
+                if (!"POST".equals(exchange.getRequestMethod())) {
+                    log("verify", 405, started, "");
+                    send(exchange, 405, error("method not allowed; use POST"));
+                    return;
+                }
+                if (!keyMatches(exchange)) {
+                    log("verify", 401, started, "");
+                    send(exchange, 401, error("missing or invalid X-Matching-Key"));
+                    return;
+                }
+                Map<String, Object> request = Json.parseObject(readBody(exchange), "body");
+                byte[] image = decodeImage(request.get("image"));
+                Candidate candidate = readCandidate(request.get("candidate"), 0);
+                double effectiveThreshold = requestThreshold(request.get("threshold"), verifyThreshold);
+                BestMatch best = bestMatch(image, List.of(candidate));
+
+                log("verify", 200, started,
+                        "templates=" + best.comparisons
+                                + " best=" + round(best.score)
+                                + " threshold=" + trim(effectiveThreshold)
+                                + " match=" + (best.score >= effectiveThreshold ? best.id : "none")
+                                + " finger=" + (best.score >= effectiveThreshold && best.finger != null ? best.finger : "none"));
+                send(exchange, 200, matchJson(best, effectiveThreshold));
+            } catch (PayloadException e) {
+                log("verify", e.status, started, "");
+                send(exchange, e.status, error(e.getMessage()));
+            } catch (Exception e) {
+                log("verify", 400, started, "");
+                send(exchange, 400, error(describe(e)));
+            }
+        }
+    }
+
     private record Candidate(int id, List<FingerprintTemplate> templates, List<String> fingers) {}
+
+    private record BestMatch(Integer id, String finger, double score, int comparisons) {}
+
+    /** Compare a probe image against the supplied templates and keep the best score. */
+    private static BestMatch bestMatch(byte[] image, List<Candidate> candidates) {
+        FingerprintMatcher matcher = new FingerprintMatcher(toTemplate(image));
+        Integer bestId = null;
+        String bestFinger = null;
+        double bestScore = Double.NEGATIVE_INFINITY;
+        int comparisons = 0;
+
+        for (Candidate candidate : candidates) {
+            for (int index = 0; index < candidate.templates.size(); index++) {
+                double score = matcher.match(candidate.templates.get(index));
+                comparisons++;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestId = candidate.id;
+                    bestFinger = candidate.fingers == null ? null : candidate.fingers.get(index);
+                }
+            }
+        }
+        if (bestId == null) {
+            throw new BadRequest("candidate must contain at least one template");
+        }
+        return new BestMatch(bestId, bestFinger, bestScore, comparisons);
+    }
+
+    /** Shared response shape for /identify and /verify, including debug values. */
+    private static String matchJson(BestMatch best, double threshold) {
+        String fingerJson = best.finger == null ? "null" : Json.quote(best.finger);
+        String matchJson = best.score >= threshold
+                ? "{\"id\":" + best.id + ",\"score\":" + round(best.score)
+                        + ",\"finger\":" + fingerJson + "}"
+                : "null";
+        return "{\"match\":" + matchJson
+                + ",\"bestScore\":" + round(best.score)
+                + ",\"threshold\":" + trim(threshold) + "}";
+    }
+
+    /** PHP owns the kiosk threshold; the environment value is only the default. */
+    private static double requestThreshold(Object raw, double fallback) {
+        if (raw == null) return fallback;
+        double value;
+        if (raw instanceof Double number) {
+            value = number;
+        } else if (raw instanceof String text && !text.isBlank()) {
+            try {
+                value = Double.parseDouble(text.trim());
+            } catch (NumberFormatException e) {
+                return fallback;
+            }
+        } else {
+            return fallback;
+        }
+        if (!Double.isFinite(value) || value <= 0) return fallback;
+        return Math.max(1, Math.min(100, value));
+    }
 
     private static List<Candidate> readCandidates(Object raw) {
         if (!(raw instanceof List<?> list)) {
@@ -193,69 +273,71 @@ public final class Main {
             throw new BadRequest("candidates must not be empty");
         }
         List<Candidate> candidates = new ArrayList<>(list.size());
-        int index = 0;
-        for (Object entry : list) {
-            if (!(entry instanceof Map<?, ?> object)) {
-                throw new BadRequest("candidates[" + index + "] must be a JSON object");
-            }
-            Object idValue = object.get("id");
-            int id;
-            if (idValue instanceof Double number && number == Math.rint(number)) {
-                id = number.intValue();
-            } else if (idValue instanceof String text && text.matches("-?\\d+")) {
-                id = Integer.parseInt(text);
-            } else {
-                throw new BadRequest("candidates[" + index + "].id must be an integer");
-            }
-
-            Object templateValue = object.get("templates");
-            if (!(templateValue instanceof List<?> templateList) || templateList.isEmpty()) {
-                throw new BadRequest("candidates[" + index + "].templates must be a non-empty array of base64 templates");
-            }
-
-            List<FingerprintTemplate> templates = new ArrayList<>(templateList.size());
-            int position = 0;
-            for (Object encoded : templateList) {
-                if (!(encoded instanceof String text) || text.isBlank()) {
-                    throw new BadRequest("candidates[" + index + "].templates[" + position + "] must be a base64 string");
-                }
-                byte[] bytes = decodeBase64(text);
-                try {
-                    templates.add(new FingerprintTemplate(bytes));
-                } catch (RuntimeException e) {
-                    throw new BadRequest("candidates[" + index + "].templates[" + position
-                            + "] is not a SourceAFIS template; enroll the image with POST /template first");
-                }
-                position++;
-            }
-
-            Object fingersValue = object.get("fingers");
-            List<String> fingers = null;
-            if (fingersValue != null) {
-                if (!(fingersValue instanceof List<?> fingerList)) {
-                    throw new BadRequest("candidates[" + index + "].fingers must be an array of finger names");
-                }
-                if (fingerList.size() != templateList.size()) {
-                    throw new BadRequest("candidates[" + index + "].fingers must have one entry per template");
-                }
-                fingers = new ArrayList<>(fingerList.size());
-                int fingerIndex = 0;
-                for (Object encoded : fingerList) {
-                    if (encoded == null) {
-                        fingers.add(null);
-                    } else if (encoded instanceof String text && !text.isBlank()) {
-                        fingers.add(text.trim());
-                    } else {
-                        throw new BadRequest("candidates[" + index + "].fingers[" + fingerIndex
-                                + "] must be a finger name or null");
-                    }
-                    fingerIndex++;
-                }
-            }
-            candidates.add(new Candidate(id, templates, fingers));
-            index++;
+        for (int index = 0; index < list.size(); index++) {
+            candidates.add(readCandidate(list.get(index), index));
         }
         return candidates;
+    }
+
+    private static Candidate readCandidate(Object raw, int index) {
+        String name = index == 0 ? "candidate" : "candidates[" + index + "]";
+        if (!(raw instanceof Map<?, ?> object)) {
+            throw new BadRequest(name + " must be a JSON object");
+        }
+        Object idValue = object.get("id");
+        int id;
+        if (idValue instanceof Double number && number == Math.rint(number)) {
+            id = number.intValue();
+        } else if (idValue instanceof String text && text.matches("-?\\d+")) {
+            id = Integer.parseInt(text);
+        } else {
+            throw new BadRequest(name + ".id must be an integer");
+        }
+
+        Object templateValue = object.get("templates");
+        if (!(templateValue instanceof List<?> templateList) || templateList.isEmpty()) {
+            throw new BadRequest(name + ".templates must be a non-empty array of base64 templates");
+        }
+
+        List<FingerprintTemplate> templates = new ArrayList<>(templateList.size());
+        int position = 0;
+        for (Object encoded : templateList) {
+            if (!(encoded instanceof String text) || text.isBlank()) {
+                throw new BadRequest(name + ".templates[" + position + "] must be a base64 string");
+            }
+            byte[] bytes = decodeBase64(text);
+            try {
+                templates.add(new FingerprintTemplate(bytes));
+            } catch (RuntimeException e) {
+                throw new BadRequest(name + ".templates[" + position
+                        + "] is not a SourceAFIS template; enroll the image with POST /template first");
+            }
+            position++;
+        }
+
+        Object fingersValue = object.get("fingers");
+        List<String> fingers = null;
+        if (fingersValue != null) {
+            if (!(fingersValue instanceof List<?> fingerList)) {
+                throw new BadRequest(name + ".fingers must be an array of finger names");
+            }
+            if (fingerList.size() != templateList.size()) {
+                throw new BadRequest(name + ".fingers must have one entry per template");
+            }
+            fingers = new ArrayList<>(fingerList.size());
+            int fingerIndex = 0;
+            for (Object encoded : fingerList) {
+                if (encoded == null) {
+                    fingers.add(null);
+                } else if (encoded instanceof String text && !text.isBlank()) {
+                    fingers.add(text.trim());
+                } else {
+                    throw new BadRequest(name + ".fingers[" + fingerIndex + "] must be a finger name or null");
+                }
+                fingerIndex++;
+            }
+        }
+        return new Candidate(id, templates, fingers);
     }
 
     /* ── Fingerprint plumbing ──────────────────────────────────────────── */

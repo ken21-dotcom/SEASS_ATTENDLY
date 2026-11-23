@@ -19,7 +19,7 @@ incomplete enrollment can still be checked in manually by an officer.
 3. **Run Migrations**: `cd attendly-backend && php db/migrate.php`
 4. **Start Backend** (from the repository root): `php -S localhost:8000 -t attendly-backend/public attendly-backend/router.php`
 5. **Start Frontend** (from the repository root): `npm install` then `npm run serve`. The static server exposes only `student-attendance-system/` on <http://localhost:5173>; open <http://localhost:5173/> and it redirects to `pages/login.html`. Pages live under `/pages/` (for example `/pages/kiosk.html`). The DigitalPersona Web SDK files are vendored under `student-attendance-system/vendor/`, so the repository root and backend config are never served.
-6. **Fingerprint matching** (required for fingerprint attendance): build once with `cd tools/matching-service && mvn -B package`, set `MATCHING_KEY`, then start `java -jar target/matching-service.jar`. Keep it running on the kiosk laptop. It defaults to threshold `40` and DPI `512`; override with `MATCHING_THRESHOLD` / `MATCHING_DPI`.
+6. **Fingerprint matching** (required for fingerprint attendance): build once with `cd tools/matching-service && mvn -B package`, set `MATCHING_KEY`, then start `java -jar target/matching-service.jar`. Keep it running on the kiosk laptop. DPI defaults to `512` (`MATCHING_DPI`). The service keeps two thresholds: `40` for enrollment's 1:N duplicate check (`MATCHING_THRESHOLD`) and `30` for the kiosk's ID-scoped 1:1 verification (`MATCHING_VERIFY_THRESHOLD`). The PHP config `matching.threshold` also sends `30` on each `/verify` request, so changing it takes effect without restarting Java.
 
 ## Known Limitations (Future Work)
 

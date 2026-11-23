@@ -633,7 +633,8 @@ ok('storage no longer exposes appeal accessors', !dataJs.includes('getAppeals') 
 ok('student sanctions page has no appeal UI', !read('student-attendance-system/pages/student/student-sanctions.html').includes('appeal'));
 
 const frontController = read('attendly-backend/public/index.php');
-const corsGateAt = frontController.indexOf("if (($config['cors']['dev_allow_cors'] ?? false) === true) {");
+const corsGateAt = frontController.indexOf('if ($devCors) {');
+const optionsAt = frontController.indexOf("if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {");
 const routeTableAt = frontController.indexOf('// ── Route table');
 const corsHeaderCount = (frontController.match(/Access-Control-/g) || []).length;
 const gatedCorsHeaderCount = corsGateAt === -1 || routeTableAt === -1
@@ -646,7 +647,17 @@ const gatedCorsBlock = corsGateAt === -1 || routeTableAt === -1
 ok('front controller gates CORS on dev_allow_cors', corsGateAt !== -1 && routeTableAt > corsGateAt);
 ok('CORS requires dev_allow_cors to be boolean true', /dev_allow_cors'\] \?\? false\) === true/.test(frontController));
 ok('all CORS headers live inside the dev gate', corsHeaderCount > 0 && corsHeaderCount === gatedCorsHeaderCount, `${gatedCorsHeaderCount}/${corsHeaderCount}`);
-ok('CORS preflight handling is inside the dev gate', /http_response_code\(204\);\s*exit;/.test(gatedCorsBlock));
+
+// A preflight has no route of its own, so it must be answered before the
+// table: falling through answered 405 method_not_allowed and the browser
+// never sent the request it was asking about.
+ok('preflight is answered before the route table', optionsAt !== -1 && routeTableAt > optionsAt);
+ok('preflight CORS headers stay inside the dev gate',
+  /if \(\(\$_SERVER\['REQUEST_METHOD'\] \?\? 'GET'\) === 'OPTIONS'\) \{\s*if \(\$devCors\) \{[\s\S]*?http_response_code\(204\);\s*exit;/.test(gatedCorsBlock));
+// Chrome blocks the whole request when a header the client sends is not
+// listed, so enrollment died in the preflight before reaching the server.
+ok('preflight allows the X-CSRF-Token header',
+  /Access-Control-Allow-Headers: Content-Type, X-Requested-With, X-CSRF-Token/.test(gatedCorsBlock));
 ok('example config enables CORS for the documented local dev setup', /'dev_allow_cors'\s*=>\s*true/.test(read('attendly-backend/config/config.example.php')));
 
 /* ── 5e. Shared role sidebar (admin + SSC + student) ────────────── */

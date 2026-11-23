@@ -117,20 +117,31 @@ if (in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['POST', 'PUT', 'PATCH', 'DELE
     }
 }
 
-if (($config['cors']['dev_allow_cors'] ?? false) === true) {
+if ($devCors) {
+    // Echoed only for an allowed origin, but always varied: a cached preflight
+    // must not be reused for a different origin.
+    header('Vary: Origin');
     $origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
     if ($origin !== '' && attendly_origin_allowed($origin, $allowedOrigins, true)) {
         header('Access-Control-Allow-Origin: ' . $origin);
         header('Access-Control-Allow-Credentials: true');
-        header('Vary: Origin');
     }
-    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+}
+
+// A preflight is answered here, before the route table. OPTIONS is not a
+// business verb, so letting it fall through answers 405 method_not_allowed
+// and the browser never sends the request it was asking about.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+    if ($devCors) {
         header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
+        // X-CSRF-Token has to be listed here or the browser blocks every
+        // authenticated write after the preflight, fingerprint enrollment
+        // included, while the server itself would have accepted the request.
+        header('Access-Control-Allow-Headers: Content-Type, X-Requested-With, X-CSRF-Token');
         header('Access-Control-Max-Age: 86400');
-        http_response_code(204);
-        exit;
     }
+    http_response_code(204);
+    exit;
 }
 
 // ── Route table ───────────────────────────────────────────────────

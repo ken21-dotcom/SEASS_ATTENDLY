@@ -820,7 +820,7 @@
       'no-match',
       'Fingerprint not recognised',
       'This scan does not match a student with that ID.',
-      'Ask the SSC officer to enroll your fingerprint, or use manual entry.',
+      'Ask an administrator to enroll your fingerprint, or use manual entry.',
     ],
     'student_id_not_found': [
       'no-match',
@@ -832,19 +832,19 @@
       'no-match',
       'No fingerprints enrolled',
       'No fingerprint fingers are enrolled for this student ID.',
-      'Ask the SSC officer to enroll this student before scanning.',
+      'Ask an administrator to enroll this student before scanning.',
     ],
     'fingerprint_enrollment_incomplete': [
       'no-match',
       'Enrollment incomplete',
-      'Enrollment is not complete. Please see an officer to finish enrolling.',
+      'Enrollment is not complete. Please see an administrator to finish enrolling.',
       'Use the manual check-in option with a staff officer.',
     ],
     'fingerprint_already_enrolled': [
       'already',
       'Fingerprint already enrolled',
       'This fingerprint is already linked to another student.',
-      'Ask the SSC officer to check the enrollment.',
+      'Ask an administrator to check the enrollment.',
     ],
     'invalid_field': [
       'invalid-field',
@@ -1136,19 +1136,6 @@
     fingerprintFocusGuard = null;
   }
 
-  function fingerprintSampleSize(sample) {
-    const data = sample && sample.Data;
-    if (typeof data === 'string') return data.length;
-    if (data && typeof data.length === 'number') return data.length;
-    if (data && typeof data.byteLength === 'number') return data.byteLength;
-    return 0;
-  }
-
-  function fingerprintSampleFormatName(value) {
-    const formats = window.dp && window.dp.devices ? window.dp.devices.SampleFormat : null;
-    return formats && formats[value] ? formats[value] : String(value);
-  }
-
   function stopFingerprintAcquisition(reader) {
     const activeReader = reader || fingerprintReader;
     fingerprintAcquisitionActive = false;
@@ -1337,12 +1324,6 @@
       clearTimeout(fingerprintCooldownTimer);
       fingerprintCooldownTimer = null;
     }
-  }
-
-  function fingerprintCaptureAllowed() {
-    if (busy) return false;
-    if (fingerprintCooldownTimer) return false;
-    return true;
   }
 
   /**
@@ -1639,7 +1620,14 @@
       return;
     }
     if (busy) return;
-    if (!validateStudentIdentifier(true)) return;
+    if (!validateStudentIdentifier(true)) {
+      setStatus(
+        'attention',
+        'Enter student ID first',
+        'Type your 5-digit ID above, then tap Scan Fingerprint.'
+      );
+      return;
+    }
 
     const event = getEvents().find((e) => sameId(e.id, currentEventId));
     if (!event) {

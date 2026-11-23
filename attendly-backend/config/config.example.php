@@ -77,10 +77,12 @@ return [
     // Local SourceAFIS service in tools/matching-service. MATCHING_KEY is
     // read from the environment first, then this file; both sides must use
     // the same value. The service listens on 127.0.0.1:8090 only.
+    // threshold is the 1:1 kiosk verification score (30). Enrollment's 1:N
+    // duplicate check keeps its own Java-side threshold of 40.
     'matching' => [
         'url' => 'http://127.0.0.1:8090',
         'key' => 'change-this-to-a-long-random-matching-key',
-        'threshold' => 40,
+        'threshold' => 30,
         'timeout_seconds' => 5,
     ],
 

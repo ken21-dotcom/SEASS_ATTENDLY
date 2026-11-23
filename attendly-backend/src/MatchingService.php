@@ -30,9 +30,15 @@ final class MatchingService
     public function __construct(
         private string $baseUrl,
         private string $key,
-        private int $timeoutSeconds = 5
+        private int $timeoutSeconds = 5,
+        private float $verifyThreshold = 30.0
     ) {
         $this->baseUrl = rtrim($this->baseUrl, '/');
+        // Keep the threshold in the range SourceAFIS documents as usable.
+        // 30 is deliberately lower than the 1:N identification default (40):
+        // the kiosk already knows which student is scanning, so a 1:1 check
+        // can be more forgiving of a slightly misplaced finger.
+        $this->verifyThreshold = max(1.0, min(100.0, $this->verifyThreshold));
     }
 
     /**
@@ -56,7 +62,14 @@ final class MatchingService
         return new self(
             trim($url),
             trim($key),
-            max(1, (int) ($matching['timeout_seconds'] ?? 5))
+            // The service is loopback-only. Five seconds accommodates a cold
+            // Java process without allowing a stalled request to block PHP.
+            max(1, (int) ($matching['timeout_seconds'] ?? 5)),
+            // The PHP config owns the 1:1 threshold. Changing it here takes
+            // effect on the next request without restarting the Java service.
+            isset($matching['threshold']) && is_numeric($matching['threshold'])
+                ? (float) $matching['threshold']
+                : 30.0
         );
     }
 
@@ -93,8 +106,31 @@ final class MatchingService
     }
 
     /**
-     * POST /identify with the diagnostics the kiosk shows in ?debug=1:
-     * best score, threshold, and the finger whose template produced it.
+     * POST /verify — compare one image against one student's templates.
+     *
+     * The kiosk already knows which student is scanning, so this is the 1:1
+     * path: one live image against only that student's stored templates. It
+     * is faster than /identify (no candidate fan-out) and applies the more
+     * forgiving 1:1 threshold from config.php.
+     *
+     * @param array{id?:int,templates:string[],fingers?:array<int,string|null>} $candidate
+     * @return array{matchedId:?int,score:?float,threshold:?float,finger:?string}
+     */
+    public function verifyDetailed(string $imageBase64, array $candidate): array
+    {
+        $entry = $this->candidatePayload($candidate);
+
+        $response = $this->post('/verify', [
+            'image' => $this->checkImage($imageBase64),
+            'candidate' => $entry,
+            'threshold' => $this->verifyThreshold,
+        ]);
+
+        return $this->matchFromResponse($response, (int) $entry['id']);
+    }
+
+    /**
+     * POST /identify — compare one image against candidate template lists.
      *
      * @param array<int,array{id:int,templates:string[],fingers?:array<int,string|null>}> $candidates
      * @return array{matchedId:?int,score:?float,threshold:?float,finger:?string}
@@ -105,30 +141,45 @@ final class MatchingService
             return ['matchedId' => null, 'score' => null, 'threshold' => null, 'finger' => null];
         }
 
-        $payload = [];
-        foreach ($candidates as $candidate) {
-            $templates = array_values(array_map('strval', $candidate['templates'] ?? []));
-            $entry = [
-                'id' => (int) $candidate['id'],
-                'templates' => $templates,
-            ];
-            $fingers = $candidate['fingers'] ?? null;
-            if (is_array($fingers) && count($fingers) === count($templates)) {
-                $entry['fingers'] = array_values(array_map(
-                    static fn($finger): ?string => is_string($finger) && trim($finger) !== ''
-                        ? strtolower(trim($finger))
-                        : null,
-                    $fingers
-                ));
-            }
-            $payload[] = $entry;
-        }
-
         $response = $this->post('/identify', [
             'image' => $this->checkImage($imageBase64),
-            'candidates' => $payload,
+            'candidates' => array_map([$this, 'candidatePayload'], $candidates),
         ]);
 
+        return $this->matchFromResponse($response);
+    }
+
+    /**
+     * @param array{id?:int,templates?:string[],fingers?:array<int,string|null>} $candidate
+     * @return array{id:int,templates:string[],fingers?:array<int,?string>}
+     */
+    private function candidatePayload(array $candidate): array
+    {
+        $templates = array_values(array_map('strval', $candidate['templates'] ?? []));
+        $entry = [
+            'id' => (int) ($candidate['id'] ?? 0),
+            'templates' => $templates,
+        ];
+        $fingers = $candidate['fingers'] ?? null;
+        if (is_array($fingers) && count($fingers) === count($templates)) {
+            $entry['fingers'] = array_values(array_map(
+                static fn($finger): ?string => is_string($finger) && trim($finger) !== ''
+                    ? strtolower(trim($finger))
+                    : null,
+                $fingers
+            ));
+        }
+        return $entry;
+    }
+
+    /**
+     * Normalise the match envelope shared by /identify and /verify.
+     *
+     * @param array<string,mixed> $response
+     * @return array{matchedId:?int,score:?float,threshold:?float,finger:?string}
+     */
+    private function matchFromResponse(array $response, ?int $fallbackId = null): array
+    {
         $threshold = isset($response['threshold']) && is_numeric($response['threshold'])
             ? (float) $response['threshold']
             : null;
@@ -145,8 +196,15 @@ final class MatchingService
                 'finger' => null,
             ];
         }
-        if (!is_array($match) || !isset($match['id'])) {
+        if (!is_array($match)) {
             throw new MatchingServiceRejected('The matching service returned an invalid match.');
+        }
+
+        $id = isset($match['id']) && is_numeric($match['id'])
+            ? (int) $match['id']
+            : $fallbackId;
+        if ($id === null) {
+            throw new MatchingServiceRejected('The matching service returned a match without an id.');
         }
 
         $score = isset($match['score']) && is_numeric($match['score'])
@@ -157,7 +215,7 @@ final class MatchingService
             : null;
 
         return [
-            'matchedId' => (int) $match['id'],
+            'matchedId' => $id,
             'score' => $score,
             'threshold' => $threshold,
             'finger' => $finger,
@@ -199,6 +257,8 @@ final class MatchingService
         curl_setopt_array($handle, [
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
+            // Loopback connection failures should fail quickly; successful
+            // template extraction receives the configurable request timeout.
             CURLOPT_CONNECTTIMEOUT => 2,
             CURLOPT_TIMEOUT => $this->timeoutSeconds,
             CURLOPT_HTTPHEADER => [

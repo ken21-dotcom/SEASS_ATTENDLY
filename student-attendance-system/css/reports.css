@@ -124,7 +124,7 @@
 .report-table-wrap { overflow-x: auto; max-width: 100%; border-radius: 10px; }
 .report-table { min-width: 900px; }
 .report-table th { white-space: nowrap; }
-.report-generated-note { margin: 12px 0 0; color: var(--color-text-muted, #687385); font-size: .82rem; }
+.report-generated-note { margin: 12px 0 0; color: var(--color-text-muted, #687385); font-size: var(--font-size-xs); }
 .report-print-header { display: none; }
 
 /* ── Grouped attendance print sections ─────────────────────────
@@ -165,7 +165,7 @@
 .attendance-summary .attendance-summary-table thead th {
   background: var(--color-bg-input, #f4f8f6);
   color: var(--color-text-primary, #1a2921);
-  font-size: .72rem;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -199,7 +199,7 @@
 .dept-acronym {
   font-weight: 600;
   font-family: var(--font-mono);
-  font-size: .78rem;
+  font-size: var(--font-size-xs);
   color: var(--brand-600);
 }
 
@@ -208,7 +208,7 @@
   padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border-default, #dce2ea);
   color: var(--color-text-primary, #1a2921);
-  font-size: .85rem;
+  font-size: var(--font-size-xs);
   font-weight: 700;
 }
 
@@ -233,7 +233,7 @@
 .attendance-dept-table thead th {
   background: var(--color-bg-input, #f4f8f6);
   color: var(--color-text-primary, #1a2921);
-  font-size: .72rem;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -251,7 +251,7 @@
 .attendance-dept-table td:first-child {
   font-weight: 600;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: .78rem;
+  font-size: var(--font-size-xs);
   color: var(--brand-600, #0e9f6e);
 }
 
@@ -507,7 +507,7 @@
   border-radius: 10px;
   background: var(--color-bg-input, #f4f8f6);
   color: var(--color-text-muted, #65756c);
-  font-size: .82rem;
+  font-size: var(--font-size-xs);
   line-height: 1.45;
 }
 
@@ -546,7 +546,7 @@
 .sanction-summary .sanction-summary-table thead th {
   background: var(--color-bg-input, #f4f8f6);
   color: var(--color-text-primary, #1a2921);
-  font-size: .72rem;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -565,7 +565,7 @@
   width: 150px;
   color: var(--color-text-muted, #65756c);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: .78rem;
+  font-size: var(--font-size-xs);
   white-space: nowrap;
 }
 
@@ -1178,3 +1178,23 @@
     font-weight: 600;
   }
 }
+
+/* Minimal report presentation: neutral surfaces, clear data boundaries. */
+.report-sheet,
+.report-card,
+.report-filter-card,
+.report-summary-card,
+.report-table-wrap {
+  border-color: var(--border) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+}
+.report-tabs { border-color: var(--border) !important; border-radius: var(--radius-sm) !important; background: var(--surface-2) !important; }
+.report-tab { border-radius: var(--radius-xs) !important; color: var(--text-muted) !important; background: var(--transparent) !important; }
+.report-tab:hover { background: var(--surface) !important; color: var(--text) !important; }
+.report-tab.active { background: var(--primary) !important; color: var(--on-primary) !important; box-shadow: none !important; }
+.report-table th { background: var(--surface-2) !important; color: var(--text-muted) !important; border-color: var(--border) !important; }
+.report-table td { color: var(--text) !important; border-color: var(--border) !important; }
+.report-filter-card :is(.form-control, .form-select) { border-color: var(--border-strong) !important; background: var(--surface) !important; color: var(--text) !important; }

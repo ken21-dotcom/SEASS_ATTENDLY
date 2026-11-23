@@ -82,7 +82,11 @@ async function main() {
 
   const child = spawn('java', ['-jar', jar], {
     cwd: serviceDir,
-    env: Object.assign({}, process.env, { MATCHING_KEY: KEY, MATCHING_THRESHOLD: '40' }),
+    env: Object.assign({}, process.env, {
+      MATCHING_KEY: KEY,
+      MATCHING_THRESHOLD: '40',
+      MATCHING_VERIFY_THRESHOLD: '30',
+    }),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -98,8 +102,11 @@ async function main() {
     ok('health reports the 512 dpi default',
       response.status === 200 && response.json && response.json.dpi === 512,
       response.text);
-    ok('health reports the threshold',
+    ok('health reports the 1:N threshold',
       response.status === 200 && response.json && response.json.threshold === 40,
+      response.text);
+    ok('health reports the 1:1 verify threshold',
+      response.status === 200 && response.json && response.json.verifyThreshold === 30,
       response.text);
 
     response = await call('POST', '/template', { image: 'AAAA' });
@@ -122,6 +129,12 @@ async function main() {
 
     response = await call('POST', '/identify', { image: 'AAAA', candidates: [{ id: 1, templates: ['AAAA'] }] }, { 'X-Matching-Key': KEY });
     ok('invalid templates in candidates are a clean 400', response.status === 400, response.status);
+
+    response = await call('POST', '/verify', { image: 'AAAA', candidate: { id: 1, templates: ['AAAA'] } }, { 'X-Matching-Key': KEY });
+    ok('invalid templates in verify candidate are a clean 400', response.status === 400, response.status);
+
+    response = await call('POST', '/verify', { image: 'AAAA' }, { 'X-Matching-Key': KEY });
+    ok('verify requires a candidate object', response.status === 400, response.status);
 
     response = await call('GET', '/template', undefined, { 'X-Matching-Key': KEY });
     ok('wrong method is 405', response.status === 405, response.status);
@@ -165,6 +178,37 @@ async function main() {
       ok('same finger scores higher than a different finger',
         same.json.match.score > (impostor.json.bestScore || 0),
         same.json.match.score + ' vs ' + impostor.json.bestScore);
+
+      const verify = await call('POST', '/verify', {
+        image: sameB,
+        candidate: { id: 12, templates: [templateA.json.template], fingers: ['left-thumb'] },
+        threshold: 30,
+      }, { 'X-Matching-Key': KEY });
+      ok('1:1 /verify matches the enrolled student',
+        verify.json && verify.json.match && verify.json.match.id === 12, verify.text);
+      ok('1:1 verification clears the lowered threshold of 30',
+        verify.json && verify.json.match && verify.json.match.score >= 30 && verify.json.threshold === 30, verify.text);
+      ok('/verify reports the matched finger',
+        verify.json && verify.json.match && verify.json.match.finger === 'left-thumb', verify.text);
+
+      const verifyImpostor = await call('POST', '/verify', {
+        image: other,
+        candidate: { id: 12, templates: [templateA.json.template], fingers: ['left-thumb'] },
+        threshold: 30,
+      }, { 'X-Matching-Key': KEY });
+      ok('1:1 /verify rejects a different finger',
+        verifyImpostor.json && verifyImpostor.json.match === null, verifyImpostor.text);
+      ok('/verify no-match keeps the threshold for debug mode',
+        verifyImpostor.json && verifyImpostor.json.threshold === 30, verifyImpostor.text);
+
+      const customThreshold = await call('POST', '/verify', {
+        image: sameB,
+        candidate: { id: 12, templates: [templateA.json.template], fingers: ['left-thumb'] },
+        threshold: 35,
+      }, { 'X-Matching-Key': KEY });
+      ok('/verify applies the threshold sent by PHP',
+        customThreshold.json && customThreshold.json.threshold === 35, customThreshold.text);
+
       console.log('  scores: same=' + same.json.match.score + ' other=' + impostor.json.bestScore);
     } else {
       console.log('  skip real-score checks (no samples/same-a.png, same-b.png, other.png)');

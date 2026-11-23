@@ -116,6 +116,103 @@
   /* Top-accent bar — the mint brand step reads better than --brand-500 on
      the darker card surface. Flat fill, same reveal timing as light theme. */
   --accent-bar-fill: var(--brand-400);
+
+  /* Minimal dark semantic palette */
+  --bg: #13160F;
+  --surface: #1B2216;
+  --surface-2: #222B1A;
+  --border: #334328;
+  --border-strong: #5D744A;
+  --text: #E6EFDD;
+  --text-muted: #A7BE94;
+  --primary: #81A460;
+  --primary-hover: #A7BE94;
+  --on-primary: #13160F;
+  --accent: #5D744A;
+  --focus-ring: #A7BE94;
+  --danger: #FF9B91;
+  --danger-bg: #3A1A17;
+  --danger-border: #7A2E27;
+  --success: #A7D58A;
+  --success-bg: #1F3320;
+  --warning: #E3B341;
+  --warning-bg: #35290A;
+  --brand-700: var(--primary);
+  --brand-600: var(--primary);
+  --brand-500: var(--accent);
+  --brand-400: var(--p1);
+  --brand-300: var(--p1);
+  --brand-200: var(--surface-2);
+  --brand-100: var(--surface-2);
+  --brand-50: var(--surface-2);
+  --color-bg-body: var(--bg);
+  --color-bg-app: var(--bg);
+  --color-bg-app-grad: var(--bg);
+  --color-bg-card: var(--surface);
+  --color-bg-card-elevated: var(--surface);
+  --color-bg-sidebar: var(--p8);
+  --color-bg-sidebar-hover: var(--surface-2);
+  --color-bg-input: var(--surface-2);
+  --color-bg-success-light: var(--success-bg);
+  --color-bg-warning-light: var(--warning-bg);
+  --color-bg-danger-light: var(--danger-bg);
+  --color-probation-bg: var(--warning-bg);
+  --color-bg-info-light: var(--surface-2);
+  --color-bg-violet-light: var(--surface-2);
+  --color-border-default: var(--border);
+  --color-border-input: var(--border-strong);
+  --color-border-sidebar: var(--border);
+  --color-border-table: var(--border);
+  --color-border-focus: var(--focus-ring);
+  --color-text-primary: var(--text);
+  --color-text-heading: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-secondary: var(--text-muted);
+  --color-text-sidebar: var(--p1);
+  --color-text-sidebar-active: var(--text);
+  --color-text-success: var(--success);
+  --color-text-success-light: var(--success);
+  --color-text-warning: var(--warning);
+  --color-text-danger: var(--danger);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger);
+  --color-text-on-danger: var(--on-primary);
+  --color-text-probation: var(--warning);
+  --color-text-info: var(--text-muted);
+  --color-text-violet: var(--text-muted);
+  --color-badge-warning: var(--warning);
+  --color-badge-probation: var(--warning);
+  --color-badge-suspension: var(--danger);
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-card: none;
+  --shadow-card-hover: none;
+  --shadow-focus: 0 0 0 2px var(--focus-ring);
+  --shadow-pop: 0 12px 28px color-mix(in srgb, var(--text) 32%, transparent);
+  --shadow-inset: none;
+  --accent-bar-fill: var(--accent);
+  --bs-primary: var(--primary);
+  --bs-primary-rgb: 129, 164, 96;
+  --bs-success: var(--success);
+  --bs-success-rgb: 167, 213, 138;
+  --bs-body-bg: var(--bg);
+  --bs-body-color: var(--text);
+  --bs-secondary-color: var(--text-muted);
+  --bs-secondary-bg: var(--surface);
+  --bs-tertiary-bg: var(--surface-2);
+  --bs-emphasis-color: var(--text);
+  --bs-border-color: var(--border);
+  --bs-card-bg: var(--surface);
+  --bs-card-color: var(--text);
+  --bs-heading-color: var(--text);
+  --bs-link-color: var(--primary);
+  --bs-link-hover-color: var(--primary-hover);
+  --bs-success-bg: var(--success-bg);
+  --bs-success-text-emphasis: var(--success);
+  --bs-warning-bg: var(--warning-bg);
+  --bs-warning-text-emphasis: var(--warning);
+  --bs-danger-bg: var(--danger-bg);
+  --bs-danger-text-emphasis: var(--danger);
 }
 
 [data-theme="dark"] body {
@@ -163,6 +260,22 @@
   background: var(--color-bg-input);
   color: var(--color-text-primary);
   border-color: var(--color-border-input);
+}
+
+/* Chrome may classify values inserted by paste, a saved-form suggestion, or
+   password-manager fill as autofill and paint the control light blue/white.
+   Keep the browser-provided value, but draw its surface with the same dark
+   token as every other dashboard form field. */
+[data-theme="dark"] .form-control:-webkit-autofill,
+[data-theme="dark"] .form-control:-webkit-autofill:hover,
+[data-theme="dark"] .form-control:-webkit-autofill:focus,
+[data-theme="dark"] .form-control:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-bg-input) inset !important;
+  -webkit-text-fill-color: var(--color-text-primary) !important;
+  background-color: var(--color-bg-input) !important;
+  border-color: var(--color-border-input) !important;
+  caret-color: var(--color-text-primary);
+  transition: background-color 9999s ease-out 0s;
 }
 
 /* Auth form surface — deep brand-green panel, not the slate card fill,
@@ -906,4 +1019,20 @@
    .landing-page-scoped .theme-toggle-fab overrides went with it; the live
    button (login.html, signup.html) is already covered globally by the
    [data-theme="dark"] .theme-toggle-fab rules at the top of this file. */
+
+/* Final dark-theme surface pass. Semantic tokens are defined in variables.css. */
+[data-theme="dark"] .auth-page,
+[data-theme="dark"] .auth-split,
+[data-theme="dark"] .auth-form-panel,
+[data-theme="dark"] .auth-form-panel--standalone {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .auth-form-panel { border-color: var(--border) !important; box-shadow: none !important; }
+[data-theme="dark"] .auth-form .input-group-text { border-color: var(--border-strong) !important; background: var(--surface-2) !important; color: var(--primary) !important; }
+[data-theme="dark"] .auth-form .form-control,
+[data-theme="dark"] .auth-form .auth-select { border-color: var(--border-strong) !important; background: var(--surface) !important; color: var(--text) !important; }
+[data-theme="dark"] .auth-login-btn,
+[data-theme="dark"] .auth-submit,
+[data-theme="dark"] .auth-signup-submit { border-color: var(--primary) !important; background: var(--primary) !important; color: var(--on-primary) !important; box-shadow: none !important; }
 

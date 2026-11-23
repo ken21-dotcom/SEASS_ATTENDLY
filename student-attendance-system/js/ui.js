@@ -87,12 +87,56 @@ if (typeof document !== 'undefined') {
  * Display a toast notification. Falls back to a plain DOM
  * element when Bootstrap's JS is unavailable.
  *
+ * A persistent toast is kept in sessionStorage and replayed once on each
+ * page load until it is dismissed. Enrollment errors use it so the student
+ * record cannot be left half-enrolled without the operator noticing.
+ *
  * @param {'success'|'error'|'info'|'warning'} type
  * @param {string} message — plain text (not HTML)
+ * @param {{persistent?: boolean}} [options]
  */
-function showToast(type, message) {
+const PERSISTENT_TOAST_KEY = 'attendly:persistent-toast';
+
+function readPersistentToast() {
+  try {
+    const raw = sessionStorage.getItem(PERSISTENT_TOAST_KEY);
+    if (!raw) return null;
+    const record = JSON.parse(raw);
+    return record && typeof record.message === 'string' && record.message ? record : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/** Clear the stored toast; with a record, only clear that exact message. */
+function clearPersistentToast(record) {
+  try {
+    if (!record) {
+      sessionStorage.removeItem(PERSISTENT_TOAST_KEY);
+      return;
+    }
+    const stored = readPersistentToast();
+    if (stored && stored.type === record.type && stored.message === record.message) {
+      sessionStorage.removeItem(PERSISTENT_TOAST_KEY);
+    }
+  } catch (error) {
+    // Storage can be disabled; the on-screen toast is still visible.
+  }
+}
+
+function showToast(type, message, options) {
   const container = document.getElementById('toastContainer');
   if (!container) return;
+
+  const persistent = Boolean(options && options.persistent);
+  const record = persistent ? { type: type, message: message } : null;
+  if (persistent) {
+    try {
+      sessionStorage.setItem(PERSISTENT_TOAST_KEY, JSON.stringify(record));
+    } catch (error) {
+      // Private mode may block storage; an undismissed toast stays visible.
+    }
+  }
 
   const variantClass = type === 'success' ? 'toast-success'
                      : type === 'error'   ? 'toast-error'
@@ -102,6 +146,11 @@ function showToast(type, message) {
   toastEl.className = `toast align-items-center border-0 ${variantClass}`;
   toastEl.setAttribute('role', 'alert');
   toastEl.style.marginBottom = '0.5rem';
+  if (persistent) {
+    toastEl.classList.add('toast-persistent');
+    toastEl.setAttribute('data-autohide', 'false');
+    toastEl.setAttribute('data-delay', '0');
+  }
   toastEl.innerHTML = `
     <div class="d-flex">
       <div class="toast-body">${escapeHtml(message)}</div>
@@ -110,15 +159,37 @@ function showToast(type, message) {
   `;
   container.appendChild(toastEl);
   if (window.bootstrap && window.bootstrap.Toast) {
-    const toast = new window.bootstrap.Toast(toastEl, { delay: 3000 });
+    const toast = new window.bootstrap.Toast(toastEl, {
+      delay: persistent ? 0 : 3000,
+      autohide: !persistent,
+    });
     toast.show();
-    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    toastEl.addEventListener('hidden.bs.toast', () => {
+      if (persistent) clearPersistentToast(record);
+      toastEl.remove();
+    });
     return;
   }
 
   // Keep feedback working when the optional Bootstrap CDN is unavailable.
   toastEl.style.cssText += 'display:block;padding:0.75rem 1rem;border-radius:0.375rem;';
-  window.setTimeout(() => toastEl.remove(), 3000);
+  if (persistent) {
+    toastEl.querySelector('.btn-close').addEventListener('click', () => clearPersistentToast(record));
+  } else {
+    window.setTimeout(() => toastEl.remove(), 3000);
+  }
+}
+
+function replayPersistentToast() {
+  const record = readPersistentToast();
+  if (!record) return;
+  showToast(record.type || 'error', record.message, { persistent: true });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', replayPersistentToast, { once: true });
+} else {
+  replayPersistentToast();
 }
 
 /* ============================================================

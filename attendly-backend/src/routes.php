@@ -194,10 +194,11 @@ function attendly_route(string $path, string $method, array $ctx): array
                 $admin
             );
         }],
-        // Admin/SSC enrollment: capture happens in the browser, then each PNG
-        // is turned into a template by the local matching service.
+        // Administrator-only enrollment: capture happens in the browser, then
+        // each PNG is turned into a template by the local matching service.
+        // SSC officers may run the kiosk but must never modify biometric data.
         ['POST', '/users/enroll-fingerprint', function () use ($repo, $auth, $ctx): array {
-            $actor = $auth->requireRole(['admin', 'ssc-officer']);
+            $actor = $auth->requireRole(['admin']);
             $ctx['limiter']->consume('fingerprint-enroll-user', (string) $actor['id'], 60, 60);
             $body = Response::body();
             $images = $body['images'] ?? null;
@@ -234,6 +235,10 @@ function attendly_route(string $path, string $method, array $ctx): array
             $auth->requireRole(['admin']);
             $body = Response::body();
             return $repo->updateStudentProfile(Response::requireId($match, 'id'), $body);
+        }],
+        ['DELETE', '/users/:id/fingerprint', function () use ($repo, $auth, &$match): array {
+            $actor = $auth->requireRole(['admin']);
+            return $repo->resetFingerprint(Response::requireId($match, 'id'), $actor);
         }],
         ['POST', '/users/officers', function () use ($repo, $auth): array {
             $admin = $auth->requireRole(['admin']);

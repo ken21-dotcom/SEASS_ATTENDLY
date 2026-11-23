@@ -30,13 +30,17 @@ $config = require $backend . '/config/config.php';
 
 $db = get_db();
 
-// Migration 042 adds the fingerprint template used by the kiosk and the
+// Migrations 042/043 add the fingerprint template, enrollment flag and
 // matching verification_method enum value. The suite runs against the
-// developer database, which may predate a migration, so make the two schema
+// developer database, which may predate a migration, so make these schema
 // pieces idempotent here rather than failing every request that lists users.
 $fingerprintColumns = $db->query("SHOW COLUMNS FROM students LIKE 'fingerprint_template'")->fetchAll();
 if (!$fingerprintColumns) {
     $db->exec('ALTER TABLE students ADD COLUMN fingerprint_template LONGTEXT NULL AFTER block');
+}
+$flagColumns = $db->query("SHOW COLUMNS FROM students LIKE 'fingerprint_enrolled'")->fetchAll();
+if (!$flagColumns) {
+    $db->exec('ALTER TABLE students ADD COLUMN fingerprint_enrolled BOOLEAN NOT NULL DEFAULT FALSE AFTER fingerprint_template');
 }
 $verificationColumn = $db->query("SHOW COLUMNS FROM attendance_records LIKE 'verification_method'")->fetch();
 if ($verificationColumn && !str_contains((string) ($verificationColumn['Type'] ?? ''), "'fingerprint'")) {
@@ -132,7 +136,7 @@ function csrf_token_for_jar(string $cookieJar): ?string
     return $tokens[$cookieJar];
 }
 
-function http_client(string $method, string $path, ?array $body = null, ?string $cookieJar = null, bool $withCsrf = true): array
+function http_client(string $method, string $path, ?array $body = null, ?string $cookieJar = null, bool $withCsrf = true, ?array $extraHeaders = null): array
 {
     global $baseUrl;
 
@@ -141,6 +145,12 @@ function http_client(string $method, string $path, ?array $body = null, ?string 
         'Content-Type: application/json',
         'X-Requested-With: XMLHttpRequest',
     ];
+
+    // A preflight carries no body and no XHR header, so tests pass the
+    // headers the browser itself would send (Origin, the requested method).
+    foreach ($extraHeaders ?? [] as $extraHeader) {
+        $headers[] = $extraHeader;
+    }
 
     // Every state-changing request now needs the session's synchronizer
     // token; attachment is automatic so individual tests stay unchanged.
@@ -185,10 +195,22 @@ function http_client(string $method, string $path, ?array $body = null, ?string 
     $bodyText = substr($raw, $headerSize);
     $decoded = json_decode($bodyText, true);
 
+    // Response headers matter for CORS: what the server allows decides
+    // whether the browser sends the request at all.
+    $headers = [];
+    foreach (preg_split('/\r?\n/', substr($raw, 0, $headerSize)) ?: [] as $line) {
+        if (!str_contains($line, ':') || str_starts_with($line, 'HTTP/')) {
+            continue;
+        }
+        [$headerName, $headerValue] = explode(':', $line, 2);
+        $headers[strtolower(trim($headerName))] = trim($headerValue);
+    }
+
     return [
-        'status' => $status,
-        'body'   => is_array($decoded) ? $decoded : null,
-        'raw'    => $bodyText,
+        'status'  => $status,
+        'body'    => is_array($decoded) ? $decoded : null,
+        'raw'     => $bodyText,
+        'headers' => $headers,
     ];
 }
 
@@ -572,6 +594,15 @@ try {
         'right-thumb', 'right-index', 'right-middle', 'right-ring', 'right-little',
     ];
 
+    test('a student with no fingerprint gets a clear 400 instead of a 1:N search', function () use ($db, $officer, $fingerprintWrongEventId, $studentBId, $studentBIdNumber, $imageB): void {
+        $response = http_client('POST', '/attendance/fingerprint', [
+            'eventId' => $fingerprintWrongEventId, 'studentIdNumber' => $studentBIdNumber, 'image' => $imageB,
+        ], $officer['jar']);
+        same(400, $response['status']);
+        response_error($response, 'fingerprint_not_enrolled');
+        same(false, attendance_row($db, $fingerprintWrongEventId, $studentBId));
+    });
+
     test('anonymous cannot enroll a fingerprint', function () use ($studentAId, $imageA): void {
         $response = http_client('POST', '/users/enroll-fingerprint', [
             'studentId' => $studentAId, 'finger' => 'left-thumb', 'images' => [$imageA],
@@ -588,16 +619,31 @@ try {
         response_error($response, 'forbidden');
     });
 
-    test('9 of 10 fingers remains incomplete in the backend status', function () use ($officer, $studentAId, $fingerKeys, $imageA): void {
+    test('an SSC officer cannot enroll or reset fingerprint data', function () use ($officer, $studentBId, $imageB): void {
+        $enroll = http_client('POST', '/users/enroll-fingerprint', [
+            'studentId' => $studentBId, 'finger' => 'left-thumb', 'images' => [$imageB, $imageB],
+        ], $officer['jar']);
+        same(403, $enroll['status']);
+        response_error($enroll, 'forbidden');
+
+        $reset = http_client('DELETE', '/users/' . $studentBId . '/fingerprint', null, $officer['jar']);
+        same(403, $reset['status']);
+        response_error($reset, 'forbidden');
+    });
+
+    test('9 of 10 fingers remains incomplete in the backend status', function () use ($db, $admin, $studentAId, $fingerKeys, $imageA): void {
         $result = null;
         foreach (array_slice($fingerKeys, 0, 9) as $finger) {
-            $response = enroll_finger($studentAId, $finger, $imageA, $officer['jar']);
+            $response = enroll_finger($studentAId, $finger, $imageA, $admin['jar']);
             same(200, $response['status']);
             $result = response_data($response);
         }
         same(false, $result['fingerprintEnrolled'] ?? null);
         same(9, (int) ($result['fingerprintFingersCompleted'] ?? -1));
         same(9, count($result['enrolledFingers'] ?? []));
+        $flag = $db->prepare('SELECT fingerprint_enrolled FROM students WHERE user_id = :id');
+        $flag->execute(['id' => $studentAId]);
+        same(0, (int) $flag->fetchColumn());
     });
 
     test('9/10 fingerprint check-in is rejected and does not record attendance', function () use ($db, $officer, $fingerprintEventId, $studentAId, $studentAIdNumber, $imageA): void {
@@ -621,12 +667,15 @@ try {
         same('manual', attendance_row($db, $fingerprintEventId, $studentAId)['verification_method'] ?? null);
     });
 
-    test('adding the tenth finger marks the student complete', function () use ($officer, $studentAId, $fingerKeys, $imageA): void {
-        $response = enroll_finger($studentAId, $fingerKeys[9], $imageA, $officer['jar']);
+    test('adding the tenth finger marks the student complete', function () use ($db, $admin, $studentAId, $fingerKeys, $imageA): void {
+        $response = enroll_finger($studentAId, $fingerKeys[9], $imageA, $admin['jar']);
         same(200, $response['status']);
         $data = response_data($response);
         same(true, $data['fingerprintEnrolled'] ?? null);
         same(10, (int) ($data['fingerprintFingersCompleted'] ?? -1));
+        $flag = $db->prepare('SELECT fingerprint_enrolled FROM students WHERE user_id = :id');
+        $flag->execute(['id' => $studentAId]);
+        same(1, (int) $flag->fetchColumn());
     });
 
     test('10/10 means ten fingers with two templates each', function () use ($db, $studentAId): void {
@@ -664,8 +713,8 @@ try {
         response_error($response, 'duplicate_checkin');
     });
 
-    test('re-enrolling one finger preserves 10/10 and remains usable', function () use ($officer, $fingerprintRedoEventId, $studentAId, $studentAIdNumber, $fingerKeys, $imageRedo): void {
-        $enroll = enroll_finger($studentAId, $fingerKeys[0], $imageRedo, $officer['jar']);
+    test('re-enrolling one finger preserves 10/10 and remains usable', function () use ($admin, $officer, $fingerprintRedoEventId, $studentAId, $studentAIdNumber, $fingerKeys, $imageRedo): void {
+        $enroll = enroll_finger($studentAId, $fingerKeys[0], $imageRedo, $admin['jar']);
         same(200, $enroll['status']);
         same(true, response_data($enroll)['fingerprintEnrolled'] ?? null);
         same(10, (int) (response_data($enroll)['fingerprintFingersCompleted'] ?? -1));
@@ -687,10 +736,10 @@ try {
         assert_true(str_contains((string) ($blocked['body']['error']['message'] ?? ''), 'Enrollment incomplete (0/10 fingers)'), 'legacy status should be 0/10');
     });
 
-    test('legacy templates stay unknown while named fingers complete the enrollment', function () use ($db, $officer, $studentBId, $fingerKeys, $imageB): void {
+    test('legacy templates stay unknown while named fingers complete the enrollment', function () use ($db, $admin, $studentBId, $fingerKeys, $imageB): void {
         $result = null;
         foreach ($fingerKeys as $finger) {
-            $response = enroll_finger($studentBId, $finger, $imageB, $officer['jar']);
+            $response = enroll_finger($studentBId, $finger, $imageB, $admin['jar']);
             same(200, $response['status']);
             $result = response_data($response);
         }
@@ -702,6 +751,12 @@ try {
         assert_true(is_array($entries) && count($entries) === 11 && array_key_exists('finger', $entries[0]) && $entries[0]['finger'] === null, 'legacy template was not preserved as unknown');
     });
 
+    test('enrolling a finger already registered to another student is rejected with 409', function () use ($admin, $studentBId, $imageA): void {
+        $dup = enroll_finger($studentBId, 'left-thumb', $imageA, $admin['jar']);
+        same(409, $dup['status']);
+        response_error($dup, 'fingerprint_already_enrolled');
+    });
+
     test('another fully enrolled student fingerprint is rejected for the typed ID', function () use ($db, $officer, $fingerprintWrongEventId, $studentAId, $studentAIdNumber, $imageB): void {
         $response = http_client('POST', '/attendance/fingerprint', [
             'eventId' => $fingerprintWrongEventId, 'studentIdNumber' => $studentAIdNumber, 'image' => $imageB,
@@ -711,7 +766,7 @@ try {
         $details = $response['body']['error']['details'] ?? null;
         assert_true(is_array($details), 'no-match debug details missing');
         same(0.0, (float) ($details['score'] ?? -1));
-        same(40.0, (float) ($details['threshold'] ?? -1));
+        same(30.0, (float) ($details['threshold'] ?? -1));
         same(null, $details['finger'] ?? null);
         same(false, attendance_row($db, $fingerprintWrongEventId, $studentAId));
     });
@@ -755,6 +810,20 @@ try {
             same(10, (int) ($match['fingerprintFingersCompleted'] ?? -1));
             assert_true(!array_key_exists('fingerprintTemplate', $match), 'user listing exposed templates');
         }
+    });
+
+    test('resetting fingerprint enrollment clears template and resets count to 0/10', function () use ($db, $admin, $studentBId): void {
+        $reset = http_client('DELETE', '/users/' . $studentBId . '/fingerprint', null, $admin['jar']);
+        same(200, $reset['status']);
+        $data = response_data($reset);
+        same(false, $data['fingerprintEnrolled'] ?? null);
+        same(0, (int) ($data['fingerprintFingersCompleted'] ?? -1));
+        $check = $db->prepare('SELECT fingerprint_template FROM students WHERE user_id = :id');
+        $check->execute(['id' => $studentBId]);
+        same(null, $check->fetchColumn());
+        $flag = $db->prepare('SELECT fingerprint_enrolled FROM students WHERE user_id = :id');
+        $flag->execute(['id' => $studentBId]);
+        same(0, (int) $flag->fetchColumn());
     });
 
     test('events expose EVNT public ids', function () use ($db, $officer, $openEventId): void {
@@ -1062,6 +1131,25 @@ try {
         // The refused logout left the session intact.
         $me = http_client('GET', '/auth/me', null, $studentA['jar']);
         same(200, $me['status']);
+    });
+
+    test('a CORS preflight is answered before the route table', function (): void {
+        // The browser sends this before the enrollment POST. Falling through
+        // to the route table answered 405 method_not_allowed, and the header
+        // list did not include X-CSRF-Token, so the POST never left the page.
+        $preflight = http_client('OPTIONS', '/users/enroll-fingerprint', null, null, true, [
+            'Origin: http://localhost:5173',
+            'Access-Control-Request-Method: POST',
+            'Access-Control-Request-Headers: content-type,x-csrf-token,x-requested-with',
+        ]);
+        same(204, $preflight['status']);
+        same('http://localhost:5173', $preflight['headers']['access-control-allow-origin'] ?? null);
+
+        $allowedHeaders = strtolower((string) ($preflight['headers']['access-control-allow-headers'] ?? ''));
+        assert_true(str_contains($allowedHeaders, 'x-csrf-token'), 'preflight does not allow the X-CSRF-Token header');
+
+        $allowedMethods = (string) ($preflight['headers']['access-control-allow-methods'] ?? '');
+        assert_true(str_contains($allowedMethods, 'POST'), 'preflight does not allow POST');
     });
 
     test('a temporary password blocks every route except the change flow', function () use ($db, $suffix, $password, $cookieJars, &$userIds): void {

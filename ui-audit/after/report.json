@@ -1,35 +1,1516 @@
 [
   {
     "role": "admin",
-    "loginError": "Error: login failed for admin: http://localhost:5173/pages/login.html"
+    "name": "admin-dashboard",
+    "route": "/pages/administrator/admin-dashboard.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Admin Dashboard | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Everything in view.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-dashboard",
+    "route": "/pages/administrator/admin-dashboard.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Admin Dashboard | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Everything in view.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-events",
+    "route": "/pages/administrator/admin-manage-events.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Events | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Create and manage events.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-events",
+    "route": "/pages/administrator/admin-manage-events.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Events | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Create and manage events.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-officers",
+    "route": "/pages/administrator/admin-manage-officers.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Officers | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Create and manage officer accounts.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": true
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-officers",
+    "route": "/pages/administrator/admin-manage-officers.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Officers | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Create and manage officer accounts.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": true
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-students",
+    "route": "/pages/administrator/admin-manage-students.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Students | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Review and manage student accounts.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": true
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-manage-students",
+    "route": "/pages/administrator/admin-manage-students.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Students | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Review and manage student accounts.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": true
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-reports",
+    "route": "/pages/administrator/admin-reports.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reports | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "System-wide reports.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": true
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-reports",
+    "route": "/pages/administrator/admin-reports.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reports | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "System-wide reports.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": true
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-settings",
+    "route": "/pages/administrator/admin-settings.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Settings | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "System settings.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": true
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "admin",
+    "name": "admin-settings",
+    "route": "/pages/administrator/admin-settings.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Settings | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "System settings.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "admin-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "admin-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Officers",
+          "href": "admin-manage-officers.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "admin-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "admin-reports.html",
+          "active": false
+        },
+        {
+          "text": "Settings",
+          "href": "admin-settings.html",
+          "active": true
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
   },
   {
     "role": "officer",
-    "loginError": "Error: login failed for officer: http://localhost:5173/pages/login.html"
+    "name": "ssc-dashboard",
+    "route": "/pages/ssc-officer/ssc-dashboard.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "SSC Dashboard | Attendance System",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Everything in view.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-dashboard",
+    "route": "/pages/ssc-officer/ssc-dashboard.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "SSC Dashboard | Attendance System",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Everything in view.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-manage-events",
+    "route": "/pages/ssc-officer/ssc-manage-events.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Events | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Create and manage events.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-manage-events",
+    "route": "/pages/ssc-officer/ssc-manage-events.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Events | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Create and manage events.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": true
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-manage-students",
+    "route": "/pages/ssc-officer/ssc-manage-students.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Students | Attendance System",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "View student records.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": true
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-manage-students",
+    "route": "/pages/ssc-officer/ssc-manage-students.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Manage Students | Attendance System",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "View student records.",
+      "bodyClass": "role-dashboard-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": true
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": false
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-reports",
+    "route": "/pages/ssc-officer/ssc-reports.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reports | Attendance System",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "System-wide reports.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": true
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "officer",
+    "name": "ssc-reports",
+    "route": "/pages/ssc-officer/ssc-reports.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reports | Attendance System",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "System-wide reports.",
+      "bodyClass": "role-dashboard-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "ssc-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Students",
+          "href": "ssc-manage-students.html",
+          "active": false
+        },
+        {
+          "text": "Events",
+          "href": "ssc-manage-events.html",
+          "active": false
+        },
+        {
+          "text": "Reports",
+          "href": "ssc-reports.html",
+          "active": true
+        },
+        {
+          "text": "Kiosk",
+          "href": "../kiosk.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
   },
   {
     "role": "student",
-    "loginError": "Error: login failed for student: http://localhost:5173/pages/login.html"
-  },
-  {
-    "role": "public",
-    "name": "login",
-    "route": "/pages/login.html",
+    "name": "student-dashboard",
+    "route": "/pages/student/student-dashboard.html",
     "viewport": {
       "width": 1366,
       "height": 768
     },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "failed": [
-      "GET https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@400;600;700&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
+    "errors": [],
+    "failed": [],
     "metrics": {
-      "title": "Login | ATTENDLY",
+      "title": "Student Dashboard | Attendance System",
       "viewport": {
         "w": 1366,
         "h": 768
@@ -40,149 +1521,63 @@
         "bodyW": 1366
       },
       "offscreen": [],
-      "clipped": [
-        {
-          "el": "div.auth-hero",
-          "text": "Track attendancewith a single scan. Fast, reliable attendance tracking for campu",
-          "client": 233,
-          "scroll": 318
-        }
-      ],
-      "tiny": [
-        {
-          "el": "span.auth-hero-slide-num-inner.current",
-          "text": "01",
-          "px": 11.52
-        }
-      ],
+      "clipped": [],
+      "tiny": [],
       "emptyButtons": [],
       "tables": [],
-      "h1": "Track attendancewith a single scan.",
-      "bodyClass": "auth-page",
-      "navLinks": []
-    }
-  },
-  {
-    "role": "public",
-    "name": "login",
-    "route": "/pages/login.html",
-    "viewport": {
-      "width": 390,
-      "height": 844
-    },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "failed": [
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@400;600;700&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "metrics": {
-      "title": "Login | ATTENDLY",
-      "viewport": {
-        "w": 390,
-        "h": 844
-      },
-      "overflow": 0,
-      "scroll": {
-        "docW": 390,
-        "bodyW": 390
-      },
-      "offscreen": [],
-      "clipped": [
+      "h1": "Welcome back, Test.",
+      "bodyClass": "student-dashboard-page dashboard-hover-accent",
+      "navLinks": [
         {
-          "el": "main#main-content.auth-form-panel",
-          "text": "Attendly Welcome, JHCSCians Sign in to your Attendly account to manage or record",
-          "client": 75,
-          "scroll": 251
+          "text": "",
+          "href": null,
+          "active": false
         },
         {
-          "el": "button.btn.btn-primary",
-          "text": "Sign in",
-          "client": 35,
-          "scroll": 48
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
         }
-      ],
-      "tiny": [],
-      "emptyButtons": [],
-      "tables": [],
-      "h1": "Track attendancewith a single scan.",
-      "bodyClass": "auth-page",
-      "navLinks": []
+      ]
     }
   },
   {
-    "role": "public",
-    "name": "signup",
-    "route": "/pages/signup.html",
-    "viewport": {
-      "width": 1366,
-      "height": 768
-    },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "failed": [
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@400;600;700&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "metrics": {
-      "title": "Create account | ATTENDLY",
-      "viewport": {
-        "w": 1366,
-        "h": 768
-      },
-      "overflow": 0,
-      "scroll": {
-        "docW": 1366,
-        "bodyW": 1366
-      },
-      "offscreen": [],
-      "clipped": [
-        {
-          "el": "div.auth-hero",
-          "text": "Track attendancewith a single scan. Fast, reliable attendance tracking for campu",
-          "client": 577,
-          "scroll": 584
-        }
-      ],
-      "tiny": [
-        {
-          "el": "span.auth-hero-slide-num-inner.current",
-          "text": "01",
-          "px": 11.52
-        }
-      ],
-      "emptyButtons": [],
-      "tables": [],
-      "h1": "Track attendancewith a single scan.",
-      "bodyClass": "auth-page",
-      "navLinks": []
-    }
-  },
-  {
-    "role": "public",
-    "name": "signup",
-    "route": "/pages/signup.html",
+    "role": "student",
+    "name": "student-dashboard",
+    "route": "/pages/student/student-dashboard.html",
     "viewport": {
       "width": 390,
       "height": 844
     },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "failed": [
-      "GET https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@400;600;700&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
+    "errors": [],
+    "failed": [],
     "metrics": {
-      "title": "Create account | ATTENDLY",
+      "title": "Student Dashboard | Attendance System",
       "viewport": {
         "w": 390,
         "h": 844
@@ -191,144 +1586,65 @@
       "scroll": {
         "docW": 390,
         "bodyW": 390
-      },
-      "offscreen": [
-        {
-          "el": "select#signupDepartment.form-control.auth-select",
-          "text": "Select department…School of Computer StudiesSchool of NursingSchool of Business ",
-          "left": 166,
-          "right": 421,
-          "w": 255
-        }
-      ],
-      "clipped": [
-        {
-          "el": "main#main-content.auth-form-panel.auth-form-panel--scroll",
-          "text": "Attendly Create your account Register as a student to start checking in to campu",
-          "client": 260,
-          "scroll": 304
-        }
-      ],
-      "tiny": [],
-      "emptyButtons": [],
-      "tables": [],
-      "h1": "Track attendancewith a single scan.",
-      "bodyClass": "auth-page",
-      "navLinks": []
-    }
-  },
-  {
-    "role": "public",
-    "name": "reset-password",
-    "route": "/pages/reset-password.html",
-    "viewport": {
-      "width": 1366,
-      "height": 768
-    },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "failed": [
-      "GET https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@400;600;700&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "metrics": {
-      "title": "Reset password | ATTENDLY",
-      "viewport": {
-        "w": 1366,
-        "h": 768
-      },
-      "overflow": 0,
-      "scroll": {
-        "docW": 1366,
-        "bodyW": 1366
       },
       "offscreen": [],
       "clipped": [],
       "tiny": [],
       "emptyButtons": [],
       "tables": [],
-      "h1": "That reset link is not valid",
-      "bodyClass": "auth-page auth-page--single",
-      "navLinks": []
-    }
-  },
-  {
-    "role": "public",
-    "name": "reset-password",
-    "route": "/pages/reset-password.html",
-    "viewport": {
-      "width": 390,
-      "height": 844
-    },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "failed": [
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@400;600;700&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED"
-    ],
-    "metrics": {
-      "title": "Reset password | ATTENDLY",
-      "viewport": {
-        "w": 390,
-        "h": 844
-      },
-      "overflow": 0,
-      "scroll": {
-        "docW": 390,
-        "bodyW": 390
-      },
-      "offscreen": [
+      "h1": "Welcome back, Test.",
+      "bodyClass": "student-dashboard-page dashboard-hover-accent",
+      "navLinks": [
         {
-          "el": "input#reset-otp-field.form-control.otp-input",
           "text": "",
-          "left": 161,
-          "right": 460,
-          "w": 299
-        }
-      ],
-      "clipped": [
+          "href": null,
+          "active": false
+        },
         {
-          "el": "main#main-content.auth-form-panel.auth-form-panel--scroll",
-          "text": "Attendly Reset your password Enter the 6-digit OTP sent to your email and your n",
-          "client": 265,
-          "scroll": 348
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": true
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
         }
-      ],
-      "tiny": [],
-      "emptyButtons": [],
-      "tables": [],
-      "h1": "That reset link is not valid",
-      "bodyClass": "auth-page auth-page--single",
-      "navLinks": []
+      ]
     }
   },
   {
-    "role": "public",
-    "name": "change-password",
-    "route": "/pages/change-password.html",
+    "role": "student",
+    "name": "student-attendance",
+    "route": "/pages/student/student-attendance.html",
     "viewport": {
       "width": 1366,
       "height": 768
     },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED",
-      "Failed to load resource: net::ERR_CONNECTION_REFUSED"
-    ],
-    "failed": [
-      "GET https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@400;600;700&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET http://localhost:8000/api/auth/me :: net::ERR_CONNECTION_REFUSED"
-    ],
+    "errors": [],
+    "failed": [],
     "metrics": {
-      "title": "Change password | ATTENDLY",
+      "title": "My Attendance | Attendance System",
       "viewport": {
         "w": 1366,
         "h": 768
@@ -343,32 +1659,59 @@
       "tiny": [],
       "emptyButtons": [],
       "tables": [],
-      "h1": "",
-      "bodyClass": "auth-page auth-page--single",
-      "navLinks": []
+      "h1": "Attendance history",
+      "bodyClass": "student-subpage-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": true
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
     }
   },
   {
-    "role": "public",
-    "name": "change-password",
-    "route": "/pages/change-password.html",
+    "role": "student",
+    "name": "student-attendance",
+    "route": "/pages/student/student-attendance.html",
     "viewport": {
       "width": 390,
       "height": 844
     },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED",
-      "Failed to load resource: net::ERR_CONNECTION_REFUSED"
-    ],
-    "failed": [
-      "GET https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@400;600;700&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET http://localhost:8000/api/auth/me :: net::ERR_CONNECTION_REFUSED"
-    ],
+    "errors": [],
+    "failed": [],
     "metrics": {
-      "title": "Change password | ATTENDLY",
+      "title": "My Attendance | Attendance System",
       "viewport": {
         "w": 390,
         "h": 844
@@ -383,8 +1726,560 @@
       "tiny": [],
       "emptyButtons": [],
       "tables": [],
-      "h1": "",
+      "h1": "Attendance history",
+      "bodyClass": "student-subpage-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": true
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-profile",
+    "route": "/pages/student/student-profile.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Profile Settings | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Profile settings",
+      "bodyClass": "student-subpage-page dashboard-hover-accent profile-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": true
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-profile",
+    "route": "/pages/student/student-profile.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Profile Settings | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Profile settings",
+      "bodyClass": "student-subpage-page dashboard-hover-accent profile-page",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": false
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": true
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-sanctions",
+    "route": "/pages/student/student-sanctions.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "My Sanctions | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "My sanctions",
+      "bodyClass": "student-subpage-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": true
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "student",
+    "name": "student-sanctions",
+    "route": "/pages/student/student-sanctions.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "My Sanctions | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "My sanctions",
+      "bodyClass": "student-subpage-page dashboard-hover-accent",
+      "navLinks": [
+        {
+          "text": "",
+          "href": null,
+          "active": false
+        },
+        {
+          "text": "ATTENDLY",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "Dashboard",
+          "href": "student-dashboard.html",
+          "active": false
+        },
+        {
+          "text": "My attendance",
+          "href": "student-attendance.html",
+          "active": false
+        },
+        {
+          "text": "Sanctions",
+          "href": "student-sanctions.html",
+          "active": true
+        },
+        {
+          "text": "Profile",
+          "href": "student-profile.html",
+          "active": false
+        },
+        {
+          "text": "Log out",
+          "href": null,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "role": "public",
+    "name": "login",
+    "route": "/pages/login.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Login | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "login",
+    "route": "/pages/login.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Login | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "signup",
+    "route": "/pages/signup.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Create account | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "signup",
+    "route": "/pages/signup.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Create account | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "reset-password",
+    "route": "/pages/reset-password.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reset password | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Reset your password",
       "bodyClass": "auth-page auth-page--single",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "reset-password",
+    "route": "/pages/reset-password.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Reset password | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Reset your password",
+      "bodyClass": "auth-page auth-page--single",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "change-password",
+    "route": "/pages/change-password.html",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Login | ATTENDLY",
+      "viewport": {
+        "w": 1366,
+        "h": 768
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 1366,
+        "bodyW": 1366
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
+      "navLinks": []
+    }
+  },
+  {
+    "role": "public",
+    "name": "change-password",
+    "route": "/pages/change-password.html",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "errors": [],
+    "failed": [],
+    "metrics": {
+      "title": "Login | ATTENDLY",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "overflow": 0,
+      "scroll": {
+        "docW": 390,
+        "bodyW": 390
+      },
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
+      "emptyButtons": [],
+      "tables": [],
+      "h1": "Track attendancewith a single scan.",
+      "bodyClass": "auth-page",
       "navLinks": []
     }
   },
@@ -396,17 +2291,8 @@
       "width": 1366,
       "height": 768
     },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED",
-      "Failed to load resource: net::ERR_CONNECTION_REFUSED"
-    ],
-    "failed": [
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET http://localhost:8000/api/auth/me :: net::ERR_CONNECTION_REFUSED"
-    ],
+    "errors": [],
+    "failed": [],
     "metrics": {
       "title": "Check-in Kiosk | ATTENDLY",
       "viewport": {
@@ -420,83 +2306,7 @@
       },
       "offscreen": [],
       "clipped": [],
-      "tiny": [
-        {
-          "el": "a.kiosk-skip-link",
-          "text": "Skip to fingerprint scanner",
-          "px": 13.12
-        },
-        {
-          "el": "small",
-          "text": "Fingerprint event check-in",
-          "px": 12
-        },
-        {
-          "el": "strong",
-          "text": "Station 01",
-          "px": 11.68
-        },
-        {
-          "el": "span#kioskClockDate",
-          "text": "Wed, Nov 18",
-          "px": 10.88
-        },
-        {
-          "el": "small",
-          "text": "Arrivals",
-          "px": 11.2
-        },
-        {
-          "el": "small",
-          "text": "Departures",
-          "px": 11.2
-        },
-        {
-          "el": "span#kioskFingerprintState",
-          "text": "Scanner ready",
-          "px": 9.92
-        },
-        {
-          "el": "span",
-          "text": "1",
-          "px": 11.52
-        },
-        {
-          "el": "strong",
-          "text": "Select your event",
-          "px": 12.16
-        },
-        {
-          "el": "span",
-          "text": "2",
-          "px": 11.52
-        },
-        {
-          "el": "strong",
-          "text": "Enter your ID",
-          "px": 12.16
-        },
-        {
-          "el": "span",
-          "text": "3",
-          "px": 11.52
-        },
-        {
-          "el": "strong",
-          "text": "Scan your fingerprint",
-          "px": 12.16
-        },
-        {
-          "el": "span",
-          "text": "4",
-          "px": 11.52
-        },
-        {
-          "el": "strong",
-          "text": "Wait for confirmation",
-          "px": 12.16
-        }
-      ],
+      "tiny": [],
       "emptyButtons": [],
       "tables": [],
       "h1": "Station locked",
@@ -512,17 +2322,8 @@
       "width": 390,
       "height": 844
     },
-    "errors": [
-      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED",
-      "Failed to load resource: net::ERR_CONNECTION_REFUSED"
-    ],
-    "failed": [
-      "GET https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js :: net::ERR_NETWORK_ACCESS_DENIED",
-      "GET http://localhost:8000/api/auth/me :: net::ERR_CONNECTION_REFUSED"
-    ],
+    "errors": [],
+    "failed": [],
     "metrics": {
       "title": "Check-in Kiosk | ATTENDLY",
       "viewport": {
@@ -534,75 +2335,9 @@
         "docW": 390,
         "bodyW": 390
       },
-      "offscreen": [
-        {
-          "el": "div.kiosk-card-vignette",
-          "text": "",
-          "left": 68,
-          "right": 528,
-          "w": 460
-        }
-      ],
-      "clipped": [
-        {
-          "el": "section#scanPanel.kiosk-scan",
-          "text": "Fast fingerprint attendance Station locked Sign in to choose an event and start ",
-          "client": 364,
-          "scroll": 515
-        }
-      ],
-      "tiny": [
-        {
-          "el": "a.kiosk-skip-link",
-          "text": "Skip to fingerprint scanner",
-          "px": 13.12
-        },
-        {
-          "el": "strong",
-          "text": "Check-In",
-          "px": 12.48
-        },
-        {
-          "el": "small",
-          "text": "Arrivals",
-          "px": 10.24
-        },
-        {
-          "el": "strong",
-          "text": "Check-Out",
-          "px": 12.48
-        },
-        {
-          "el": "small",
-          "text": "Departures",
-          "px": 10.24
-        },
-        {
-          "el": "span#kioskFingerprintState",
-          "text": "Scanner ready",
-          "px": 9.92
-        },
-        {
-          "el": "span",
-          "text": "1",
-          "px": 11.52
-        },
-        {
-          "el": "span",
-          "text": "2",
-          "px": 11.52
-        },
-        {
-          "el": "span",
-          "text": "3",
-          "px": 11.52
-        },
-        {
-          "el": "span",
-          "text": "4",
-          "px": 11.52
-        }
-      ],
+      "offscreen": [],
+      "clipped": [],
+      "tiny": [],
       "emptyButtons": [],
       "tables": [],
       "h1": "Station locked",

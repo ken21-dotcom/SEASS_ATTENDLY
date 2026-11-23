@@ -88,6 +88,19 @@ var apiOffline = false;
 var csrfToken = null;
 
 /**
+ * How long a single API call may wait before it is aborted.
+ *
+ * Without a deadline a request that never answers (a dropped connection, a
+ * backend stuck on a session lock, a proxy holding the socket open) leaves
+ * the caller's promise pending forever. That is what used to leave the
+ * login button on "Signing in..." with no error to show.
+ *
+ * Callers can override this per request with options.timeoutMs.
+ * @type {number}
+ */
+var API_REQUEST_TIMEOUT_MS = 12000;
+
+/**
  * Get the current CSRF token.
  * @returns {string|null}
  */
@@ -161,14 +174,18 @@ var csrfSessionless = false;
  * Never throws: a failure leaves the original write to fail with the
  * server's own error code instead of masking it as a token problem.
  *
+ * @param {number} [timeoutMs] optional deadline for this token fetch
  * @returns {Promise<string|null>} the token, or null when there is no session
  */
-function ensureCsrfToken() {
+function ensureCsrfToken(timeoutMs) {
   if (csrfToken) return Promise.resolve(csrfToken);
   if (csrfSessionless) return Promise.resolve(null);
   if (csrfTokenPromise) return csrfTokenPromise;
 
-  csrfTokenPromise = request('/auth/csrf-token', { anonymous: true })
+  csrfTokenPromise = request('/auth/csrf-token', {
+    anonymous: true,
+    timeoutMs: timeoutMs,
+  })
     .then(function (data) {
       var token = data && typeof data.csrfToken === 'string' ? data.csrfToken : null;
       if (token) setCsrfToken(token);
@@ -206,6 +223,7 @@ function apiUrl(path) {
  * @param {string} [options.method='GET']
  * @param {Object} [options.body]     JSON request payload
  * @param {boolean} [options.anonymous=false] skip the 401 redirect
+ * @param {number} [options.timeoutMs] override API_REQUEST_TIMEOUT_MS
  * @returns {Promise<*>} resolves with the `data` field, or the
  *   resolved value of options.validate when it returns false
  * @throws {Error} with .code and .status set on failure
@@ -249,10 +267,44 @@ async function request(path, options) {
     init.body = JSON.stringify(opts.body);
   }
 
+  // A hung connection must not hang the UI. AbortController is available in
+  // every supported browser; when it is missing the request simply keeps the
+  // old behaviour instead of failing. The clock starts with the fetch, not
+  // with the CSRF pre-flight above.
+  var timeoutMs = typeof opts.timeoutMs === 'number' && opts.timeoutMs > 0
+    ? opts.timeoutMs
+    : API_REQUEST_TIMEOUT_MS;
+  var controller = null;
+  var timeoutTimer = null;
+  var timedOut = false;
+  if (typeof AbortController === 'function') {
+    controller = new AbortController();
+    init.signal = controller.signal;
+    timeoutTimer = setTimeout(function () {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+  }
+
+  function stopTimeout() {
+    if (timeoutTimer) clearTimeout(timeoutTimer);
+    timeoutTimer = null;
+  }
+
+  function timeoutError() {
+    apiOffline = true;
+    var timeout = new Error('The server took too long to respond. Please try again.');
+    timeout.code = 'timeout';
+    timeout.status = 0;
+    return timeout;
+  }
+
   var response;
   try {
     response = await fetch(apiUrl(path), init);
   } catch (networkError) {
+    stopTimeout();
+    if (timedOut) throw timeoutError();
     apiOffline = true;
     var offline = new Error('Cannot reach the server. Check that the backend is running.');
     offline.code = 'network_error';
@@ -263,12 +315,17 @@ async function request(path, options) {
   try {
     payload = await response.json();
   } catch {
+    stopTimeout();
+    // Aborting during the body read looks like a parse failure; report the
+    // real cause instead of blaming the payload.
+    if (timedOut) throw timeoutError();
     // A non-JSON body means something other than the API answered
     // (a PHP notice, a proxy error page).
     var malformed = new Error('The server returned an unexpected response.');
     malformed.code = 'invalid_response';
     throw malformed;
   }
+  stopTimeout();
 
   if (!response.ok) {
     var detail = payload && payload.error ? payload.error : null;
@@ -375,10 +432,31 @@ async function hydrateFromApi() {
     });
   }
 
+  // Login waits for this function, so one slow collection must not hold the
+  // redirect hostage. Each job gets only the time left in the overall budget;
+  // the rest are reported as failed so the caller can still enter the app.
+  var HYDRATION_BUDGET_MS = 10000;
+  var deadline = Date.now() + HYDRATION_BUDGET_MS;
+
+  function withinBudget(promise, ms, label) {
+    if (!(ms > 0)) {
+      return Promise.reject(new Error(label + ' skipped: hydration budget exceeded'));
+    }
+    return new Promise(function (resolve, reject) {
+      var timer = setTimeout(function () {
+        reject(new Error(label + ' timed out'));
+      }, ms);
+      promise.then(
+        function (value) { clearTimeout(timer); resolve(value); },
+        function (error) { clearTimeout(timer); reject(error); }
+      );
+    });
+  }
+
   for (var i = 0; i < jobs.length; i++) {
     var name = jobs[i][0];
     try {
-      var rows = await jobs[i][1]();
+      var rows = await withinBudget(jobs[i][1](), deadline - Date.now(), name);
       if (!Array.isArray(rows)) throw new Error('expected a list');
       // Resolved by name at call time: data.js is not loaded when this
       // file is parsed, but it always is by the time we run.
@@ -392,6 +470,9 @@ async function hydrateFromApi() {
       }
       result.synced.push(name);
     } catch (err) {
+      // Keep the collection name in the result for the UI, and the real
+      // reason in the console so a timeout is distinguishable from a 403.
+      console.warn('[api] Could not load ' + name + ':', err);
       result.failed.push(name);
     }
   }
@@ -425,16 +506,15 @@ var api = {
         return user && user.id && user.role;
       },
     }).then(function (user) {
-      return request('/auth/csrf-token', { anonymous: true })
-        .then(function (data) {
-          if (data && data.csrfToken) {
-            setCsrfToken(data.csrfToken);
-          }
-          return user;
-        })
-        .catch(function () {
-          return user;
-        });
+      // A successful login opens a new session. An earlier probe may have
+      // cached "no session", so clear that before asking for the token.
+      csrfSessionless = false;
+      // Best effort with a short deadline: a slow or unavailable token
+      // endpoint must never keep the user on the login screen. The
+      // dashboard's /auth/me probe warms the token again if this fails.
+      return ensureCsrfToken(5000).then(function () {
+        return user;
+      });
     });
   },
 
@@ -551,6 +631,9 @@ var api = {
   enrollFingerprint: function (studentId, finger, fingerprintImages) {
     return request('/users/enroll-fingerprint', {
       method: 'POST',
+      // Template extraction runs per image; give the matcher longer than a
+      // normal CRUD call before the client gives up.
+      timeoutMs: 30000,
       body: {
         studentId: studentId,
         finger: finger,
@@ -559,6 +642,19 @@ var api = {
       validate: function (result) {
         return !!result && result.ok === true && Number.isInteger(result.fingerprintFingersCompleted);
       },
+    });
+  },
+
+  /**
+   * Reset a student's enrolled fingerprint templates and status to 0/10.
+   * Admin and SSC-officer sessions only.
+   *
+   * @param {number|string} studentId user id of the student
+   * @returns {Promise<Object>}
+   */
+  resetStudentFingerprint: function (studentId) {
+    return request('/users/' + encodeURIComponent(studentId) + '/fingerprint', {
+      method: 'DELETE',
     });
   },
 
@@ -780,6 +876,9 @@ var api = {
     return request('/attendance/fingerprint', {
       method: 'POST',
       anonymous: true,
+      // Matching runs against the stored templates; allow more time than a
+      // plain read so a slow match is not reported as a network failure.
+      timeoutMs: 30000,
       body: {
         eventId: eventId,
         studentIdNumber: studentIdNumber,

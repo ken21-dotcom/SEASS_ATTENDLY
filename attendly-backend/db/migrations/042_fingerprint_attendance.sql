@@ -10,7 +10,7 @@
 -- can be told apart from the legacy QR and manual paths in reports.
 
 ALTER TABLE students
-    ADD COLUMN fingerprint_template LONGTEXT NULL AFTER block;
+    ADD COLUMN IF NOT EXISTS fingerprint_template LONGTEXT NULL AFTER block;
 
 ALTER TABLE attendance_records
     MODIFY COLUMN verification_method ENUM('face', 'manual', 'qr', 'fingerprint') NOT NULL;

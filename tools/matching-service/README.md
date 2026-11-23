@@ -1,8 +1,10 @@
 # ATTENDLY local fingerprint matching service
 
-Standalone 1:N fingerprint matcher for ATTENDLY. It turns the DigitalPersona
+Standalone fingerprint matcher for ATTENDLY. It turns the DigitalPersona
 U.are.U 4500 PNG captures (Web SDK `SampleFormat.PngImage`) into SourceAFIS
-templates and identifies which enrolled student a probe image belongs to.
+templates. `POST /verify` is the fast 1:1 check used by the kiosk for the
+student whose ID was typed first; `POST /identify` remains the 1:N comparison
+used by enrollment duplicate checks.
 
 It is a self-contained Java process: JDK's `com.sun.net.httpserver` only, no web
 framework, and one dependency — [SourceAFIS for Java](https://sourceafis.machinezoo.com/java).
@@ -27,8 +29,11 @@ service has no database of its own.
   500 dpi. The setting applies to both template creation and probe images, so
   changing it requires re-enrolling templates at the new DPI.
 - Threshold: threshold 40 corresponds to **FMR 0.01 %** (threshold 30 ≈ 0.1 %,
-  20 ≈ 1 %, 10 ≈ 10 %); 40 is the documented recommended starting point. The
-  service compares `score >= MATCHING_THRESHOLD` and defaults to 40.
+  20 ≈ 1 %, 10 ≈ 10 %); 40 is the documented recommended starting point for
+  1:N identification. `/identify` compares `score >= MATCHING_THRESHOLD`
+  (default 40), while `/verify` uses `threshold` from the request and falls
+  back to `MATCHING_VERIFY_THRESHOLD` (default 30). Because the kiosk already
+  knows the student ID, 1:1 verification can safely use the lower value of 30.
 
 ## Endpoints
 
@@ -43,6 +48,38 @@ All API calls must send `X-Matching-Key: <MATCHING_KEY>`; otherwise `401`.
 ```json
 { "template": "<base64 SourceAFIS template>" }
 ```
+
+### `POST /verify`
+
+```json
+{
+  "image": "<base64 PNG probe>",
+  "candidate": {
+    "id": 12,
+    "templates": ["<base64>", "<base64>"],
+    "fingers": ["left-thumb", "left-thumb"]
+  },
+  "threshold": 30
+}
+```
+
+`candidate` is one student's stored templates, already selected in PHP by the
+typed `studentIdNumber`. `threshold` is optional: PHP sends
+`matching.threshold` from `config.php` (30 by default) on every kiosk check-in,
+and the service falls back to `MATCHING_VERIFY_THRESHOLD` when it is absent.
+No Java restart is needed after changing the PHP config.
+
+The response has the same shape as `/identify`:
+
+```json
+{
+  "match": { "id": 12, "score": 67.3, "finger": "left-thumb" },
+  "bestScore": 67.3,
+  "threshold": 30
+}
+```
+
+or `{ "match": null, "bestScore": 21.4, "threshold": 30 }` below the threshold.
 
 ### `POST /identify`
 
@@ -81,8 +118,9 @@ can show the score for every attempt even when the finger is not recognised.
 ### `GET /health`
 
 No key required:
-`{"status":"ok","dpi":512,"threshold":40}`. Intended for readiness checks and
-the smoke test; it reports the values the process actually started with.
+`{"status":"ok","dpi":512,"threshold":40,"verifyThreshold":30}`. Intended for
+readiness checks and the smoke test; it reports the values the process actually
+started with.
 
 Errors are always JSON: `{"error":"..."}` with `400` (bad input), `401` (key),
 `404` (path), `405` (method), `413` (body over 8 MB), `415` (not JSON).
@@ -126,27 +164,33 @@ prints `matching service listening on http://127.0.0.1:8090`. Stop it with Ctrl+
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `MATCHING_KEY` | *(required)* | Shared secret expected in `X-Matching-Key`. |
-| `MATCHING_THRESHOLD` | `40` | Minimum score for a match (~FMR 0.01 %). |
+| `MATCHING_THRESHOLD` | `40` | Minimum score for `/identify` (1:N enrollment duplicate check, ~FMR 0.01 %). |
+| `MATCHING_VERIFY_THRESHOLD` | `30` | Fallback score for `/verify`; PHP normally sends the threshold per request. |
 | `MATCHING_DPI` | `512` | Sensor DPI used for template and probe decoding. The U.are.U 4500 is ~512 dpi; use `500` only if the datasheet says so. Changing DPI requires re-enrolling templates. |
 
-### Tuning the threshold from debug scores
+### Tuning the thresholds from debug scores
 
-Do not lower `MATCHING_THRESHOLD` first. Open the kiosk with `?debug=1`; every
-attempt shows `score`, `threshold`, and the matched finger (or `none`).
+The kiosk's 1:1 threshold is `matching.threshold` in the PHP config (30 by
+default) and is sent on each `/verify` request. `MATCHING_VERIFY_THRESHOLD` is
+only the Java fallback. `MATCHING_THRESHOLD` stays at 40 for enrollment's 1:N
+duplicate check; do not lower it to make kiosk scans work.
+
+Open the kiosk with `?debug=1`; every attempt shows `score`, `threshold`, and
+the matched finger (or `none`).
 
 1. Confirm the matching service was built and started with `MATCHING_DPI=512`
-   (the `/health` response shows the value in use) and re-enroll fingers if the
-   DPI changed.
-2. Collect genuine scores from several students and fingers. Genuine attempts
-   should sit comfortably above 40. If they do not, fix capture quality or
-   re-enroll two templates per finger before changing the threshold.
+   (the `/health` response shows both thresholds and the DPI in use) and
+   re-enroll fingers if the DPI changed.
+2. Collect genuine scores from several students and fingers. Genuine 1:1
+   attempts should sit comfortably above 30. If they do not, fix capture
+   quality or re-enroll two templates per finger before changing the threshold.
 3. Collect impostor scores by placing a different finger under the same typed
-   ID. Impostors should stay below 40. If they approach 40, raise the threshold;
-   if genuine scans are consistently just below 40 after clean re-enrollment,
-   lower it one step at a time and re-check both sets.
-4. Keep the values in the service environment, restart the service, and record
-   the old and new values. A threshold change does not require re-enrollment; a
-   DPI change does.
+   ID. Impostors should stay below 30. If they approach 30, raise
+   `matching.threshold` in PHP; if genuine scans are consistently just below 30
+   after clean re-enrollment, lower it one step at a time and re-check both sets.
+4. Record the old and new values. Changing the PHP threshold takes effect on
+   the next request; changing `MATCHING_VERIFY_THRESHOLD` requires a Java
+   restart. Neither threshold change requires re-enrollment; a DPI change does.
 
 ## Test with curl
 
@@ -191,10 +235,11 @@ node test\api-smoke.js
 ```
 
 The test starts the jar with its own key, checks `/health` (including the 512
-DPI default and threshold), 401 for a missing or wrong key, clean 400s for
-invalid JSON, missing image, non-PNG bytes, garbage identify bodies and invalid
-templates, 405 for a wrong method and 404 for an unknown path. It expects
-**12 passed, 0 failed** with no samples present.
+DPI default, the 40 1:N threshold and the 30 1:1 threshold), 401 for a missing
+or wrong key, clean 400s for invalid JSON, missing image, non-PNG bytes, garbage
+`/identify` and `/verify` bodies and invalid templates, 405 for a wrong method
+and 404 for an unknown path. It expects all checks to pass with no samples
+present.
 
 ### Adding the real score check
 
@@ -205,20 +250,22 @@ Drop three PNGs captured with `SampleFormat.PngImage` into
 - `other.png` — a capture of a **different** finger
 
 Rerun the test and it also enrolls them and asserts that the same finger matches
-its enrolled id with `score >= 40`, that the matched finger is echoed back, that
-the different finger lands below the threshold with `match: null`, and that the
-same-finger score is higher. It prints the scores. No samples are shipped, so the
-real-scoring half is skipped by default; the same three files can be used with
-the curl example above.
+its enrolled id with `score >= 40` on `/identify` and `score >= 30` on `/verify`,
+that the matched finger is echoed back, that a different finger lands below the
+1:1 threshold with `match: null`, that the threshold sent by PHP is echoed in
+the response, and that the same-finger score is higher. It prints the scores. No
+samples are shipped, so the real-scoring half is skipped by default; the same
+three files can be used with the curl example above.
 
 ## Privacy and logging
 
 - Images and templates live in memory for the duration of one request. They are
   never written to disk, and never put in logs.
 - Logs contain only the endpoint, HTTP status, duration in ms, and counts/scores,
-  for example `[identify] 200 41ms candidates=12 templates=14 best=67.3 match=12`.
+  for example `[verify] 200 8ms templates=2 best=67.3 threshold=30 match=12`
+  or `[identify] 200 41ms candidates=12 templates=14 best=67.3 match=12`.
 - The service has no persistence; enrolled templates must be stored by the PHP
-  backend and sent in each `/identify` request.
+  backend and sent in each `/verify` (kiosk) or `/identify` (enrollment) request.
 - Binding to `127.0.0.1` is deliberate: only local processes can call it.
 
 ## ATTENDLY integration
@@ -226,8 +273,11 @@ the curl example above.
 The PHP backend calls `POST /template` for enrollment images and stores only
 the returned base64 templates in `students.fingerprint_template`. The enrollment
 UI captures two placements per finger, so each named finger normally holds two
-templates. At kiosk check-in the backend calls `POST /identify` with only
-students selected by the typed ID and passes each template's finger name. If a
-five-digit suffix matches multiple stored IDs, all eligible students are sent as
-candidates and the fingerprint match resolves the identity. Images remain in
-memory for the request and are discarded.
+templates. Enrollment duplicate checks use `POST /identify` (1:N) at threshold
+40.
+
+At kiosk check-in the typed `studentIdNumber` is used to load only the matching
+student row(s), and the backend calls `POST /verify` (1:1) with that student's
+templates at threshold 30. A five-digit suffix can match several stored IDs, so
+each eligible student is verified separately instead of sending a database-wide
+fan-out. Images remain in memory for the request and are discarded.

@@ -45,10 +45,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         `<td>${escapeHtml(student.block || '—')}</td>` +
         `<td><div class="small mb-1 ${fingerprintsComplete ? 'text-success' : 'text-warning fw-semibold'}">` +
           `<i class="bi bi-fingerprint"></i> ${fingerprintsComplete ? 'Enrolled' : 'Incomplete: ' + fingersDone + '/10 fingers'}</div>` +
-          `<button class="btn btn-sm btn-outline-success" type="button" ` +
-          `onclick="enrollStudentFingerprint('${escapeHtml(student.id)}')" ` +
-          `title="Enroll or re-do one of this student's ten fingers">` +
-          `<i class="bi bi-fingerprint"></i> Manage Fingerprints</button></td>`;
+          `<div class="small text-muted">Fingerprint enrollment is administrator-only.</div></td>`;
       },
     });
   }

@@ -26,6 +26,9 @@ final class Repository
         'right-thumb', 'right-index', 'right-middle', 'right-ring', 'right-little',
     ];
 
+    /** Enrollment captures and stores two accepted placements per finger. */
+    private const TEMPLATES_PER_FINGER = 2;
+
     private ?MatchingService $matching = null;
 
     /**
@@ -580,20 +583,41 @@ final class Repository
     }
 
     /**
-     * Turn one or more captured PNG samples into templates for one named
-     * finger. Images go to the local matching service and are never stored.
+     * Biometric writes are administrator-only even if a route forgets to gate
+     * them. Auth exposes the client role ('admin'); the database stores
+     * 'administrator', so both spellings are accepted here.
+     */
+    private function assertFingerprintAdministrator(array $actor): void
+    {
+        $role = (string) ($actor['role'] ?? '');
+        if ($role !== 'admin' && $role !== 'administrator') {
+            Response::fail('forbidden', 'Only administrators may manage fingerprint enrollment.', 403);
+        }
+    }
+
+    /**
+     * Turn two captured PNG samples into templates for one named finger.
+     * The backend refuses any other count so a partial or oversized
+     * submission cannot be stored. Images go to the local
+     * matching service and are never stored.
      *
      * @param string[] $images base64 PNG samples for this finger
      */
     public function enrollFingerprint(int $studentId, string $finger, array $images, array $actor): array
     {
+        $this->assertFingerprintAdministrator($actor);
+
         $finger = strtolower(trim($finger));
         if (!in_array($finger, self::FINGERPRINT_FINGERS, true)) {
             Response::fail('invalid_field', 'Field "finger" must identify one of the ten fingers.', 422);
         }
         $images = array_values($images);
-        if (count($images) < 1 || count($images) > 10) {
-            Response::fail('invalid_field', 'Field "images" must contain 1 to 10 scans for this finger.', 422);
+        if (count($images) !== self::TEMPLATES_PER_FINGER) {
+            Response::fail(
+                'invalid_field',
+                'Field "images" must contain exactly ' . self::TEMPLATES_PER_FINGER . ' scans for this finger.',
+                422
+            );
         }
         foreach ($images as $index => $image) {
             if (!is_string($image) || trim($image) === '') {
@@ -657,6 +681,9 @@ final class Repository
         $studentName = trim((string) ($student['first_name'] ?? '') . ' ' . (string) ($student['last_name'] ?? ''));
         $completed = $this->completedFingerprintFingers($entries);
         $enrolled = count($completed) === count(self::FINGERPRINT_FINGERS);
+        // All-or-nothing: a partial finger set must never keep a stale
+        // "fingerprint enrolled" flag from an earlier complete enrollment.
+        $this->syncFingerprintEnrolledFlag($studentId, $enrolled);
 
         return [
             'ok' => true,
@@ -668,6 +695,74 @@ final class Repository
             'message' => ($studentName !== '' ? $studentName : 'Student') . ' — '
                 . count($completed) . '/' . count(self::FINGERPRINT_FINGERS) . ' fingers enrolled.',
         ];
+    }
+
+    /**
+     * Wipe a student's fingerprint enrollment (reset templates and status).
+     *
+     * @param int $studentId
+     * @param array<string,mixed> $actor
+     * @return array<string,mixed>
+     */
+    public function resetFingerprint(int $studentId, array $actor): array
+    {
+        $this->assertFingerprintAdministrator($actor);
+
+        $stmt = $this->db->prepare(
+            'SELECT u.id, u.role, s.first_name, s.last_name
+             FROM users u
+             LEFT JOIN students s ON s.user_id = u.id
+             WHERE u.id = :id LIMIT 1'
+        );
+        $stmt->execute(['id' => $studentId]);
+        $student = $stmt->fetch();
+
+        if ($student === false || (string) $student['role'] !== 'student') {
+            Response::fail('student_not_found', 'No student is registered under that ID.', 404);
+        }
+
+        // Migration 043 guarantees the flag column exists. A failure here must
+        // surface: a reset that leaves the flag behind is not a reset.
+        $update = $this->db->prepare(
+            'UPDATE students SET fingerprint_template = NULL, fingerprint_enrolled = 0 WHERE user_id = :student_id'
+        );
+        $update->execute(['student_id' => $studentId]);
+
+        $studentName = trim((string) ($student['first_name'] ?? '') . ' ' . (string) ($student['last_name'] ?? ''));
+
+        $this->writeAudit(
+            'update',
+            'students',
+            $studentId,
+            ['fingerprint_template' => '***'],
+            ['fingerprint_template' => null],
+            $actor['id'] ?? null,
+            null,
+            null
+        );
+
+        return [
+            'ok' => true,
+            'studentId' => $studentId,
+            'studentName' => $studentName,
+            'fingerprintEnrolled' => false,
+            'fingerprintFingersCompleted' => 0,
+            'enrolledFingers' => [],
+            'message' => ($studentName !== '' ? $studentName : 'Student') . ' fingerprint enrollment reset.',
+        ];
+    }
+
+    /**
+     * Keep the enrollment flag in step with the stored finger set. Migration
+     * 043 restores the column, so there is no fallback: if this write fails,
+     * the caller must know instead of silently reporting a successful sync.
+     */
+    private function syncFingerprintEnrolledFlag(int $studentId, bool $enrolled): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE students SET fingerprint_enrolled = :enrolled WHERE user_id = :student_id'
+        );
+        $stmt->execute(['enrolled' => $enrolled ? 1 : 0, 'student_id' => $studentId]);
     }
 
     /**
@@ -790,7 +885,7 @@ final class Repository
     {
         $completed = [];
         foreach ($entries as $entry) {
-            if ($entry['finger'] !== null && $entry['templates'] !== []) {
+            if ($entry['finger'] !== null && count($entry['templates']) === self::TEMPLATES_PER_FINGER) {
                 $completed[$entry['finger']] = true;
             }
         }
@@ -2504,9 +2599,11 @@ final class Repository
             Response::fail('invalid_field', 'Fingerprint image is too large.', 422);
         }
 
-        // A five-digit identifier can match several legacy year-prefixed
-        // records. Keep every suffix match as a candidate and let the scan
-        // resolve the identity; never choose the first row by ID alone.
+        // The kiosk already knows which student is scanning, so this is a
+        // 1:1 verification: load only the rows matching the typed ID and
+        // compare the live scan against those templates. A five-digit ID can
+        // match several legacy year-prefixed records, so keep every suffix
+        // match and verify each one instead of guessing by ID alone.
         $studentSql = 'SELECT u.id, u.role, u.status, s.first_name, s.last_name,
                               s.department, s.student_id_number, s.fingerprint_template
                        FROM students s
@@ -2545,6 +2642,7 @@ final class Repository
         $candidates = [];
         $fingerCounts = [];
         $eligibleCount = 0;
+        $templateCount = 0;
         foreach ($matchedStudents as $row) {
             if (!$this->eventTargetsDepartment($targetDepartment, (string) ($row['department'] ?? ''))) {
                 continue;
@@ -2563,6 +2661,7 @@ final class Repository
             $id = (int) $row['id'];
             $fingerCounts[$id] = count($completed);
             $students[$id] = $row;
+            $templateCount += count($templates);
             if ($templates === []) {
                 continue;
             }
@@ -2572,51 +2671,107 @@ final class Repository
         if ($eligibleCount === 0) {
             Response::fail('not_eligible', 'This event is not open to the selected student department.', 403);
         }
+        if ($templateCount === 0) {
+            error_log("[kiosk] No fingerprint template for student {$studentIdentifier}");
+            Response::fail(
+                'fingerprint_not_enrolled',
+                'No fingerprint is enrolled for that student ID. Ask an administrator to enroll it first.',
+                400
+            );
+        }
         if (count($matchedStudents) === 1 && ($fingerCounts[(int) $matchedStudents[0]['id']] ?? 0) < 10) {
             $completedCount = $fingerCounts[(int) $matchedStudents[0]['id']] ?? 0;
+            error_log("[kiosk] Enrollment incomplete for student {$studentIdentifier}: {$completedCount}/10 fingers");
             Response::fail(
                 'fingerprint_enrollment_incomplete',
-                "Enrollment incomplete ({$completedCount}/10 fingers). Please see an officer to finish enrolling.",
+                "Enrollment incomplete ({$completedCount}/10 fingers). Please see an administrator to finish enrolling.",
                 409
             );
         }
         if ($candidates === []) {
-            Response::fail('fingerprint_not_enrolled', 'No fingerprint templates are available for that ID. Enter the full ID or see an officer.', 409);
+            error_log("[kiosk] No usable fingerprint template for student {$studentIdentifier}");
+            Response::fail(
+                'fingerprint_not_enrolled',
+                'No fingerprint is enrolled for that student ID. Ask an administrator to enroll it first.',
+                400
+            );
         }
 
-        $match = ['matchedId' => null, 'score' => null, 'threshold' => null, 'finger' => null];
-        if ($candidates !== []) {
-            $service = $this->matchingService();
-            if (!$service->isConfigured()) {
-                Response::fail(
-                    'matching_service_not_configured',
-                    'Fingerprint matching is not configured on this server.',
-                    503
-                );
-            }
+        $service = $this->matchingService();
+        if (!$service->isConfigured()) {
+            error_log("[kiosk] Matching service not configured for student {$studentIdentifier}");
+            Response::fail(
+                'matching_service_not_configured',
+                'Fingerprint matching is not configured on this server.',
+                503
+            );
+        }
+
+        // 1:1 verification: each candidate is one specific student, and the
+        // Java service compares the live scan only against that student's
+        // templates. A five-digit suffix can resolve to several students, so
+        // verify every candidate and choose the strongest score BEFORE applying
+        // the threshold. Stopping at the first match could pick 31 over 95, or
+        // report 409 for an incomplete student while a complete one matched.
+        $best = ['candidateId' => null, 'score' => null, 'threshold' => null, 'finger' => null];
+        foreach ($candidates as $candidate) {
             try {
-                $match = $service->identifyDetailed($fingerprintImage, $candidates);
+                $result = $service->verifyDetailed($fingerprintImage, $candidate);
             } catch (MatchingServiceRejected $e) {
+                error_log("[kiosk] Fingerprint image rejected for student {$studentIdentifier}: " . $e->getMessage());
                 Response::fail(
                     'invalid_field',
                     'The captured fingerprint image could not be read. Place the finger again.',
                     422
                 );
             } catch (MatchingServiceUnavailable $e) {
+                error_log("[kiosk] Matching service unreachable for student {$studentIdentifier}: " . $e->getMessage());
                 Response::fail('matching_service_unavailable', $e->getMessage(), 503);
+            }
+
+            $scoreText = $result['score'] === null ? 'n/a' : (string) $result['score'];
+            $thresholdText = $result['threshold'] === null ? 'n/a' : (string) $result['threshold'];
+            error_log(
+                "[kiosk] Match score for student {$studentIdentifier}: {$scoreText}"
+                . " (threshold {$thresholdText}, finger " . ($result['finger'] ?? 'none')
+                . ", candidate {$candidate['id']})"
+            );
+
+            $score = $result['score'] === null ? null : (float) $result['score'];
+            if ($score !== null && ($best['score'] === null || $score > $best['score'])) {
+                $best = [
+                    'candidateId' => (int) $candidate['id'],
+                    'score' => $score,
+                    'threshold' => $result['threshold'] === null ? null : (float) $result['threshold'],
+                    'finger' => $result['finger'],
+                ];
+            } elseif ($best['candidateId'] === null) {
+                // Keep diagnostics for a service that returned no score at all.
+                $best['candidateId'] = (int) $candidate['id'];
+                $best['threshold'] = $result['threshold'] === null ? null : (float) $result['threshold'];
+                $best['finger'] = $result['finger'];
             }
         }
 
-        $matchedId = $match['matchedId'];
+        $matchedId = null;
+        if ($best['score'] !== null && $best['threshold'] !== null && $best['score'] >= $best['threshold']) {
+            $matchedId = $best['candidateId'];
+        }
         if ($matchedId === null || !isset($students[$matchedId])) {
+            $scoreText = $best['score'] === null ? 'n/a' : (string) $best['score'];
+            $thresholdText = $best['threshold'] === null ? 'n/a' : (string) $best['threshold'];
+            error_log(
+                "[kiosk] Fingerprint not matched for student {$studentIdentifier}:"
+                . " score {$scoreText} below threshold {$thresholdText}"
+            );
             Response::fail(
                 'fingerprint_not_recognized',
                 'This scan does not match a student with that ID.',
                 404,
                 [
-                    'score' => $match['score'],
-                    'threshold' => $match['threshold'],
-                    'finger' => $match['finger'],
+                    'score' => $best['score'],
+                    'threshold' => $best['threshold'],
+                    'finger' => $best['finger'],
                 ]
             );
         }
@@ -2625,7 +2780,7 @@ final class Repository
         if ($completedCount < 10) {
             Response::fail(
                 'fingerprint_enrollment_incomplete',
-                "Enrollment incomplete ({$completedCount}/10 fingers). Please see an officer to finish enrolling.",
+                "Enrollment incomplete ({$completedCount}/10 fingers). Please see an administrator to finish enrolling.",
                 409
             );
         }
@@ -2642,9 +2797,9 @@ final class Repository
             $checkoutOpenMinutesBeforeEnd,
             $checkoutCloseMinutesAfterEnd
         );
-        $record['fingerprintScore'] = $match['score'];
-        $record['fingerprintThreshold'] = $match['threshold'];
-        $record['fingerprintFinger'] = $match['finger'];
+        $record['fingerprintScore'] = $best['score'];
+        $record['fingerprintThreshold'] = $best['threshold'];
+        $record['fingerprintFinger'] = $best['finger'];
         return $record;
     }
 
