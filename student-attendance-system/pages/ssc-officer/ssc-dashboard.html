@@ -373,7 +373,7 @@
         activities.sort(function (a, b) { return b.sortKey.localeCompare(a.sortKey); });
 
         if (!activities.length) {
-          container.innerHTML = '<div style="padding:24px 20px;text-align:center;color:var(--color-text-muted);font-size:.78rem"><i class="bi bi-clock-history" style="font-size:1.4rem;display:block;margin-bottom:6px"></i>No recent activity</div>';
+          container.innerHTML = '<div class="activity-empty"><i class="bi bi-clock-history"></i>No recent activity</div>';
           return;
         }
 

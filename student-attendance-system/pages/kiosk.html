@@ -92,16 +92,16 @@
 
           <p class="kiosk-countdown" id="kioskCountdown" hidden aria-live="polite"></p>
 
-          <div class="kiosk-student-id-wrap">
-            <label for="kioskStudentId">Student ID</label>
-            <input type="text" id="kioskStudentId" class="kiosk-student-id-input" inputmode="numeric"
-              autocomplete="off" maxlength="10" placeholder="Enter your 5-digit ID" aria-describedby="kioskStudentIdHint kioskStudentIdError">
-            <small id="kioskStudentIdHint">Enter your 5-digit ID. Full IDs like 2025-12345 also work.</small>
-            <small id="kioskStudentIdError" class="kiosk-student-id-error" role="alert" hidden></small>
-          </div>
-
           <div class="kiosk-scan-layout">
             <div class="kiosk-scanner" id="kioskScanner" data-state="idle">
+              <div class="kiosk-student-id-wrap">
+                <label for="kioskStudentId">Student ID</label>
+                <input type="text" id="kioskStudentId" class="kiosk-student-id-input" inputmode="numeric"
+                  autocomplete="off" maxlength="10" placeholder="Enter your 5-digit ID" aria-describedby="kioskStudentIdHint kioskStudentIdError">
+                <small id="kioskStudentIdHint">Enter your 5-digit ID. Full IDs like 2025-12345 also work.</small>
+                <small id="kioskStudentIdError" class="kiosk-student-id-error" role="alert" hidden></small>
+              </div>
+
               <button class="kiosk-scan-button" id="kioskScanBtn" type="button" aria-describedby="kioskScanHint" disabled>
                 <span class="kiosk-fingerprint-frame" aria-hidden="true">
                   <span class="kiosk-fingerprint-orbit is-outer"></span>
@@ -180,7 +180,7 @@
               <i class="bi bi-chevron-down kiosk-manual-chevron"></i>
             </button>
             <div class="kiosk-manual-body" id="manualBody">
-              <p class="kiosk-manual-note">Use only when the fingerprint scanner is unavailable. The selected mode (check-in or check-out) is recorded.</p>
+              <p class="kiosk-manual-note">Approach staff for alternative check in</p>
               <form id="kioskManualForm" class="kiosk-manual-form">
                 <button type="submit" class="kiosk-manual-submit"><i class="bi bi-arrow-right"></i><span>Record manually</span></button>
               </form>

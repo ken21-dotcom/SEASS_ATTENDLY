@@ -369,11 +369,11 @@ ok('enrollment offers confirm-and-finish when all ten fingers are saved',
   /function renderCompletionState\(/.test(enrollmentSrc) &&
   /state\.modal\.hide\(\)/.test(enrollmentSrc) &&
   /refreshGroupedStudentList\(\)/.test(enrollmentSrc));
-ok('enrollment keeps Close and Confirm actions visible when applicable',
+ok('enrollment swaps cancel for confirm only after all ten fingers are saved',
   /id="fingerprintEnrollClose"/.test(enrollmentSrc) &&
   /btn-outline-danger/.test(enrollmentSrc) &&
   /Continue Later \/ Cancel Enrollment/.test(enrollmentSrc) &&
-  /state\.els\.close\.hidden = false/.test(enrollmentSrc) &&
+  /state\.els\.close\.hidden = complete/.test(enrollmentSrc) &&
   /state\.els\.confirm\.hidden = !complete/.test(enrollmentSrc) &&
   !/Close \(' \+ state\.enrolledFingers\.length/.test(enrollmentSrc));
 ok('enrollment puts the error above the picker and consent below progress',
@@ -383,8 +383,8 @@ ok('enrollment puts the error above the picker and consent below progress',
 ok('consent checkbox uses the green checked theme',
   /class="form-check-input fingerprint-consent-checkbox"/.test(enrollmentSrc) &&
   /\.fingerprint-consent-checkbox:checked/.test(stylesCss) &&
-  /background-color: #198754/.test(stylesCss) &&
-  /border-color: #198754/.test(stylesCss));
+  /background-color:\s*var\(--bs-primary\)/.test(stylesCss) &&
+  /border-color:\s*var\(--bs-primary\)/.test(stylesCss));
 ok('enrollment errors show a persistent toast that survives navigation',
   /\{ persistent: true \}/.test(enrollmentSrc) &&
   /sessionStorage/.test(uiSrc) &&

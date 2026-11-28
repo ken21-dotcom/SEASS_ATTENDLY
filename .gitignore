@@ -37,3 +37,4 @@ attendly-backend/config/config.php
 
 # Generated browser-audit screenshots and reports.
 ui-audit/
+*.bak

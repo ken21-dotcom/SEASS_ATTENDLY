@@ -640,24 +640,27 @@
   }
 
   /**
-   * Keep the close and confirm actions visible throughout enrollment. The
-   * confirm action remains disabled until all ten fingers are stored, so the
-   * presentation change does not alter the enrollment rule.
+   * The footer carries one primary decision at a time: while fingers are still
+   * missing it offers Continue Later / Cancel Enrollment, and once all ten are
+   * stored that action is replaced by Confirm and finish. Showing both at once
+   * let the student "confirm" an enrollment that was not actually complete.
    */
   function renderCompletionState() {
     if (!state.els) return;
     var complete = fingerprintComplete();
     if (state.els.success) state.els.success.hidden = !complete;
     if (state.els.close) {
-      state.els.close.hidden = false;
+      // Cancel/resume is only meaningful while some finger still has no
+      // template. It steps aside for the confirm action on completion.
+      state.els.close.hidden = complete;
       // The label is fixed: the button is always the cancel/resume action,
       // so it never needs to announce a changing count.
       state.els.close.textContent = 'Continue Later / Cancel Enrollment';
     }
     if (state.els.confirm) {
-      // Legacy completion-only behaviour: state.els.confirm.hidden = !complete.
-      // Keep it visible so the footer never shifts while enrollment progresses.
-      state.els.confirm.hidden = false;
+      // Confirm and finish exists only when every finger is saved; before that
+      // it stays out of the footer instead of sitting there greyed out.
+      state.els.confirm.hidden = !complete;
       state.els.confirm.disabled = !complete;
       state.els.confirm.setAttribute('aria-disabled', complete ? 'false' : 'true');
     }

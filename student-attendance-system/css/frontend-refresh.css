@@ -7,7 +7,7 @@
 
 :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) {
   --workspace-content-max: 1440px;
-  --workspace-gutter: clamp(18px, 4.5vw, 72px);
+  --workspace-gutter: clamp(14px, 2.4vw, 36px);
 }
 
 /* Keep wide screens composed instead of stretching dashboard content forever. */
@@ -40,7 +40,7 @@
 }
 
 :is(.form-control, .form-select) {
-  min-height: 42px;
+  min-height: var(--control-height);
   border-radius: var(--radius-sm);
   transition:
     border-color var(--transition-fast) var(--ease),
@@ -56,7 +56,7 @@
 }
 
 :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) .btn {
-  min-height: 40px;
+  min-height: var(--control-height);
   border-radius: var(--radius-sm);
   font-weight: 650;
   letter-spacing: .005em;
@@ -98,12 +98,12 @@
 }
 
 :is(.role-card, .dashboard-card) .table > :not(caption) > * > * {
-  padding-block: .82rem;
+  padding-block: .55rem;
 }
 
 :is(.role-card, .dashboard-card) .table thead th {
   color: var(--color-text-muted);
-  font-size: .75rem;
+  font-size: var(--font-size-label);
   font-weight: 750;
   letter-spacing: .065em;
   text-transform: uppercase;
@@ -142,6 +142,46 @@
   margin-top: 2px;
   font-size: .78rem;
   line-height: 1.5;
+}
+
+/* ── Events table empty state (admin dashboard) ──
+   Specific styling for the "No events found" message in the events table */
+#eventsTableEmpty.is-visible {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px 20px !important;
+  color: var(--color-text-muted) !important;
+  font-size: .78rem !important;
+}
+
+#eventsTableEmpty i {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--brand-500) !important;
+  font-size: 1.4rem !important;
+}
+
+/* ── Activity list empty state (admin & SSC dashboards) ──
+   Styling for "No recent activity" messages */
+#systemActivityList .activity-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px 20px;
+  color: var(--color-text-muted) !important;
+  font-size: .78rem !important;
+}
+
+#systemActivityList .activity-empty i {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--brand-500) !important;
+  font-size: 1.4rem !important;
 }
 
 /* Small dashboard metadata needs a stronger light-theme tone than the
@@ -222,6 +262,18 @@
 }
 
 .app-nav-backdrop[hidden] { display: none; }
+
+/* Tablet step — the same type and gutter ramp the phone layout uses, so
+   headings do not jump in size when crossing 650px. */
+@media (max-width: 768px) {
+  :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) {
+    --workspace-gutter: clamp(16px, 3.5vw, 24px);
+  }
+
+  :is(.dashboard-intro, .subpage-intro, .role-intro) h1 {
+    font-size: clamp(1.5rem, 4.8vw, 2rem);
+  }
+}
 
 @media (max-width: 650px) {
   :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) {
@@ -396,7 +448,7 @@
   }
 
   :is(.dashboard-intro, .subpage-intro, .role-intro) h1 {
-    font-size: clamp(1.75rem, 9vw, 2.25rem);
+    font-size: clamp(1.5rem, 4.8vw, 2rem);
   }
 
   .intro-copy {
@@ -430,7 +482,7 @@
 /* Quiet, minimal workspace treatment. Keep depth and motion restrained so
    primary actions and data carry the visual hierarchy. */
 :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) {
-  --workspace-gutter: clamp(20px, 3.5vw, 52px);
+  --workspace-gutter: clamp(16px, 3vw, 44px);
 }
 
 :is(.role-sidebar, .student-sidebar) {
@@ -466,7 +518,7 @@
 }
 
 :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) .btn {
-  min-height: 44px;
+  min-height: var(--control-height);
   box-shadow: none;
 }
 
@@ -485,7 +537,7 @@
 }
 
 :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) :is(.form-control, .form-select) {
-  min-height: 44px;
+  min-height: var(--control-height);
   border-color: var(--color-border-input);
   background-color: var(--color-bg-card);
 }
@@ -498,8 +550,8 @@
   text-transform: none;
 }
 
-.stat-label { font-size: .8rem; }
-.stat-foot { font-size: .75rem; }
+.stat-label { font-size: var(--font-size-muted); }
+.stat-foot { font-size: var(--font-size-muted); }
 .stat-foot[hidden] { display: none !important; }
 
 :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page) :is(.form-control, .form-select):focus-visible {
@@ -1011,4 +1063,140 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-muted);
   line-height: 1.5;
+}
+
+/* ── Laptop-height compaction ───────────────────────────────
+   A 1366×768 display has ~110px less usable height than a 1366×900
+   display. These rules tighten vertical rhythm only on wide screens so
+   phones and tablets keep their roomier touch targets. Loaded last in
+   styles.css, they win over the dashboard sheets without touching any
+   colour or layout structure. */
+@media screen and (min-width: 951px) and (max-height: 860px) {
+  .dashboard-intro,
+  .subpage-intro,
+  .role-intro {
+    padding-top: 14px;
+    padding-bottom: 10px;
+  }
+
+  .dashboard-intro h1,
+  .subpage-intro h1,
+  .role-intro h1 {
+    font-size: var(--font-size-h1);
+  }
+
+  .intro-copy { margin-top: 5px; }
+
+  .stat-grid {
+    gap: 12px;
+    margin-top: 6px;
+  }
+
+  .stat-card { padding: 12px 14px; }
+  .stat-value { font-size: 1.95rem; }
+  .stat-progress { margin-top: 6px; }
+
+  .dashboard-columns {
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .role-card,
+  .settings-card,
+  .records-card,
+  .report-sheet,
+  .student-dashboard-page .dashboard-card,
+  body.role-dashboard-page .role-main > .dashboard-card,
+  .attendance-chart-card,
+  .settings-card-body {
+    padding: var(--card-padding);
+  }
+
+  body.role-dashboard-page .role-main .dashboard-card .card-heading {
+    padding: 10px 0 8px;
+  }
+
+  .dash-panel-header { padding: var(--card-header-padding); }
+  .upcoming-event-item { padding: 9px 16px; }
+
+  .calendar-panel .dash-panel-body,
+  .weather-panel .dash-panel-body,
+  .events-panel .dash-panel-body {
+    padding: var(--card-padding);
+  }
+
+  :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
+    .table > :not(caption) > * > * {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .role-main > .row { --bs-gutter-y: 1rem; }
+  .role-main > .row.mb-4 { margin-bottom: 16px; }
+
+  /* The role dashboard's equal-height pair used a 510px floor for the
+     Quick Actions card so it looked full with three events. On a 768px
+     laptop that floor alone pushes the page past the fold, so cap the
+     pair to the available height instead. */
+  .role-dashboard-page .row.align-items-stretch > .col-lg-4 > .card {
+    min-height: 340px !important;
+  }
+
+  .role-dashboard-page .row.align-items-stretch > .col-lg-8 > .card {
+    max-height: 380px;
+  }
+
+  .role-dashboard-page .card .table-responsive th,
+  .role-dashboard-page .card .table-responsive td {
+    padding: 7px 12px;
+  }
+
+  .student-main > .dashboard-columns,
+  .student-main > .dashboard-events { margin-bottom: 20px; }
+  .dashboard-events { margin-top: 10px; }
+  .announcement-list { min-height: 140px; }
+
+  .attendance-chart {
+    gap: 16px;
+    min-height: 160px;
+  }
+
+  .donut-chart {
+    flex-basis: 130px;
+    width: 130px;
+    height: 130px;
+  }
+
+  .modal-header,
+  .modal-footer { padding: 10px 16px; }
+  .modal-body { padding: 14px; }
+}
+
+/* ── Laptop zoom (≈85% browser zoom) ─────────────────────────
+   A 1366×768 laptop has a lot of width but very little height. Scaling
+   the whole workspace once is far more predictable than shaving pixels
+   off every component. `height: 100vh / .85` is essential: a plain
+   `100vh` would be scaled down to 85% and leave a blank strip below.
+
+   The shell is the zoom root for dashboards so the fixed-position kiosk
+   overlays keep covering the real viewport. The kiosk zooms its body,
+   which has no fixed-position ancestors. */
+@media screen and (min-width: 1024px) and (max-height: 860px) {
+  .role-shell,
+  .student-shell {
+    zoom: .85;
+    height: calc(100vh / .85);
+  }
+
+  body.kiosk-page {
+    zoom: .85;
+    height: calc(100vh / .85);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html:has(body.kiosk-page) {
+    height: 100%;
+    overflow: hidden;
+  }
 }

@@ -87,7 +87,7 @@ function attendly_route(string $path, string $method, array $ctx): array
             $body = Response::body();
             $email = Response::requireString($body, 'email');
             $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-            $ctx['limiter']->consume('login-ip', $ip, 50, 60);
+            $ctx['limiter']->consume('login-ip', $ip, 200, 60);
             $ctx['limiter']->consume('login-account', strtolower(trim($email)), 50, 60);
             return $auth->login(
                 $email,
@@ -98,7 +98,7 @@ function attendly_route(string $path, string $method, array $ctx): array
             $ctx['limiter']->consume('registration-ip', (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 50, 60);
             $body = Response::body();
             return $repo->registerStudent([
-                'firstName'       => Response::requireString($body, 'firstName'),
+                'firstName'       => Response::requireString($ody, 'firstName'),
                 'lastName'        => Response::requireString($body, 'lastName'),
                 'studentIdNumber' => Response::requireString($body, 'studentIdNumber'),
                 'email'           => Response::requireString($body, 'email'),

@@ -67,7 +67,7 @@
 }
 
 .role-main > .dashboard-card {
-  padding: 18px 18px 16px;
+  padding: 16px 16px 14px;
 }
 
 .role-main > .dashboard-card .card-heading {
@@ -235,7 +235,7 @@
    heading the same inner gutter + enough top room so the title clears
    the pill bottom. */
 .role-main .dashboard-card .card-heading {
-  padding: 20px 16px 14px;
+  padding: 10px 0 8px;
 }
 
 /* Compact in-table actions */

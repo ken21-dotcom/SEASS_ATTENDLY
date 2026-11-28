@@ -33,7 +33,7 @@
    remaining role pages (e.g. ssc-reports.html, admin-reports.html) the
    same 18px gutter. */
 .role-dashboard-page .dashboard-card {
-  padding: 18px;
+  padding: 16px;
 }
 
 /* ── Section entrance animation ──
@@ -70,7 +70,7 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 12px 0 0;
+  padding: 8px 0 0;
 }
 
 .compliance-badge {
@@ -228,7 +228,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px 12px;
+  padding: var(--card-header-padding);
   border-bottom: 1px solid var(--color-border-default);
 }
 
@@ -255,8 +255,8 @@
 .upcoming-event-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 20px;
+  gap: 10px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--color-border-default);
   transition: background var(--transition-fast) var(--ease),
               transform var(--transition-fast) var(--ease);

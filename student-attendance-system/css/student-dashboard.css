@@ -142,8 +142,8 @@
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 20px;
-  padding: 44px 0 28px;
+  gap: 16px;
+  padding: clamp(18px, 2.4vh, 28px) 0 clamp(12px, 1.6vh, 18px);
 }
 
 /* Gentle page entrance — sections rise in sequence. Occasional (load),
@@ -170,9 +170,9 @@
 }
 
 .section-kicker {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: var(--brand-500);
-  font-size: .72rem;
+  font-size: var(--font-size-muted);
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -181,23 +181,23 @@
 .dashboard-intro h1 {
   margin: 0;
   color: var(--color-text-heading);
-  font-size: clamp(1.9rem, 3.2vw, 2.8rem);
+  font-size: var(--font-size-h1);
   font-weight: 800;
-  letter-spacing: -.03em;
+  letter-spacing: -.025em;
   line-height: 1.15;
 }
 
 .intro-copy {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   color: var(--color-text-muted);
-  font-size: .94rem;
+  font-size: var(--font-size-body);
   line-height: 1.5;
 }
 
 .dashboard-link,
 .text-link {
   color: var(--bs-primary);
-  font-size: .8rem;
+  font-size: var(--font-size-label);
   font-weight: 650;
   text-decoration: none;
   white-space: nowrap;
@@ -271,7 +271,7 @@ button.text-link {
   font-size: .76rem;
   font-weight: 600;
   letter-spacing: .01em;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .card-menu {
@@ -284,9 +284,9 @@ button.text-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 16px;
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
-  font-size: .78rem;
+  font-size: var(--font-size-label);
   font-weight: 700;
   text-transform: capitalize;
   white-space: nowrap;
@@ -321,8 +321,8 @@ button.text-link {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr);
   align-items: stretch;
-  gap: 18px;
-  margin-top: 18px;
+  gap: 14px;
+  margin-top: 14px;
 }
 
 /* NOTE: .announcements-card, .calendar-card and .weather-card were removed from
@@ -334,7 +334,7 @@ button.text-link {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 22px;
+  padding: var(--card-padding);
 }
 
 .attendance-chart-card .card-heading {
@@ -693,14 +693,14 @@ flex: 1;
 }
 
 .weather-panel .dash-panel-body {
-  padding: 16px 20px;
+  padding: var(--card-padding);
 }
 
 /* Calendar */
 .calendar-controls { display: flex; gap: 6px; }
 
 .calendar-panel .dash-panel-body {
-  padding: 18px 20px;
+  padding: var(--card-padding);
 }
 
 .calendar-controls .icon-button {
@@ -936,7 +936,7 @@ flex: 1;
   min-width: 0;
 }
 
-.events-panel .dash-panel-body { padding: 18px 20px 20px; }
+.events-panel .dash-panel-body { padding: var(--card-padding); }
 
 .events-list-columns {
   display: grid;
@@ -1928,12 +1928,12 @@ body.notification-open { overflow: hidden; }
 }
 
 .student-subpage-page .profile-card .form-control {
-  min-height: 48px;
+  min-height: var(--control-height);
 }
 
 .student-subpage-page .profile-card .btn {
-  min-height: 46px;
-  padding-inline: 1.1rem;
+  min-height: var(--control-height);
+  padding-inline: 1rem;
 }
 
 .student-subpage-page :is(.role-profile, .role-nav a, .icon-button, .btn):focus-visible {

@@ -1135,16 +1135,30 @@
 
 .kiosk-countdown i { font-size: .9rem; }
 
-.kiosk-student-id-wrap {
-  display: grid;
-  gap: .35rem;
-  max-width: 460px;
-  margin: 1rem auto;
-  text-align: left;
+.kiosk-event-copy > div {
+  display: flex;
+  flex-direction: column;
 }
-.kiosk-student-id-wrap label { color: var(--color-text-heading); font-size: .82rem; font-weight: 750; }
+
+.kiosk-student-id-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto 1.5rem;
+  text-align: center;
+}
+.kiosk-student-id-wrap label {
+  align-self: flex-start;
+  margin-bottom: .35rem;
+  color: var(--color-text-heading);
+  font-size: .82rem;
+  font-weight: 750;
+}
 .kiosk-student-id-input {
   width: 100%;
+  text-align: center;
   min-height: 52px;
   padding: .7rem .9rem;
   border: 1px solid var(--color-border-input);
@@ -1154,9 +1168,11 @@
   font: 700 1.05rem var(--font-sans);
   letter-spacing: .08em;
 }
-.kiosk-student-id-input:focus { outline: none; border-color: var(--color-border-focus); box-shadow: var(--shadow-focus); }
-.kiosk-student-id-wrap > small { color: var(--color-text-muted); font-size: .72rem; }
-.kiosk-student-id-error:not([hidden]) { color: var(--color-text-danger, #b91c1c); font-weight: 700; }
+.kiosk-student-id-wrap > small {
+  margin-top: .5rem;
+  color: var(--color-text-muted);
+  font-size: .72rem;
+}
 
 /* ────────────────────────────────────────────────────
    STATUS BAR — under scanner ring
@@ -2644,5 +2660,72 @@
   .kiosk-fingerprint-scanline { top: 50%; opacity: .45; }
   .kiosk-fingerprint-orbit,
   .kiosk-fingerprint-sensor { transition: none; }
+}
+
+/* ── Laptop-height compaction ───────────────────────────────
+   The kiosk keeps its own full-screen structure, but its stage and scan
+   card no longer force a tall scroll on a 1366×768 display. */
+@media screen and (min-width: 951px) and (max-height: 860px) {
+  .kiosk-topbar { padding: .5rem 1.15rem; }
+
+  .kiosk-stage {
+    padding: .9rem 1.15rem 1rem;
+  }
+
+  .kiosk-stage-inner { gap: .75rem; }
+
+  .kiosk-event-bar {
+    min-height: 64px;
+    padding: .6rem .9rem;
+  }
+
+  .kiosk-workspace { gap: .75rem; }
+
+  .kiosk-scan {
+    min-height: 0;
+    padding: 1rem 1.1rem;
+  }
+
+  /* Tighten the scan card's vertical rhythm so the fingerprint frame,
+     ID field and both mode buttons share one screen at 768px. */
+  .kiosk-heading .kiosk-kicker { font-size: .68rem; }
+  .kiosk-title {
+    margin: .3rem 0 .15rem;
+    font-size: 1.45rem;
+  }
+  .kiosk-subtitle { font-size: .88rem; }
+
+  .kiosk-mode-switch { margin-top: .55rem; }
+  .kiosk-mode-btn {
+    min-height: 48px;
+    padding: .45rem .75rem;
+  }
+
+  .kiosk-student-id-wrap {
+    gap: .2rem;
+    margin: .55rem auto;
+  }
+  .kiosk-student-id-input {
+    min-height: 42px;
+    padding: .45rem .8rem;
+    font-size: 1rem;
+  }
+
+  .kiosk-scan-layout {
+    gap: .65rem;
+    min-height: 240px;
+    padding-top: 0;
+  }
+
+  .kiosk-fingerprint-frame { width: min(165px, 48vw); }
+  .kiosk-status-bar { padding: .3rem .9rem; }
+
+  .kiosk-privacy-note {
+    padding: .3rem .5rem;
+    font-size: .7rem;
+  }
+
+  .kiosk-metrics-card { padding: .9rem; }
+  .kiosk-footer { padding: .45rem 1.15rem; }
 }
 

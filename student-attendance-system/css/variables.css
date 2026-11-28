@@ -83,31 +83,45 @@
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
+  /* Fluid base size. Used to top out at 16px, which made a 1366×768 laptop
+     feel zoomed in at 100%. It now eases between 14px and 15px, so body copy
+     stays readable without needing the browser at 80%. Kept as a token so
+     the body copy cannot drift from the rest of the scale. */
+  --font-size-base: clamp(14px, .95vw, 15px);
+
   /* Shared type scale for cards, labels, and muted copy. Keeping these as
      tokens stops one dashboard from drifting to a different label size or
      muted colour than another.
 
-     Minimum readable body size is 14px. The old scale stopped at 12-13px,
-     which was the root cause of the tiny-text findings across every page.
-     Use --font-size-xs for compact metadata only; body copy, form labels,
-     table headers and table cells use --font-size-label / --font-size-body. */
-  --font-size-xs: .875rem;
-  --font-size-label: .875rem;
-  --font-size-muted: .875rem;
-  --font-size-body: .9375rem;
-  --font-size-table: .875rem;
-  --font-size-card-title: 1.0625rem;
+     The shared label / body / table sizes are pinned to 14px so a future
+     root-font change cannot push primary interface text below the readable
+     floor. Compact metadata may still use --font-size-xs. */
+  --font-size-xs: 14px;
+  --font-size-label: 14px;
+  --font-size-muted: 14px;
+  --font-size-body: 14px;
+  --font-size-table: 14px;
+
+  /* Fluid heading scale. Headings shrink hardest on laptop widths, which is
+     where the old fixed 31–45px titles consumed the most vertical space. */
+  --font-size-h1: clamp(1.55rem, 2.05vw, 2.05rem);
+  --font-size-h2: clamp(1.2rem, 1.4vw, 1.45rem);
+  --font-size-h3: clamp(1.05rem, 1.15vw, 1.2rem);
+  /* Card h2/h3 titles: ~15px on laptops, easing to 17px on wide screens. */
+  --font-size-card-title: clamp(1rem, 1.05vw, 1.0625rem);
   --line-height-body: 1.55;
   --color-label: var(--color-text-heading);
 
-  /* ── Spacing — 4px base grid ── */
+  /* ── Spacing — 4px base grid ──
+     Trimmed ~15–20% from the middle and large steps so laptop viewports
+     feel composed rather than oversized. Small gaps stay on the grid. */
   --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
-  --space-xxl: 40px;
-  --space-3xl: 56px;
+  --space-sm: 6px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --space-3xl: 40px;
 
   /* ── Border Radius ── */
   --radius-xs: 6px;
@@ -162,32 +176,35 @@
   --accent-bar-rest-scale: .15;
   --accent-bar-transition: opacity 200ms ease-out, transform 240ms ease-out;
 
-  /* ── Layout ── */
-  --sidebar-width: 244px;
-  --topbar-height: 72px;
-  --topbar-height-mobile: 58px;
+  /* ── Layout ──
+     A 232px rail and 64px topbar give the content column back room on a
+     1366px-wide laptop without changing the shell structure. */
+  --sidebar-width: 232px;
+  --topbar-height: 64px;
+  --topbar-height-mobile: 56px;
 
   /* ── Form spacing ── */
   --form-spacing-xs: 8px;
   --form-spacing-sm: 12px;
-  --form-spacing-md: 16px;
-  --form-spacing-lg: 24px;
-  --form-spacing-xl: 32px;
+  --form-spacing-md: 14px;
+  --form-spacing-lg: 20px;
+  --form-spacing-xl: 28px;
 
   /* ── Controls ──
      One control height and radius for buttons, inputs and selects so
-     toolbars line up instead of mixing 31px, 38px and 44px controls. */
-  --control-height: 44px;
-  --control-height-sm: 36px;
+     toolbars line up. 38px stays comfortably clickable while keeping
+     toolbars under the 42–44px ceiling on a laptop. */
+  --control-height: 38px;
+  --control-height-sm: 32px;
   --control-radius: 10px;
-  --control-padding-x: 16px;
+  --control-padding-x: 14px;
   --focus-ring: 0 0 0 3px rgba(14, 159, 110, .32);
   --focus-outline: 2px solid var(--brand-600);
 
   /* ── Card spacing ── */
-  --card-padding: 20px;
-  --card-gap: 24px;
-  --card-header-padding: 14px 20px;
+  --card-padding: 16px;
+  --card-gap: 16px;
+  --card-header-padding: 10px 16px;
 
   /* ── Camera/video aspect ratio ── */
   --camera-aspect-ratio: 4 / 3;

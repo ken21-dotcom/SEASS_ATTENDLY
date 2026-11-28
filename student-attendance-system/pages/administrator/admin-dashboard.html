@@ -149,8 +149,9 @@
                   </tbody>
                 </table>
               </div>
-              <div id="eventsTableEmpty" style="display:none;padding:24px 20px;text-align:center;color:var(--color-text-muted);font-size:.78rem">
-                <i class="bi bi-calendar-x" style="font-size:1.4rem;display:block;margin-bottom:6px"></i>No events found
+              <div id="eventsTableEmpty" class="events-empty" style="display:none">
+                <i class="bi bi-calendar-x"></i>
+                <span>No events found</span>
               </div>
             </div>
           </div>
@@ -274,11 +275,11 @@
 
         if (!events.length) {
           tbody.innerHTML = '';
-          if (emptyMsg) emptyMsg.style.display = 'block';
+          if (emptyMsg) emptyMsg.classList.add('is-visible');
           return;
         }
 
-        if (emptyMsg) emptyMsg.style.display = 'none';
+        if (emptyMsg) emptyMsg.classList.remove('is-visible');
 
         tbody.innerHTML = events.map(function (ev) {
           var status = ev.date < today ? 'Past' :
@@ -366,7 +367,7 @@
         activities.sort(function (a, b) { return b.sortKey.localeCompare(a.sortKey); });
 
         if (!activities.length) {
-          container.innerHTML = '<div style="padding:24px 20px;text-align:center;color:var(--color-text-muted);font-size:.78rem"><i class="bi bi-clock-history" style="font-size:1.4rem;display:block;margin-bottom:6px"></i>No recent activity</div>';
+          container.innerHTML = '<div class="activity-empty"><i class="bi bi-clock-history"></i>No recent activity</div>';
           return;
         }
 

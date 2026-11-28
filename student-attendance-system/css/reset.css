@@ -7,6 +7,11 @@
 }
 
 html {
+  /* rem stays anchored at the browser's 16px base. The compact scale is
+     applied through --font-size-base on the body, and the shared label /
+     table tokens are pinned to 14px, so reducing the root here would only
+     shrink already-small metadata below the readable floor. */
+  font-size: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -16,8 +21,9 @@ body {
   font-family: var(--font-sans);
   margin: 0;
   padding: 0;
-  font-size: 16px;
-  line-height: 1.55;
+  /* Fluid: 15px on wide screens, 14px on a 1366px laptop. */
+  font-size: var(--font-size-base);
+  line-height: 1.5;
   color: var(--color-text-primary);
   background: var(--color-bg-app);
   -webkit-font-smoothing: antialiased;

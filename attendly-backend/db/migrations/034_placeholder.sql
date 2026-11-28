@@ -1,3 +1,0 @@
--- Placeholder to fix sequence gap between 033 and 035.
--- Migration 034 was not used; this file exists solely to keep the
--- migration sequence continuous and avoid confusion during review.
