@@ -25,7 +25,7 @@
   gap: 4px;
   padding: .32em .68em;
   border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
+  font-size: .62rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -99,7 +99,7 @@
 
 .field-group .form-label {
   margin: 0 0 6px;
-  font-size: var(--font-size-xs);
+  font-size: .68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .06em;
@@ -107,7 +107,7 @@
 }
 
 .field-group .form-select {
-  font-size: var(--font-size-xs);
+  font-size: .8rem;
   font-weight: 600;
   background-color: var(--color-bg-input);
   border-color: var(--color-border-input);
@@ -132,8 +132,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: var(--font-size-xs);
-  min-height: 40px;
+  font-size: .76rem;
+  min-height: 38px;
   padding-inline: 14px;
 }
 
@@ -148,7 +148,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-pill);
   padding: 8px 16px;
-  font-size: var(--font-size-xs);
+  font-size: .8rem;
   font-weight: 600;
   color: var(--color-text-muted);
   background: var(--color-bg-card);
@@ -244,7 +244,7 @@
   align-items: center;
   gap: 4px;
   border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
+  font-size: .68rem;
   font-weight: 600;
 }
 

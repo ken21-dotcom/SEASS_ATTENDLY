@@ -146,15 +146,15 @@
   white-space: nowrap;
 }
 .org-group-head-dept .org-group-title {
-  font-size: var(--font-size-xs);
+  font-size: .82rem;
   letter-spacing: .02em;
   text-transform: uppercase;
 }
-.org-group-head-course .org-group-title { font-size: var(--font-size-xs); }
+.org-group-head-course .org-group-title { font-size: .78rem; }
 .org-group-pill {
   margin-left: auto;
   flex-shrink: 0;
-  font-size: var(--font-size-xs);
+  font-size: .66rem;
   font-weight: 700;
   padding: 2px 10px;
   border-radius: var(--radius-pill);
@@ -169,7 +169,7 @@
   display: inline-block;
   padding: 2px 9px;
   border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
+  font-size: .68rem;
   font-weight: 600;
   background: var(--color-bg-success-light);
   border: 1px solid var(--brand-200);
@@ -188,18 +188,6 @@
 [data-theme="dark"] .org-group-pill {
   background: var(--color-bg-card-elevated);
   border-color: var(--color-border-default);
-}
-
-/* On phones the department name must stay readable rather than being cut
-   off by an ellipsis. The group row can grow taller; the page still has no
-   horizontal overflow because the label is allowed to wrap. */
-@media (max-width: 700px) {
-  .org-group-title {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    line-height: 1.35;
-  }
 }
 
 /* ========================================
@@ -244,10 +232,9 @@
 /* Keep the tick legible: the unchecked background above out-ranks Bootstrap's
    :checked colour, so the checked state is restated here (Bootstrap's white
    check mark comes from its background-image and still applies). */
-.fingerprint-enroll-consent .form-check-input:checked,
-.fingerprint-consent-checkbox:checked {
-  background-color: #198754;
-  border-color: #198754;
+.fingerprint-enroll-consent .form-check-input:checked {
+  background-color: var(--color-text-success, #0e9f6e);
+  border-color: var(--color-text-success, #0e9f6e);
 }
 .fingerprint-enroll-consent .form-check-label {
   margin: 0;
@@ -319,15 +306,6 @@
   margin: 18px auto 8px;
   background: var(--color-bg-input);
 }
-/* The enrollment progress bar is part of the brand system, not Bootstrap's
-   default blue. --brand-500 is the canonical ATTENDLY emerald; --brand-700
-   carries it in dark mode where the mint step washes out. */
-.fingerprint-enroll-progress .progress-bar {
-  background: var(--brand-500);
-}
-[data-theme="dark"] .fingerprint-enroll-progress .progress-bar {
-  background: var(--brand-700);
-}
 .fingerprint-enroll-success {
   display: flex;
   align-items: flex-start;
@@ -385,8 +363,7 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
 }
-.fingerprint-enroll-status.is-incomplete,
-.fingerprint-enroll-status.is-warning {
+.fingerprint-enroll-status.is-incomplete {
   padding: 8px 10px;
   border-radius: 8px;
   background: var(--color-bg-warning-light, #fffbeb);
@@ -429,173 +406,6 @@
   text-align: left;
 }
 
-/* Native modal confirmation used when an administrator closes a partial
-   fingerprint enrollment. The dialog enters the browser top layer, above the
-   Bootstrap enrollment modal, while keeping the destructive choice explicit. */
-.fingerprint-cancel-dialog {
-  width: min(460px, calc(100vw - 32px));
-  max-width: none;
-  max-height: min(720px, calc(100dvh - 32px));
-  margin: auto;
-  padding: 0;
-  overflow: auto;
-  color: var(--color-text-primary);
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border-default);
-  border-radius: 20px;
-  box-shadow: 0 28px 90px rgba(0, 0, 0, .32);
-}
-.fingerprint-cancel-dialog::backdrop {
-  background: rgba(4, 12, 9, .72);
-  backdrop-filter: blur(4px);
-}
-.fingerprint-cancel-dialog__content {
-  padding: 26px;
-}
-.fingerprint-cancel-dialog__icon {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  margin-bottom: 16px;
-  color: var(--color-text-warning, #b45309);
-  background: var(--color-bg-warning-light, #fffbeb);
-  border: 1px solid color-mix(in srgb, var(--color-text-warning, #b45309) 22%, transparent);
-  border-radius: 14px;
-  font-size: 1.35rem;
-}
-.fingerprint-cancel-dialog__eyebrow {
-  margin: 0 0 5px;
-  color: var(--color-text-muted);
-  font-size: .7rem;
-  font-weight: 750;
-  letter-spacing: .09em;
-  text-transform: uppercase;
-}
-.fingerprint-cancel-dialog h2 {
-  margin: 0;
-  color: var(--color-text-heading);
-  font-size: 1.35rem;
-  font-weight: 750;
-  letter-spacing: -.025em;
-}
-.fingerprint-cancel-dialog__description {
-  margin: 10px 0 18px;
-  color: var(--color-text-secondary);
-  font-size: .9rem;
-  line-height: 1.55;
-}
-.fingerprint-cancel-dialog__progress {
-  padding: 12px 14px;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border-default);
-  border-radius: 12px;
-}
-.fingerprint-cancel-dialog__progress-copy {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 9px;
-  color: var(--color-text-muted);
-  font-size: .78rem;
-}
-.fingerprint-cancel-dialog__progress-copy strong {
-  color: var(--color-text-heading);
-  font-weight: 700;
-}
-.fingerprint-cancel-dialog__track {
-  height: 6px;
-  overflow: hidden;
-  background: var(--color-border-default);
-  border-radius: 99px;
-}
-.fingerprint-cancel-dialog__track span {
-  display: block;
-  width: 0;
-  height: 100%;
-  background: var(--brand-600);
-  border-radius: inherit;
-  transition: width 180ms ease-out;
-}
-.fingerprint-cancel-dialog__missing {
-  margin-top: 16px;
-}
-.fingerprint-cancel-dialog__missing-label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--color-text-heading);
-  font-size: .8rem;
-  font-weight: 700;
-}
-.fingerprint-cancel-dialog__missing ul {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  max-height: 150px;
-  margin: 0;
-  padding: 0;
-  overflow: auto;
-  list-style: none;
-}
-.fingerprint-cancel-dialog__missing li {
-  min-width: 0;
-  padding: 7px 9px;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border-default);
-  border-radius: 8px;
-  font-size: .74rem;
-  line-height: 1.3;
-}
-.fingerprint-cancel-dialog__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 22px;
-}
-.fingerprint-cancel-dialog__actions button {
-  min-height: 42px;
-  padding: 9px 14px;
-  border-radius: 10px;
-  font: inherit;
-  font-size: .84rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.fingerprint-cancel-dialog__keep {
-  color: var(--color-text-on-danger, #fff);
-  background: var(--brand-600);
-  border: 1px solid var(--brand-600);
-}
-.fingerprint-cancel-dialog__keep:hover {
-  background: var(--brand-700);
-  border-color: var(--brand-700);
-}
-.fingerprint-cancel-dialog__wipe {
-  color: var(--color-text-danger, #da2323);
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--color-text-danger, #da2323) 45%, transparent);
-}
-.fingerprint-cancel-dialog__wipe:hover {
-  background: var(--color-bg-danger-light, #fef2f2);
-}
-.fingerprint-cancel-dialog__actions button:focus-visible {
-  outline: 3px solid var(--brand-400);
-  outline-offset: 3px;
-}
-@media (max-width: 420px) {
-  .fingerprint-cancel-dialog__content { padding: 20px; }
-  .fingerprint-cancel-dialog__actions { flex-direction: column; }
-  .fingerprint-cancel-dialog__actions button { width: 100%; }
-}
-
-/* Persistent enrollment errors use the same toast container but stay on
-   screen across page navigations until the operator dismisses them. */
-.toast-persistent {
-  border-left: 4px solid #dc3545 !important;
-  box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .2);
-}
-
 /* ============================================================
    SHARED UI SYSTEM — readable type, controls and data display
    ------------------------------------------------------------
@@ -616,34 +426,19 @@
   font-size: var(--font-size-xs);
 }
 
-/* Bootstrap sizes <code> at .875em, which renders help-text snippets like
-   `?station=ID` at 12px. Pin inline code to the same minimum type scale. */
-:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
-  :is(code, kbd, samp) {
-  font-size: var(--font-size-xs);
-}
-
 :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
   :is(.section-kicker, .student-breadcrumb, .topbar-date, .records-caption,
       .stat-label, .stat-foot, .student-count-chip, .activity-time,
       .profile-detail-label, .role-profile small, .user-dropdown-header small,
-      .search-result-group, .notification-panel-head .section-kicker,
-      .status-badge) {
+      .search-result-group, .notification-panel-head .section-kicker) {
   font-size: var(--font-size-xs);
 }
 
 :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
-  :is(.intro-copy, .settings-help, .form-text, .activity-text,
+  :is(.intro-copy, .settings-help, .form-text, .activity-text span,
       .upcoming-event-meta, .event-meta, .role-empty-cell span) {
   font-size: var(--font-size-xs);
   line-height: 1.55;
-}
-
-:is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
-  :is(.activity-text strong, .activity-text span, .compliance-badge,
-      .event-time-badge, .dashboard-link, .text-link, .small,
-      .profile-readonly-badge) {
-  font-size: var(--font-size-xs);
 }
 
 :is(.role-dashboard-page, .student-dashboard-page, .student-subpage-page)
@@ -1234,7 +1029,7 @@ input[type="radio"]:focus-visible {
 
 .kiosk-brand-name small {
   margin-top: 2px;
-  font-size: var(--font-size-xs);
+  font-size: .75rem;
   letter-spacing: .08em;
   line-height: 1.25;
 }
@@ -1430,70 +1225,5 @@ body.kiosk-page:has(.kiosk-lock:not([hidden])) {
     line-height: 1.25;
   }
 }
-
-/* Shared minimalist component layer. Existing markup and behaviour stay intact. */
-body { background: var(--bg); color: var(--text); font-size: var(--font-size-body); line-height: var(--line-height-body); }
-main, .role-main, .student-main, .auth-main { animation: attendly-page-enter var(--duration-fast) var(--ease-out) both; }
-button, .btn, input, select, textarea { transition: background-color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out); }
-button:active:not(:disabled), .btn:active:not(:disabled) { transform: scale(.98); }
-button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--focus-ring) !important; outline-offset: 2px; box-shadow: none !important; }
-.btn, button:not(.btn-close), .form-control, .form-select, input, select, textarea { border-radius: var(--control-radius); }
-.btn-primary, .btn-success, .btn-submit, .submit-btn, .auth-submit, .kiosk-manual-submit { border-color: var(--primary) !important; background: var(--primary) !important; color: var(--on-primary) !important; box-shadow: none !important; }
-.btn-primary:hover, .btn-success:hover, .btn-submit:hover, .submit-btn:hover, .auth-submit:hover, .kiosk-manual-submit:hover { border-color: var(--primary-hover) !important; background: var(--primary-hover) !important; }
-.btn-danger, .btn-outline-danger:hover, .btn-deactivate, .danger-action { border-color: var(--danger) !important; background: var(--danger) !important; color: var(--on-primary) !important; }
-.btn-outline-danger { border-color: var(--danger) !important; color: var(--danger) !important; background: var(--transparent) !important; }
-.form-control, .form-select, input:not([type="checkbox"]):not([type="radio"]), select, textarea { border-color: var(--border-strong) !important; background-color: var(--surface) !important; color: var(--text) !important; box-shadow: none !important; }
-.form-control::placeholder, input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }
-.form-control:focus, .form-select:focus, input:focus, select:focus, textarea:focus { border-color: var(--focus-ring) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring) 18%, var(--transparent)) !important; }
-.form-control.is-invalid, .form-select.is-invalid, input.is-invalid, textarea.is-invalid, .invalid-input { border-color: var(--danger) !important; animation: attendly-shake 250ms var(--ease-out) 1; }
-.invalid-feedback, .form-error, .field-error, [role="alert"]:not(.toast) { color: var(--danger); }
-.invalid-feedback:not(:empty)::before, .form-error:not(:empty)::before, .field-error:not(:empty)::before { content: '! '; font-weight: 700; }
-.alert-danger, .alert-error, .error-message, .fingerprint-enroll-error { border: 1px solid var(--danger-border) !important; background: var(--danger-bg) !important; color: var(--danger) !important; animation: attendly-alert-enter var(--duration-base) var(--ease-out) both; }
-.alert-danger::before, .alert-error::before, .error-message::before, .fingerprint-enroll-error::before { content: '!'; display: inline-grid; place-items: center; width: 1rem; height: 1rem; margin-right: 8px; border: 1px solid currentColor; border-radius: 50%; font-weight: 700; line-height: 1; }
-.alert-success, .status-present, .badge-success { border-color: var(--success) !important; background: var(--success-bg) !important; color: var(--success) !important; }
-.alert-warning, .status-late, .badge-warning { border-color: var(--warning) !important; background: var(--warning-bg) !important; color: var(--warning) !important; }
-.card, .dashboard-card, .dash-panel, .activity-panel, .role-card, .student-table, .table-responsive, .modal-content, .dropdown-menu, .toast, .settings-card, .report-card { border: 1px solid var(--border) !important; border-radius: var(--radius-card) !important; box-shadow: none !important; background: var(--surface) !important; color: var(--text); }
-.table, .table > :not(caption) > * > * { --bs-table-bg: transparent; --bs-table-color: var(--text); --bs-table-border-color: var(--border); }
-.table thead th { background: var(--surface-2); color: var(--text-muted); border-color: var(--border) !important; }
-.table td, .table th { border-color: var(--border) !important; }
-.badge, .status-badge { border: 1px solid var(--border); border-radius: 999px; font-size: var(--font-size-xs); font-weight: 650; }
-.toast { overflow: hidden; animation: attendly-toast-enter var(--duration-base) var(--ease-out) both; }
-.toast.hide { animation: attendly-toast-leave var(--duration-fast) var(--ease-out) both; }
-.modal-backdrop { transition: opacity var(--duration-base) var(--ease-out); }
-.modal.fade .modal-dialog { transform: scale(.98); transition: transform var(--duration-base) var(--ease-out), opacity var(--duration-base) var(--ease-out); }
-.modal.show .modal-dialog { transform: scale(1); }
-.modal-content { border-radius: var(--radius-md) !important; box-shadow: var(--shadow-pop) !important; }
-.modal-header, .modal-footer { border-color: var(--border) !important; }
-.role-sidebar, .sidebar, .side-nav { background: var(--surface) !important; border-right: 1px solid var(--border) !important; }
-.role-nav a.active, .role-nav a[aria-current="page"], .sidebar a.active, .nav-link.active { background: var(--surface-2) !important; color: var(--primary) !important; border-left-color: var(--primary) !important; }
-@keyframes attendly-page-enter { from { opacity: 0; } to { opacity: 1; } }
-@keyframes attendly-alert-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes attendly-toast-enter { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes attendly-toast-leave { to { opacity: 0; transform: translateY(-4px); } }
-@keyframes attendly-shake { 0%, 100% { transform: translateX(0); } 35% { transform: translateX(-4px); } 70% { transform: translateX(4px); } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; transform: none !important; } }
-
-/* Fingerprint enrollment stays task-focused in both themes. */
-.fingerprint-enroll-body { color: var(--text); }
-.fingerprint-enroll-visual { width: 72px; height: 72px; margin: 0 auto 12px; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-2); color: var(--primary); }
-.fingerprint-enroll-visual .bi { font-size: 2.25rem; }
-.fingerprint-enroll-student { color: var(--text); font-size: 1rem; }
-.finger-enroll-hand { padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
-.finger-enroll-choice { min-height: 40px; border-color: var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
-.finger-enroll-choice:hover:not(:disabled) { background: var(--surface-2); }
-.finger-enroll-choice.is-selected { border-color: var(--primary); background: var(--surface-2); }
-.finger-enroll-choice.is-done { border-color: var(--accent); background: var(--success-bg); }
-.finger-enroll-choice.is-done small { color: var(--success); }
-.finger-enroll-choice.is-done:not(:disabled) { animation: attendly-finger-done var(--duration-base) var(--ease-out) 1; }
-.fingerprint-enroll-consent { border-color: var(--border); border-radius: 8px; background: var(--surface-2); }
-.fingerprint-enroll-consent .form-check-input { border-color: var(--border-strong); background-color: var(--surface); }
-.fingerprint-enroll-consent .form-check-input:checked, .fingerprint-consent-checkbox:checked { border-color: var(--primary); background-color: var(--primary); }
-.fingerprint-enroll-progress { background: var(--border); }
-.fingerprint-enroll-progress .progress-bar { background: var(--accent); }
-.fingerprint-enroll-success { border-color: var(--success); background: var(--success-bg); color: var(--success); }
-.fingerprint-enroll-status.is-incomplete { border: 1px solid var(--danger-border); background: var(--danger-bg); color: var(--danger); animation: attendly-alert-enter var(--duration-base) var(--ease-out) both; }
-.fingerprint-enroll-status.is-warning { border: 1px solid var(--warning); background: var(--warning-bg); color: var(--warning); }
-.fingerprint-enroll-close, #fingerprintEnrollClose, #fingerprintEnrollConfirm { min-height: 44px; }
-@keyframes attendly-finger-done { 0% { transform: scale(1); } 45% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
 

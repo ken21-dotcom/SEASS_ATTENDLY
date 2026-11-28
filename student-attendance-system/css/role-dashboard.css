@@ -240,7 +240,7 @@
 }
 
 .dash-panel-header a {
-  font-size: var(--font-size-xs);
+  font-size: .72rem;
   color: var(--bs-primary);
   text-decoration: none;
   font-weight: 600;
@@ -284,13 +284,13 @@
   line-height: 1.1;
 }
 
-.event-date-badge .ev-month { font-size: var(--font-size-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.event-date-badge .ev-month { font-size: .55rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 .event-date-badge .ev-day { font-size: 1.05rem; font-weight: 800; }
-.event-date-badge .ev-dow { font-size: var(--font-size-xs); color: var(--color-text-muted); }
+.event-date-badge .ev-dow { font-size: .5rem; color: var(--color-text-muted); }
 
 .event-info { flex: 1; min-width: 0; }
-.event-info strong { display: block; font-size: var(--font-size-xs); color: var(--color-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.event-info small { color: var(--color-text-muted); font-size: var(--font-size-xs); }
+.event-info strong { display: block; font-size: .8rem; color: var(--color-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.event-info small { color: var(--color-text-muted); font-size: .7rem; }
 
 .event-time-badge {
   flex: 0 0 auto;
@@ -714,22 +714,14 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 190px;
+  min-width: 96px;
   min-height: 40px;
   padding: .25rem .75rem;
   border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
+  font-size: .75rem;
   font-weight: 650;
   line-height: 1.2;
   white-space: nowrap;
-}
-
-/* On phones the stacked-card layout sizes action buttons with flex,
-   so the desktop fixed width would force an extra horizontal scroll. */
-@media (max-width: 700px) {
-  .role-dashboard-page table .btn-sm:not([aria-label]) {
-    min-width: 0;
-  }
 }
 
 /* Action-button colours. These selectors outrank Bootstrap's

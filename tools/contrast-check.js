@@ -171,15 +171,18 @@ const tok = (tokens, name) => resolve(tokens, name.startsWith('--') ? tokens[nam
 // palette against the auth panel. `fix` says which side to correct when a
 // pair fails: 'fg' for coloured text, 'bg' for a coloured fill.
 const APP_PAIRS = [
-  ['body text',         '--text',                      '--surface',                  4.5, 'fg', 'darker',  'primary copy on surfaces'],
-  ['muted text',        '--text-muted',                '--surface',                  4.5, 'fg', 'darker',  'secondary text and labels'],
-  ['muted on page',     '--text-muted',                '--bg',                       4.5, 'fg', 'darker',  'metadata outside cards'],
-  ['primary action',    '--on-primary',                '--primary',                  4.5, 'fg', 'darker',  'button labels'],
-  ['danger status',     '--danger',                    '--danger-bg',                4.5, 'fg', 'darker',  'error text and icon'],
-  ['success status',    '--success',                   '--success-bg',               4.5, 'fg', 'darker',  'present and enrolled text'],
-  ['warning status',    '--warning',                   '--warning-bg',               4.5, 'fg', 'darker',  'late and incomplete text'],
-  ['danger on action',  '--on-primary',                '--danger',                   4.5, 'fg', 'darker',  'destructive button label'],
-  ['success text',      '--success',                   '--surface',                  4.5, 'fg', 'darker',  'success copy on cards'],
+  ['body text',         '--color-text-primary',        '--color-bg-card',            4.5, 'fg', 'darker',  'primary copy on cards'],
+  // The muted token sits on three light grounds. The darkest of them
+  // (#f4f8f6, the input fill) is the binding constraint, so fix to that one.
+  ['muted text',        '--color-text-muted',          '--color-bg-input',           4.5, 'fg', 'darker',  'default secondary + label colour'],
+  ['muted on card',     '--color-text-muted',          '--color-bg-card',            4.5, 'fg', 'darker',  ''],
+  ['muted on app bg',   '--color-text-muted',          '--color-bg-app',             4.5, 'fg', 'darker',  'metadata outside cards'],
+  ['heading text',      '--color-text-heading',        '--color-bg-card',            4.5, 'fg', 'darker',  'card + page headings'],
+  ['success text',      '--color-text-success',        '--color-bg-card',            4.5, 'fg', 'darker',  ''],
+  ['warning text',      '--color-text-warning',        '--color-bg-warning-light',   4.5, 'fg', 'darker',  'severity pill / icon'],
+  ['danger text',       '--color-text-danger',         '--color-bg-danger-light',    4.5, 'fg', 'darker',  'suspension pill / icon'],
+  ['probation text',    '--color-text-probation',      '--color-probation-bg',       4.5, 'fg', 'darker',  'probation pill / icon'],
+  ['accent chip',       '--color-text-success',        '--color-bg-success-light',   4.5, 'fg', 'darker',  ''],
   // Activity-feed chips. These were raw hex in role-dashboard.css with no
   // dark-theme override; the info pair sat at 3.93:1 in light theme, under
   // the floor for its 12px glyph. Now tokenised, and checked in both themes.
@@ -189,11 +192,16 @@ const APP_PAIRS = [
   // Severity badges are fills with their own label colour (app-shell.css).
   // Each fill admits exactly one label, so the label flips per fill/theme
   // rather than the severity hue being muted.
+  ['warning badge fill',   '#212529', '--color-badge-warning',    4.5, 'bg', 'darker',  'dark label on the fill'],
+  ['probation badge fill', '#212529', '--color-badge-probation',  4.5, 'bg', 'darker',  'dark label (white would be 2.95:1)'],
+  ['suspension badge fill', '#ffffff', '--color-badge-suspension', 4.5, 'bg', 'darker', 'white label in light theme', 'light'],
+  ['suspension badge fill', '#212529', '--color-badge-suspension', 4.5, 'bg', 'darker', 'dark label in dark theme', 'dark'],
+
   // WCAG 1.4.11 non-text contrast: 3:1 for the control boundary a user must
   // be able to see. Card edges below are decorative, so they are advisory.
-  ['input border',      '--border-strong',             '--surface',                  3.0, 'fg', 'darker', 'field boundary (required)'],
-  ['focus ring',        '--focus-ring',                '--surface',                  3.0, 'fg', 'darker', 'focus indicator'],
-  ['card border',       '--border',                    '--bg',                       3.0, 'fg', 'darker', 'decorative only (advisory)'],
+  ['input border',      '--color-border-input',        '--color-bg-card',            3.0, 'fg', 'darker', 'field boundary (required)'],
+  ['focus ring',        '--color-border-focus',        '--color-bg-card',            3.0, 'fg', 'darker', 'focus indicator'],
+  ['card border',       '--color-border-default',      '--color-bg-app',             3.0, 'fg', 'darker', 'decorative only (advisory)'],
 ];
 
 const ADVISORY = new Set(['card border', 'fog boundary']);
